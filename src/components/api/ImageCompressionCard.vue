@@ -1,5 +1,5 @@
 <script setup>
-// This component offers user-friendly compression presets plus advanced controls and downloads one ZIP for all processed images.
+// This component now shows live progress and ETA during final compression so users can track completion and wait time.
 import { computed } from "vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { useImageCompression } from "../../composables/useImageCompression";
@@ -25,6 +25,9 @@ const {
   requestId,
   archiveUrl,
   archiveName,
+  progressPercent,
+  etaSeconds,
+  progressLabel,
   selectFiles,
   compress,
 } = useImageCompression();
@@ -138,6 +141,17 @@ const onFilesSelected = (event) => {
         >
           {{ loading ? "Compressing..." : "Compress Images" }}
         </button>
+
+        <div v-if="loading" class="progress-panel" aria-live="polite">
+          <div class="progress-panel__head">
+            <strong>{{ progressLabel }}</strong>
+            <span>{{ progressPercent }}%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-track__bar" :style="{ width: `${progressPercent}%` }" />
+          </div>
+          <p class="tool-card__description">Estimated time remaining: {{ etaSeconds }}s</p>
+        </div>
       </div>
 
       <p v-if="error" class="tool-card__description tool-card__description--error">{{ error }}</p>

@@ -1,5 +1,5 @@
 <script setup>
-// This component now provides minimal arrow controls + drag-and-drop ordering, while clearly showing upload guards before merge.
+// This component now shows live progress and ETA during the final merge step so users can track request completion.
 import { computed } from "vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { usePdfMerge } from "../../composables/usePdfMerge";
@@ -24,6 +24,9 @@ const {
   fileUrl,
   fileName,
   draggingId,
+  progressPercent,
+  etaSeconds,
+  progressLabel,
   selectFiles,
   moveFile,
   startDragging,
@@ -148,6 +151,17 @@ const formatFileSize = (size) => {
         <p v-if="!apiHealthy" class="tool-card__description tool-card__description--error">
           Merge disabled while API guard reports the server as unavailable.
         </p>
+
+        <div v-if="loading" class="progress-panel" aria-live="polite">
+          <div class="progress-panel__head">
+            <strong>{{ progressLabel }}</strong>
+            <span>{{ progressPercent }}%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-track__bar" :style="{ width: `${progressPercent}%` }" />
+          </div>
+          <p class="tool-card__description">Estimated time remaining: {{ etaSeconds }}s</p>
+        </div>
       </div>
 
       <p v-if="error" class="tool-card__description tool-card__description--error">{{ error }}</p>

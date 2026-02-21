@@ -1,4 +1,4 @@
-// This composable now enforces upload-size guards and supports drag-and-drop reordering for safer, faster pre-merge setup.
+// This composable now exposes live merge progress (upload + processing estimate) so users see percent complete and time remaining.
 import { onBeforeUnmount, ref } from "vue";
 import {
   MAX_FILE_SIZE_BYTES,
@@ -22,6 +22,71 @@ export const usePdfMerge = () => {
   const fileUrl = ref("");
   const fileName = ref("");
   const draggingId = ref(null);
+
+  const progressPercent = ref(0);
+  const etaSeconds = ref(0);
+  const progressLabel = ref("");
+
+  let progressIntervalId = null;
+  let progressStartedAt = 0;
+  let estimatedDurationMs = 0;
+
+  const clearProgressLoop = () => {
+    if (progressIntervalId) {
+      window.clearInterval(progressIntervalId);
+      progressIntervalId = null;
+    }
+  };
+
+  const resetProgress = () => {
+    clearProgressLoop();
+    progressPercent.value = 0;
+    etaSeconds.value = 0;
+    progressLabel.value = "";
+  };
+
+  const startProgress = (totalBytes) => {
+    progressStartedAt = Date.now();
+    const totalMb = totalBytes / (1024 * 1024);
+    estimatedDurationMs = 2200 + totalMb * 1400 + files.value.length * 650;
+
+    progressPercent.value = 3;
+    etaSeconds.value = Math.max(1, Math.ceil(estimatedDurationMs / 1000));
+    progressLabel.value = "Uploading files...";
+
+    clearProgressLoop();
+    progressIntervalId = window.setInterval(() => {
+      const elapsed = Date.now() - progressStartedAt;
+      const estimated = Math.min(95, Math.round((elapsed / estimatedDurationMs) * 100));
+
+      progressPercent.value = Math.max(progressPercent.value, estimated);
+
+      if (progressPercent.value >= 70) {
+        progressLabel.value = "Processing and merging files...";
+      }
+
+      const remainingMs = Math.max(estimatedDurationMs - elapsed, 0);
+      etaSeconds.value = Math.max(1, Math.ceil(remainingMs / 1000));
+    }, 260);
+  };
+
+  const onUploadProgress = ({ loaded, total, ratio }) => {
+    if (!Number.isFinite(ratio)) {
+      return;
+    }
+
+    const uploadProgress = Math.min(70, Math.max(5, Math.round(ratio * 70)));
+    progressPercent.value = Math.max(progressPercent.value, uploadProgress);
+    progressLabel.value = ratio < 1 ? "Uploading files..." : "Processing and merging files...";
+
+    const elapsedSeconds = (Date.now() - progressStartedAt) / 1000;
+    if (total > 0 && loaded > 0 && elapsedSeconds > 0) {
+      const speed = loaded / elapsedSeconds;
+      if (speed > 0) {
+        etaSeconds.value = Math.max(1, Math.ceil((total - loaded) / speed));
+      }
+    }
+  };
 
   const revokePreviewUrls = () => {
     files.value.forEach((entry) => {
@@ -150,19 +215,26 @@ export const usePdfMerge = () => {
         .sort((left, right) => left.sourceIndex - right.sourceIndex)
         .map((entry) => entry.file);
 
+      const totalBytes = uploadFiles.reduce((sum, file) => sum + file.size, 0);
+      startProgress(totalBytes);
+
       const mergePlan = files.value.map((entry) => ({
         sourceIndex: entry.sourceIndex,
         rotation: entry.rotation,
       }));
 
-      const result = await mergePdfFiles(baseUrl, uploadFiles, mergePlan);
+      const result = await mergePdfFiles(baseUrl, uploadFiles, mergePlan, { onUploadProgress });
       fileName.value = result.fileName;
       fileUrl.value = URL.createObjectURL(result.blob);
       message.value = result.message;
       requestId.value = result.requestId;
+      progressPercent.value = 100;
+      etaSeconds.value = 0;
+      progressLabel.value = "Merge completed";
     } catch (mergeError) {
       error.value = mergeError instanceof Error ? mergeError.message : "PDF merge request failed";
     } finally {
+      clearProgressLoop();
       loading.value = false;
     }
   };
@@ -170,6 +242,7 @@ export const usePdfMerge = () => {
   onBeforeUnmount(() => {
     revokePreviewUrls();
     clearResult();
+    resetProgress();
   });
 
   return {
@@ -181,6 +254,9 @@ export const usePdfMerge = () => {
     fileUrl,
     fileName,
     draggingId,
+    progressPercent,
+    etaSeconds,
+    progressLabel,
     selectFiles,
     moveFile,
     startDragging,

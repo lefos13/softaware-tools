@@ -1,13 +1,13 @@
-// PDF service now sends merge-plan instructions so backend can apply frontend-selected order and rotation rules.
+// PDF service now supports live upload progress callbacks so merge flow can show real-time progress and ETA.
 import {
   buildUrl,
-  parseApiError,
   readOperationMessage,
   readRequestId,
   unwrapFileName,
+  uploadMultipartBinary,
 } from "./apiClient";
 
-export const mergePdfFiles = async (baseUrl, files, mergePlan = []) => {
+export const mergePdfFiles = async (baseUrl, files, mergePlan = [], options = {}) => {
   const formData = new FormData();
   files.forEach((file) => {
     formData.append("files", file);
@@ -17,18 +17,14 @@ export const mergePdfFiles = async (baseUrl, files, mergePlan = []) => {
     formData.append("mergePlan", JSON.stringify(mergePlan));
   }
 
-  const response = await fetch(buildUrl(baseUrl, "/api/pdf/merge"), {
-    method: "POST",
-    body: formData,
+  const response = await uploadMultipartBinary({
+    url: buildUrl(baseUrl, "/api/pdf/merge"),
+    formData,
+    onUploadProgress: options.onUploadProgress,
   });
 
-  if (!response.ok) {
-    throw new Error(await parseApiError(response));
-  }
-
-  const blob = await response.blob();
   return {
-    blob,
+    blob: response.blob,
     fileName: unwrapFileName(response.headers, "merged.pdf"),
     message: readOperationMessage(response.headers, "PDF files merged successfully"),
     requestId: readRequestId(response.headers),

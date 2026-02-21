@@ -1,13 +1,19 @@
-// Image service sends compression mode/options and returns a single ZIP archive for multi-image download.
+// Image service now supports live upload progress callbacks so compression flow can show real-time progress and ETA.
 import {
   buildUrl,
-  parseApiError,
   readOperationMessage,
   readRequestId,
   unwrapFileName,
+  uploadMultipartBinary,
 } from "./apiClient";
 
-export const compressImages = async (baseUrl, files, mode, advancedOptions = null) => {
+export const compressImages = async (
+  baseUrl,
+  files,
+  mode,
+  advancedOptions = null,
+  options = {}
+) => {
   const formData = new FormData();
 
   files.forEach((file) => {
@@ -20,18 +26,14 @@ export const compressImages = async (baseUrl, files, mode, advancedOptions = nul
     formData.append("advancedOptions", JSON.stringify(advancedOptions));
   }
 
-  const response = await fetch(buildUrl(baseUrl, "/api/image/compress"), {
-    method: "POST",
-    body: formData,
+  const response = await uploadMultipartBinary({
+    url: buildUrl(baseUrl, "/api/image/compress"),
+    formData,
+    onUploadProgress: options.onUploadProgress,
   });
 
-  if (!response.ok) {
-    throw new Error(await parseApiError(response));
-  }
-
-  const blob = await response.blob();
   return {
-    blob,
+    blob: response.blob,
     fileName: unwrapFileName(response.headers, "compressed-images.zip"),
     message: readOperationMessage(response.headers, "Images compressed successfully"),
     requestId: readRequestId(response.headers),

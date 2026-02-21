@@ -24,13 +24,28 @@ export const parseApiError = async (response) => {
     const message = payload?.error?.message || `Request failed with status ${response.status}`;
     const detailText = stringifyDetails(payload?.error?.details);
     const requestId = payload?.meta?.requestId;
-
     const withCode = code ? `${code}: ${message}` : message;
     const withDetails = detailText ? `${withCode} (${detailText})` : withCode;
 
     return requestId ? `${withDetails} [ref: ${requestId}]` : withDetails;
   } catch {
     return `Request failed with status ${response.status}`;
+  }
+};
+
+const parseApiErrorFromText = (status, rawText) => {
+  try {
+    const payload = JSON.parse(rawText);
+    const code = payload?.error?.code;
+    const message = payload?.error?.message || `Request failed with status ${status}`;
+    const detailText = stringifyDetails(payload?.error?.details);
+    const requestId = payload?.meta?.requestId;
+    const withCode = code ? `${code}: ${message}` : message;
+    const withDetails = detailText ? `${withCode} (${detailText})` : withCode;
+
+    return requestId ? `${withDetails} [ref: ${requestId}]` : withDetails;
+  } catch {
+    return `Request failed with status ${status}`;
   }
 };
 
@@ -46,4 +61,51 @@ export const readOperationMessage = (headers, fallback) => {
 
 export const readRequestId = (headers) => {
   return headers.get("x-request-id") || "";
+};
+
+// This helper exists so long-running uploads can expose live progress and ETA while still returning binary responses.
+export const uploadMultipartBinary = ({ url, formData, onUploadProgress }) => {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.responseType = "blob";
+
+    xhr.upload.onprogress = (event) => {
+      if (typeof onUploadProgress === "function" && event.lengthComputable) {
+        onUploadProgress({
+          loaded: event.loaded,
+          total: event.total,
+          ratio: event.total > 0 ? event.loaded / event.total : 0,
+        });
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error("Network error while sending request"));
+    };
+
+    xhr.onload = async () => {
+      const headers = {
+        get: (name) => xhr.getResponseHeader(name),
+      };
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve({
+          blob: xhr.response,
+          headers,
+          status: xhr.status,
+        });
+        return;
+      }
+
+      try {
+        const rawText = await xhr.response.text();
+        reject(new Error(parseApiErrorFromText(xhr.status, rawText)));
+      } catch {
+        reject(new Error(`Request failed with status ${xhr.status}`));
+      }
+    };
+
+    xhr.send(formData);
+  });
 };
