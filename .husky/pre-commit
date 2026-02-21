@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# We gate commits with staged lint/format checks so style and basic quality issues
+# are caught before code lands in shared branches.
+npx lint-staged

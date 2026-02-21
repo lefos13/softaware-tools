@@ -1,0 +1,198 @@
+/* Updated styles to support extracted API components and remove one-off inline styling from the root app template. */
+:root {
+  --bg: #f7f5f0;
+  --surface: #ffffff;
+  --surface-soft: #f6f9ff;
+  --ink: #18212f;
+  --ink-soft: #475569;
+  --brand: #0d9488;
+  --brand-strong: #0f766e;
+  --accent: #f97316;
+  --border: #d7e0ec;
+  --shadow: 0 24px 48px rgba(24, 33, 47, 0.08);
+  --error: #b91c1c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(13, 148, 136, 0.14), transparent 28%),
+    radial-gradient(circle at 90% 10%, rgba(249, 115, 22, 0.14), transparent 24%), var(--bg);
+}
+
+.portal-page {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 2rem 1.1rem 3rem;
+}
+
+.hero {
+  padding: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: linear-gradient(135deg, var(--surface), var(--surface-soft));
+  box-shadow: var(--shadow);
+}
+
+.hero__badge {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-strong);
+}
+
+.hero__title {
+  margin: 0.5rem 0 0;
+  font-size: clamp(1.9rem, 4vw, 3rem);
+  line-height: 1.1;
+}
+
+.hero__subtitle {
+  margin: 1rem 0 0;
+  max-width: 50ch;
+  color: var(--ink-soft);
+}
+
+.hero__actions {
+  margin-top: 1.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+
+.hero__actions--api {
+  align-items: center;
+}
+
+.api-base-url-input {
+  min-width: 280px;
+  padding: 0.72rem 1.1rem;
+  border: 1px solid rgba(13, 148, 136, 0.3);
+  border-radius: 12px;
+  color: var(--brand-strong);
+  background: rgba(13, 148, 136, 0.08);
+}
+
+.button {
+  padding: 0.72rem 1.1rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+.button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.button--primary {
+  color: #ffffff;
+  background: var(--brand);
+  box-shadow: 0 8px 18px rgba(13, 148, 136, 0.28);
+}
+
+.button--primary:hover {
+  background: var(--brand-strong);
+}
+
+.tools-layout {
+  margin-top: 1.3rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.section-head {
+  margin-bottom: 0.75rem;
+}
+
+.section-head--spaced {
+  margin-top: 1.2rem;
+}
+
+.section-head__title {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.section-head__subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--ink-soft);
+}
+
+.tool-card {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  transition:
+    transform 130ms ease,
+    box-shadow 130ms ease;
+}
+
+.tool-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 24px rgba(24, 33, 47, 0.1);
+}
+
+.tool-card__description {
+  margin: 0.45rem 0 0.85rem;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.tool-card__description--error {
+  color: var(--error);
+}
+
+.quick-info {
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.quick-info__title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.quick-info__list {
+  margin: 0.8rem 0 0;
+  padding-left: 1.15rem;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
+@media (min-width: 760px) {
+  .portal-page {
+    padding: 2.3rem 1.5rem 4rem;
+  }
+}
+
+@media (min-width: 980px) {
+  .tools-layout {
+    grid-template-columns: 2fr 1fr;
+    gap: 1.2rem;
+    align-items: start;
+  }
+}

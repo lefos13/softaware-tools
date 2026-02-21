@@ -1,0 +1,40 @@
+# Why this file exists:
+# This repository is a Vite + Vue JavaScript app, so we ignore dependency folders,
+# build outputs, and local machine/editor artifacts to keep commits reproducible,
+# reduce repository noise, and prevent accidental check-in of environment-specific files.
+
+# Dependencies
+node_modules/
+
+# Build outputs and coverage
+/dist/
+/coverage/
+*.tsbuildinfo
+
+# Vite cache
+.vite/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Optional local utility files
+*.local
