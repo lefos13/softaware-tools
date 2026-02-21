@@ -1,5 +1,5 @@
 <script setup>
-// Added a focused, reusable card component to keep tool links consistent and make future tool additions low-effort.
+// This card component now emits an action event so the landing page can route users into dedicated tool flows.
 defineProps({
   title: {
     type: String,
@@ -18,13 +18,17 @@ defineProps({
     default: "Open Tool",
   },
 });
+
+const emit = defineEmits(["action"]);
 </script>
 
 <template>
-  <article class="tool-card">
+  <article class="tool-card tool-card--launcher">
     <p class="tool-card__tag">{{ tag }}</p>
     <h3 class="tool-card__title">{{ title }}</h3>
     <p class="tool-card__description">{{ description }}</p>
-    <button type="button" class="tool-card__button">{{ actionLabel }}</button>
+    <button type="button" class="button button--primary" @click="emit('action')">
+      {{ actionLabel }}
+    </button>
   </article>
 </template>

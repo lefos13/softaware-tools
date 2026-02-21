@@ -1,4 +1,4 @@
-// PDF service now exposes backend success headers so UI can show operation feedback and support reference IDs after download.
+// PDF service now sends merge-plan instructions so backend can apply frontend-selected order and rotation rules.
 import {
   buildUrl,
   parseApiError,
@@ -7,11 +7,15 @@ import {
   unwrapFileName,
 } from "./apiClient";
 
-export const mergePdfFiles = async (baseUrl, files) => {
+export const mergePdfFiles = async (baseUrl, files, mergePlan = []) => {
   const formData = new FormData();
   files.forEach((file) => {
     formData.append("files", file);
   });
+
+  if (Array.isArray(mergePlan) && mergePlan.length > 0) {
+    formData.append("mergePlan", JSON.stringify(mergePlan));
+  }
 
   const response = await fetch(buildUrl(baseUrl, "/api/pdf/merge"), {
     method: "POST",

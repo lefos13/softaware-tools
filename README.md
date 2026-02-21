@@ -40,12 +40,13 @@ Husky is configured with a `pre-commit` hook that runs `lint-staged`, which mean
 
 ## Current Starter Includes
 
-- Friendly landing page with a clear no-login message
+- Friendly landing page with service launcher cards
 - Reusable `ToolCard` component for quick tool additions
 - Mobile-first responsive layout
-- Pre-filled tool sections for PDF/image/document workflows
+- Automated API health guard that polls backend and blocks actions with an overlay when server is down
+- Guided PDF merge flow with file previews, drag-and-drop ordering, arrow ordering controls, and rotation before final merge
+- Guided image compression flow with preset modes (`light`, `balanced`, `aggressive`) and an `advanced` mode
+- Multi-image compression with one ZIP download artifact
+- Frontend upload guard for count, per-file size, and total request size limits
 
-## Next Implementation Step
-
-Connect each card action to actual tool pages (for example `/tools/pdf-merge`, `/tools/image-convert`) and implement upload/processing logic per tool.
-This is a simple free of charge portal with multiple tools for formatting, merging, editing.
+This is a simple free of charge portal with multiple tools for formatting, merging, and compressing files.
