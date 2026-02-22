@@ -1,31 +1,55 @@
 <script setup>
-// App now provides a landing launcher and routes users to dedicated PDF/Image flows while keeping API health guard centralized.
-import { computed, ref } from "vue";
-import ToolCard from "./components/ToolCard.vue";
-import ApiBaseUrlField from "./components/api/ApiBaseUrlField.vue";
-import HealthCheckCard from "./components/api/HealthCheckCard.vue";
-import ImageCompressionCard from "./components/api/ImageCompressionCard.vue";
-import OpenApiSummary from "./components/api/OpenApiSummary.vue";
-import PdfMergeCard from "./components/api/PdfMergeCard.vue";
+// Why this exists: the portal now uses route-based views so each service/admin area is isolated while API guard stays global.
+import { computed, onBeforeUnmount, provide, ref } from "vue";
 import { useHealthCheck } from "./composables/useHealthCheck";
+import { createPortalRouter } from "./router/router";
 
 const apiBaseUrl = ref(import.meta.env.VITE_API_BASE_URL || "http://localhost:3000");
-const activeFlow = ref("home");
 
 const { checking, hasChecked, isHealthy, status, message, requestId, error, lastCheckedAt } =
   useHealthCheck(apiBaseUrl);
 
+const router = createPortalRouter();
+
+provide("portalContext", {
+  apiBaseUrl,
+  checking,
+  hasChecked,
+  isHealthy,
+  status,
+  message,
+  requestId,
+  error,
+  lastCheckedAt,
+});
+provide("portalRouter", router);
+
 const showGuardOverlay = computed(() => hasChecked.value && !isHealthy.value);
-const flowTitle = computed(() => {
-  if (activeFlow.value === "pdf") {
-    return "PDF Merge";
-  }
+const activeRouteName = computed(() => router.currentRoute.value.name);
+const currentPath = computed(() => router.currentPath.value);
+const currentComponent = computed(() => router.currentComponent.value);
+const navigationRoutes = computed(() =>
+  router.routes.filter((route) => !["pdf", "image"].includes(route.name))
+);
+const pageTitle = computed(() => {
+  const titles = {
+    home: "Service Launcher",
+    pdf: "PDF Merge Flow",
+    image: "Image Compression Flow",
+    contract: "OpenAPI Contract",
+    "admin-reports": "Admin Reports",
+  };
 
-  if (activeFlow.value === "image") {
-    return "Image Compression";
-  }
+  return titles[activeRouteName.value] || "Softaware Tools";
+});
 
-  return "Service Launcher";
+const onNavigate = (path, event) => {
+  event.preventDefault();
+  router.navigate(path);
+};
+
+onBeforeUnmount(() => {
+  router.dispose();
 });
 </script>
 
@@ -33,58 +57,32 @@ const flowTitle = computed(() => {
   <div class="portal-page">
     <header class="hero">
       <p class="hero__badge">Softaware Tools API Client</p>
-      <h1 class="hero__title">{{ flowTitle }}</h1>
+      <h1 class="hero__title">{{ pageTitle }}</h1>
       <p class="hero__subtitle">
-        Select a tool flow from the launcher, then complete the dedicated service steps with
-        automatic API health protection.
+        Dedicated routes for each service flow, contract docs, and admin operational reports.
       </p>
-      <ApiBaseUrlField v-model="apiBaseUrl" />
+
+      <nav class="top-nav" aria-label="Portal navigation">
+        <a
+          v-for="route in navigationRoutes"
+          :key="route.path"
+          :href="route.path"
+          class="top-nav__link"
+          :class="{ 'top-nav__link--active': currentPath === route.path }"
+          @click="onNavigate(route.path, $event)"
+        >
+          {{ route.label }}
+        </a>
+      </nav>
+
+      <p class="hero__status" :class="isHealthy ? 'hero__status--ok' : 'hero__status--down'">
+        API guard: {{ checking ? "checking..." : status }}
+        <span v-if="lastCheckedAt"> · {{ new Date(lastCheckedAt).toLocaleTimeString() }}</span>
+      </p>
     </header>
 
-    <main class="tools-layout">
-      <div>
-        <HealthCheckCard
-          :checking="checking"
-          :is-healthy="isHealthy"
-          :status="status"
-          :message="message"
-          :request-id="requestId"
-          :error="error"
-          :last-checked-at="lastCheckedAt"
-        />
-
-        <section v-if="activeFlow === 'home'" class="launcher-grid" aria-label="Tool launcher">
-          <ToolCard
-            title="PDF Merge"
-            tag="PDF"
-            description="Upload PDFs, preview order/rotation, then merge into one final document."
-            action-label="Open PDF Flow"
-            @action="activeFlow = 'pdf'"
-          />
-          <ToolCard
-            title="Image Compression"
-            tag="Image"
-            description="Compress one or many images using presets or advanced compression controls."
-            action-label="Open Image Flow"
-            @action="activeFlow = 'image'"
-          />
-        </section>
-
-        <section v-else class="flow-shell">
-          <button type="button" class="button button--secondary" @click="activeFlow = 'home'">
-            Back to Launcher
-          </button>
-
-          <PdfMergeCard
-            v-if="activeFlow === 'pdf'"
-            :api-base-url="apiBaseUrl"
-            :api-healthy="isHealthy"
-          />
-          <ImageCompressionCard v-else :api-base-url="apiBaseUrl" :api-healthy="isHealthy" />
-        </section>
-      </div>
-
-      <OpenApiSummary />
+    <main class="route-shell">
+      <component :is="currentComponent" />
     </main>
 
     <div v-if="showGuardOverlay" class="guard-overlay" role="alert" aria-live="assertive">
@@ -93,7 +91,11 @@ const flowTitle = computed(() => {
         <p class="guard-overlay__text">
           API guard blocked tool actions because <code>{{ apiBaseUrl }}</code> is not healthy.
         </p>
-        <p class="guard-overlay__text">Update the API base URL or bring the backend back online.</p>
+        <p class="guard-overlay__text">
+          Request reference: <code>{{ requestId || "n/a" }}</code>
+        </p>
+        <p v-if="error" class="guard-overlay__text">{{ error }}</p>
+        <p v-else class="guard-overlay__text">{{ message }}</p>
       </div>
     </div>
   </div>

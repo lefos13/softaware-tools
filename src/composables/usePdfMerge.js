@@ -1,4 +1,4 @@
-// This composable now exposes live merge progress (upload + processing estimate) so users see percent complete and time remaining.
+// This composable now combines upload telemetry with real backend task polling to show realistic merge progress and ETA.
 import { onBeforeUnmount, ref } from "vue";
 import {
   MAX_FILE_SIZE_BYTES,
@@ -8,10 +8,19 @@ import {
   MAX_UPLOAD_FILES,
 } from "../config/uploadLimits";
 import { mergePdfFiles } from "../services/pdfService";
+import { getTaskProgress } from "../services/taskService";
 
 let nextPreviewId = 1;
 
 const formatBytes = (bytes) => `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+
+const createTaskId = () => {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `task-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
 
 export const usePdfMerge = () => {
   const files = ref([]);
@@ -27,47 +36,83 @@ export const usePdfMerge = () => {
   const etaSeconds = ref(0);
   const progressLabel = ref("");
 
-  let progressIntervalId = null;
-  let progressStartedAt = 0;
-  let estimatedDurationMs = 0;
+  let pollIntervalId = null;
+  let uploadStartedAt = 0;
+  let processingStartedAt = 0;
 
-  const clearProgressLoop = () => {
-    if (progressIntervalId) {
-      window.clearInterval(progressIntervalId);
-      progressIntervalId = null;
+  const clearTaskPolling = () => {
+    if (pollIntervalId) {
+      window.clearInterval(pollIntervalId);
+      pollIntervalId = null;
     }
   };
 
   const resetProgress = () => {
-    clearProgressLoop();
+    clearTaskPolling();
     progressPercent.value = 0;
     etaSeconds.value = 0;
     progressLabel.value = "";
+    uploadStartedAt = 0;
+    processingStartedAt = 0;
   };
 
-  const startProgress = (totalBytes) => {
-    progressStartedAt = Date.now();
-    const totalMb = totalBytes / (1024 * 1024);
-    estimatedDurationMs = 2200 + totalMb * 1400 + files.value.length * 650;
+  const applyBackendProgress = (task) => {
+    const backendProgress = Number.isFinite(task?.progress) ? Number(task.progress) : 0;
+    const mappedPercent = Math.min(
+      99,
+      Math.round(30 + (Math.max(0, Math.min(100, backendProgress)) / 100) * 70)
+    );
 
-    progressPercent.value = 3;
-    etaSeconds.value = Math.max(1, Math.ceil(estimatedDurationMs / 1000));
-    progressLabel.value = "Uploading files...";
+    progressPercent.value = Math.max(progressPercent.value, mappedPercent);
+    progressLabel.value = task?.step || "Processing and merging files...";
 
-    clearProgressLoop();
-    progressIntervalId = window.setInterval(() => {
-      const elapsed = Date.now() - progressStartedAt;
-      const estimated = Math.min(95, Math.round((elapsed / estimatedDurationMs) * 100));
+    if (task?.status === "running") {
+      const ratio = Math.max(0, Math.min(100, backendProgress)) / 100;
 
-      progressPercent.value = Math.max(progressPercent.value, estimated);
+      if (ratio > 0) {
+        if (!processingStartedAt) {
+          processingStartedAt = Date.now();
+        }
 
-      if (progressPercent.value >= 70) {
-        progressLabel.value = "Processing and merging files...";
+        const elapsed = Date.now() - processingStartedAt;
+        const totalEstimate = elapsed / ratio;
+        const remaining = Math.max(totalEstimate - elapsed, 0);
+        etaSeconds.value = Math.max(1, Math.ceil(remaining / 1000));
       }
+    }
 
-      const remainingMs = Math.max(estimatedDurationMs - elapsed, 0);
-      etaSeconds.value = Math.max(1, Math.ceil(remainingMs / 1000));
-    }, 260);
+    if (task?.status === "completed") {
+      progressPercent.value = 100;
+      etaSeconds.value = 0;
+      progressLabel.value = task?.step || "Merge completed";
+      clearTaskPolling();
+    }
+
+    if (task?.status === "failed") {
+      progressLabel.value = task?.step || "Merge failed";
+      etaSeconds.value = 0;
+      clearTaskPolling();
+    }
+  };
+
+  const startTaskPolling = (baseUrl, taskId) => {
+    clearTaskPolling();
+
+    const poll = async () => {
+      try {
+        const task = await getTaskProgress(baseUrl, taskId);
+        if (task) {
+          applyBackendProgress(task);
+        }
+      } catch {
+        // Polling failures should not interrupt the active merge request.
+      }
+    };
+
+    void poll();
+    pollIntervalId = window.setInterval(() => {
+      void poll();
+    }, 450);
   };
 
   const onUploadProgress = ({ loaded, total, ratio }) => {
@@ -75,15 +120,21 @@ export const usePdfMerge = () => {
       return;
     }
 
-    const uploadProgress = Math.min(70, Math.max(5, Math.round(ratio * 70)));
-    progressPercent.value = Math.max(progressPercent.value, uploadProgress);
-    progressLabel.value = ratio < 1 ? "Uploading files..." : "Processing and merging files...";
+    if (!uploadStartedAt) {
+      uploadStartedAt = Date.now();
+    }
 
-    const elapsedSeconds = (Date.now() - progressStartedAt) / 1000;
-    if (total > 0 && loaded > 0 && elapsedSeconds > 0) {
-      const speed = loaded / elapsedSeconds;
-      if (speed > 0) {
-        etaSeconds.value = Math.max(1, Math.ceil((total - loaded) / speed));
+    const uploadPercent = Math.max(3, Math.min(30, Math.round(ratio * 30)));
+    progressPercent.value = Math.max(progressPercent.value, uploadPercent);
+    progressLabel.value =
+      ratio < 1 ? "Uploading files..." : "Upload complete. Waiting for processing...";
+
+    const elapsedSeconds = (Date.now() - uploadStartedAt) / 1000;
+
+    if (total > 0 && loaded > 0) {
+      const uploadSpeed = loaded / Math.max(elapsedSeconds, 0.001);
+      if (uploadSpeed > 0 && ratio < 1) {
+        etaSeconds.value = Math.max(1, Math.ceil((total - loaded) / uploadSpeed));
       }
     }
   };
@@ -202,6 +253,7 @@ export const usePdfMerge = () => {
   const merge = async (baseUrl) => {
     clearResult();
     error.value = "";
+    resetProgress();
 
     if (files.value.length < 2) {
       error.value = 'Select at least 2 PDF files for the "files" field.';
@@ -209,21 +261,27 @@ export const usePdfMerge = () => {
     }
 
     loading.value = true;
+    progressLabel.value = "Preparing upload...";
+
+    const taskId = createTaskId();
 
     try {
       const uploadFiles = [...files.value]
         .sort((left, right) => left.sourceIndex - right.sourceIndex)
         .map((entry) => entry.file);
 
-      const totalBytes = uploadFiles.reduce((sum, file) => sum + file.size, 0);
-      startProgress(totalBytes);
+      startTaskPolling(baseUrl, taskId);
 
       const mergePlan = files.value.map((entry) => ({
         sourceIndex: entry.sourceIndex,
         rotation: entry.rotation,
       }));
 
-      const result = await mergePdfFiles(baseUrl, uploadFiles, mergePlan, { onUploadProgress });
+      const result = await mergePdfFiles(baseUrl, uploadFiles, mergePlan, {
+        taskId,
+        onUploadProgress,
+      });
+
       fileName.value = result.fileName;
       fileUrl.value = URL.createObjectURL(result.blob);
       message.value = result.message;
@@ -233,8 +291,10 @@ export const usePdfMerge = () => {
       progressLabel.value = "Merge completed";
     } catch (mergeError) {
       error.value = mergeError instanceof Error ? mergeError.message : "PDF merge request failed";
+      progressLabel.value = "Merge failed";
+      etaSeconds.value = 0;
     } finally {
-      clearProgressLoop();
+      clearTaskPolling();
       loading.value = false;
     }
   };

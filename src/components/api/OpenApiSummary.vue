@@ -6,6 +6,12 @@
       <li>PDF merge accepts `files[]` and optional `mergePlan` JSON string</li>
       <li>Image compression accepts multiple images and returns one ZIP file</li>
       <li>Compression modes: light, balanced, aggressive, advanced</li>
+      <li>
+        `GET /api/tasks/:taskId` exposes real backend processing progress with initializing fallback
+      </li>
+      <li>
+        `GET /api/admin/reports` and `GET /api/admin/reports/:fileName` expose failure reports
+      </li>
       <li>Upload limits: 20 files, 25 MB each, 120 MB total per request</li>
     </ul>
   </aside>

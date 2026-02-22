@@ -1,4 +1,4 @@
-// PDF service now supports live upload progress callbacks so merge flow can show real-time progress and ETA.
+// PDF service now forwards task ids as query params so backend progress tracking works without custom-header transport issues.
 import {
   buildUrl,
   readOperationMessage,
@@ -17,8 +17,10 @@ export const mergePdfFiles = async (baseUrl, files, mergePlan = [], options = {}
     formData.append("mergePlan", JSON.stringify(mergePlan));
   }
 
+  const taskIdSuffix = options.taskId ? `?taskId=${encodeURIComponent(options.taskId)}` : "";
+
   const response = await uploadMultipartBinary({
-    url: buildUrl(baseUrl, "/api/pdf/merge"),
+    url: `${buildUrl(baseUrl, "/api/pdf/merge")}${taskIdSuffix}`,
     formData,
     onUploadProgress: options.onUploadProgress,
   });

@@ -1,4 +1,4 @@
-// Image service now supports live upload progress callbacks so compression flow can show real-time progress and ETA.
+// Image service now forwards task ids as query params so backend progress tracking works without custom-header transport issues.
 import {
   buildUrl,
   readOperationMessage,
@@ -26,8 +26,10 @@ export const compressImages = async (
     formData.append("advancedOptions", JSON.stringify(advancedOptions));
   }
 
+  const taskIdSuffix = options.taskId ? `?taskId=${encodeURIComponent(options.taskId)}` : "";
+
   const response = await uploadMultipartBinary({
-    url: buildUrl(baseUrl, "/api/image/compress"),
+    url: `${buildUrl(baseUrl, "/api/image/compress")}${taskIdSuffix}`,
     formData,
     onUploadProgress: options.onUploadProgress,
   });

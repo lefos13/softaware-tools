@@ -40,6 +40,7 @@ Husky is configured with a `pre-commit` hook that runs `lint-staged`, which mean
 
 ## Current Starter Includes
 
+- Router-based portal with dedicated routes for home, PDF flow, image flow, API contract, and admin reports
 - Friendly landing page with service launcher cards
 - Reusable `ToolCard` component for quick tool additions
 - Mobile-first responsive layout
@@ -48,5 +49,7 @@ Husky is configured with a `pre-commit` hook that runs `lint-staged`, which mean
 - Guided image compression flow with preset modes (`light`, `balanced`, `aggressive`) and an `advanced` mode
 - Multi-image compression with one ZIP download artifact
 - Frontend upload guard for count, per-file size, and total request size limits
+- Final-step progress bars with live upload telemetry plus real backend task-progress polling and ETA
+- Admin reports view that reads backend request-failure report list/detail APIs
 
 This is a simple free of charge portal with multiple tools for formatting, merging, and compressing files.

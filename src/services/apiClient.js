@@ -64,11 +64,16 @@ export const readRequestId = (headers) => {
 };
 
 // This helper exists so long-running uploads can expose live progress and ETA while still returning binary responses.
-export const uploadMultipartBinary = ({ url, formData, onUploadProgress }) => {
+export const uploadMultipartBinary = ({ url, formData, onUploadProgress, headers = {} }) => {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url);
     xhr.responseType = "blob";
+    Object.entries(headers).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        xhr.setRequestHeader(key, String(value));
+      }
+    });
 
     xhr.upload.onprogress = (event) => {
       if (typeof onUploadProgress === "function" && event.lengthComputable) {
