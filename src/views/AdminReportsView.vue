@@ -11,6 +11,7 @@ const error = ref("");
 const reports = ref([]);
 const selectedFileName = ref("");
 const selectedReport = ref(null);
+const reportViewMode = ref("pretty");
 
 const selectedSummary = computed(() => {
   if (!selectedFileName.value) {
@@ -18,6 +19,28 @@ const selectedSummary = computed(() => {
   }
 
   return reports.value.find((item) => item.fileName === selectedFileName.value) || null;
+});
+
+// Added so admins can switch between a structured readable report view and raw JSON quickly.
+const safeStringify = (value) => {
+  if (value === undefined) {
+    return "";
+  }
+
+  return JSON.stringify(value, null, 2);
+};
+
+const formattedReportRaw = computed(() =>
+  selectedReport.value ? JSON.stringify(selectedReport.value, null, 2) : ""
+);
+
+const operationIntentEntries = computed(() => {
+  const intent = selectedReport.value?.operation?.intent;
+  if (!intent || typeof intent !== "object") {
+    return [];
+  }
+
+  return Object.entries(intent);
 });
 
 const loadReports = async () => {
@@ -128,11 +151,128 @@ onMounted(() => {
         <p v-if="selectedSummary" class="tool-card__description">
           File: <code>{{ selectedSummary.fileName }}</code>
         </p>
+        <div v-if="selectedReport" class="preview-card__actions">
+          <button
+            type="button"
+            class="button button--secondary"
+            :disabled="reportViewMode === 'pretty'"
+            @click="reportViewMode = 'pretty'"
+          >
+            Pretty
+          </button>
+          <button
+            type="button"
+            class="button button--secondary"
+            :disabled="reportViewMode === 'raw'"
+            @click="reportViewMode = 'raw'"
+          >
+            Raw
+          </button>
+        </div>
         <p v-if="detailLoading" class="tool-card__description">Loading report details...</p>
         <p v-else-if="!selectedReport" class="tool-card__description">
           Select a report to inspect details.
         </p>
-        <pre v-else class="report-json">{{ JSON.stringify(selectedReport, null, 2) }}</pre>
+        <template v-else>
+          <div v-if="reportViewMode === 'pretty'" class="pretty-report">
+            <section class="pretty-report__section">
+              <h4 class="pretty-report__title">Summary</h4>
+              <div class="pretty-grid">
+                <p>
+                  <strong>Request ID:</strong> <code>{{ selectedReport.requestId || "n/a" }}</code>
+                </p>
+                <p>
+                  <strong>Task ID:</strong> <code>{{ selectedReport.taskId || "n/a" }}</code>
+                </p>
+                <p>
+                  <strong>Created:</strong>
+                  {{
+                    selectedReport.createdAt
+                      ? new Date(selectedReport.createdAt).toLocaleString()
+                      : "n/a"
+                  }}
+                </p>
+                <p><strong>Type:</strong> {{ selectedReport.reportType || "request-failure" }}</p>
+              </div>
+            </section>
+
+            <section class="pretty-report__section">
+              <h4 class="pretty-report__title">Operation</h4>
+              <div class="pretty-grid">
+                <p>
+                  <strong>Method:</strong>
+                  <code>{{ selectedReport.operation?.method || "n/a" }}</code>
+                </p>
+                <p>
+                  <strong>Path:</strong> <code>{{ selectedReport.operation?.path || "n/a" }}</code>
+                </p>
+              </div>
+              <div v-if="operationIntentEntries.length > 0" class="pretty-subsection">
+                <p class="pretty-subsection__title">Intent</p>
+                <ul class="pretty-list">
+                  <li v-for="[key, value] in operationIntentEntries" :key="key">
+                    <strong>{{ key }}:</strong>
+                    <code>{{ typeof value === "string" ? value : safeStringify(value) }}</code>
+                  </li>
+                </ul>
+              </div>
+            </section>
+
+            <section class="pretty-report__section">
+              <h4 class="pretty-report__title">Failure</h4>
+              <div class="pretty-grid">
+                <p><strong>Status:</strong> {{ selectedReport.failure?.statusCode ?? "n/a" }}</p>
+                <p>
+                  <strong>Code:</strong> <code>{{ selectedReport.failure?.code || "n/a" }}</code>
+                </p>
+              </div>
+              <p class="pretty-message">{{ selectedReport.failure?.message || "n/a" }}</p>
+              <div v-if="selectedReport.failure?.details?.length" class="pretty-subsection">
+                <p class="pretty-subsection__title">Details</p>
+                <ul class="pretty-list">
+                  <li v-for="(detail, index) in selectedReport.failure.details" :key="index">
+                    <strong>{{ detail.field || "field" }}:</strong>
+                    {{ detail.issue || "Invalid value" }}
+                  </li>
+                </ul>
+              </div>
+            </section>
+
+            <section class="pretty-report__section">
+              <h4 class="pretty-report__title">Request Context</h4>
+              <div class="pretty-grid">
+                <p>
+                  <strong>IP:</strong> <code>{{ selectedReport.requestContext?.ip || "n/a" }}</code>
+                </p>
+                <p>
+                  <strong>User Agent:</strong>
+                  <span class="pretty-wrap">{{
+                    selectedReport.requestContext?.userAgent || "n/a"
+                  }}</span>
+                </p>
+              </div>
+              <div class="pretty-subsection">
+                <p class="pretty-subsection__title">Query</p>
+                <pre class="report-json report-json--nested">{{
+                  safeStringify(selectedReport.requestContext?.query || {})
+                }}</pre>
+              </div>
+              <div class="pretty-subsection">
+                <p class="pretty-subsection__title">Body</p>
+                <pre class="report-json report-json--nested">{{
+                  safeStringify(selectedReport.requestContext?.body || {})
+                }}</pre>
+              </div>
+              <div class="pretty-subsection">
+                <p class="pretty-subsection__title">Uploaded Files</p>
+                <pre class="report-json report-json--nested">{{
+                  safeStringify(selectedReport.requestContext?.uploadedFiles || [])
+                }}</pre>
+              </div>
+            </section>
+          </div>
+          <pre v-else class="report-json">{{ formattedReportRaw }}</pre>
+        </template>
       </article>
     </div>
   </section>

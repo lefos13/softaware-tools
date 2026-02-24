@@ -1,4 +1,4 @@
-// This composable now combines upload telemetry with real backend task polling to show realistic compression progress and ETA.
+// This composable now combines upload telemetry with real backend task polling to show realistic compression progress and current processing step.
 import { onBeforeUnmount, ref } from "vue";
 import {
   MAX_FILE_SIZE_BYTES,
@@ -40,12 +40,9 @@ export const useImageCompression = () => {
   const archiveName = ref("");
 
   const progressPercent = ref(0);
-  const etaSeconds = ref(0);
   const progressLabel = ref("");
 
   let pollIntervalId = null;
-  let uploadStartedAt = 0;
-  let processingStartedAt = 0;
 
   const clearTaskPolling = () => {
     if (pollIntervalId) {
@@ -57,10 +54,7 @@ export const useImageCompression = () => {
   const resetProgress = () => {
     clearTaskPolling();
     progressPercent.value = 0;
-    etaSeconds.value = 0;
     progressLabel.value = "";
-    uploadStartedAt = 0;
-    processingStartedAt = 0;
   };
 
   const applyBackendProgress = (task) => {
@@ -73,31 +67,14 @@ export const useImageCompression = () => {
     progressPercent.value = Math.max(progressPercent.value, mappedPercent);
     progressLabel.value = task?.step || "Compressing images...";
 
-    if (task?.status === "running") {
-      const ratio = Math.max(0, Math.min(100, backendProgress)) / 100;
-
-      if (ratio > 0) {
-        if (!processingStartedAt) {
-          processingStartedAt = Date.now();
-        }
-
-        const elapsed = Date.now() - processingStartedAt;
-        const totalEstimate = elapsed / ratio;
-        const remaining = Math.max(totalEstimate - elapsed, 0);
-        etaSeconds.value = Math.max(1, Math.ceil(remaining / 1000));
-      }
-    }
-
     if (task?.status === "completed") {
       progressPercent.value = 100;
-      etaSeconds.value = 0;
       progressLabel.value = task?.step || "Compression completed";
       clearTaskPolling();
     }
 
     if (task?.status === "failed") {
       progressLabel.value = task?.step || "Compression failed";
-      etaSeconds.value = 0;
       clearTaskPolling();
     }
   };
@@ -127,22 +104,12 @@ export const useImageCompression = () => {
       return;
     }
 
-    if (!uploadStartedAt) {
-      uploadStartedAt = Date.now();
-    }
-
     const uploadPercent = Math.max(3, Math.min(30, Math.round(ratio * 30)));
     progressPercent.value = Math.max(progressPercent.value, uploadPercent);
     progressLabel.value =
       ratio < 1 ? "Uploading images..." : "Upload complete. Waiting for processing...";
-
-    const elapsedSeconds = (Date.now() - uploadStartedAt) / 1000;
-    if (total > 0 && loaded > 0 && elapsedSeconds > 0 && ratio < 1) {
-      const speed = loaded / elapsedSeconds;
-      if (speed > 0) {
-        etaSeconds.value = Math.max(1, Math.ceil((total - loaded) / speed));
-      }
-    }
+    void loaded;
+    void total;
   };
 
   const clearResult = () => {
@@ -213,13 +180,11 @@ export const useImageCompression = () => {
       message.value = result.message;
       requestId.value = result.requestId;
       progressPercent.value = 100;
-      etaSeconds.value = 0;
       progressLabel.value = "Compression completed";
     } catch (compressError) {
       error.value =
         compressError instanceof Error ? compressError.message : "Image compression request failed";
       progressLabel.value = "Compression failed";
-      etaSeconds.value = 0;
     } finally {
       clearTaskPolling();
       loading.value = false;
@@ -242,7 +207,6 @@ export const useImageCompression = () => {
     archiveUrl,
     archiveName,
     progressPercent,
-    etaSeconds,
     progressLabel,
     selectFiles,
     compress,

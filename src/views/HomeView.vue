@@ -30,12 +30,36 @@ const goTo = (path) => {
         @action="goTo('/flows/pdf')"
       />
       <ToolCard
+        title="PDF Split"
+        tag="PDF"
+        icon="pdf"
+        variant="pdf"
+        description="Split one PDF by range, selected pages, chunk size, or custom groups."
+        @action="goTo('/flows/pdf-split')"
+      />
+      <ToolCard
+        title="PDF to Word OCR"
+        tag="PDF"
+        icon="pdf"
+        variant="pdf"
+        description="Extract native/scanned PDF text and download a DOCX document."
+        @action="goTo('/flows/pdf-extract-to-word')"
+      />
+      <ToolCard
         title="Image Compression"
         tag="Image"
         icon="image"
         variant="image"
         description="Compress one or many images using presets or advanced controls."
         @action="goTo('/flows/image')"
+      />
+      <ToolCard
+        title="Image Convert / Background removal"
+        tag="Image"
+        icon="image"
+        variant="image"
+        description="Convert batches of images to JPEG, PNG, WEBP, AVIF, TIFF, or GIF."
+        @action="goTo('/flows/image-convert')"
       />
     </div>
   </section>

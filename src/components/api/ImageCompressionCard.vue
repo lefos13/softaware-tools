@@ -26,7 +26,6 @@ const {
   archiveUrl,
   archiveName,
   progressPercent,
-  etaSeconds,
   progressLabel,
   selectFiles,
   compress,
@@ -44,7 +43,7 @@ const onFilesSelected = (event) => {
     <div class="section-head section-head--spaced">
       <h2 id="image-compress-endpoint" class="section-head__title">Image Compression Flow</h2>
       <p class="section-head__subtitle">
-        POST /api/image/compress (multipart/form-data, field: files[])
+        Reduce image file size while keeping good visual quality.
       </p>
     </div>
 
@@ -59,26 +58,26 @@ const onFilesSelected = (event) => {
         />
         <p class="tool-card__description">Selected files: {{ files.length }}</p>
         <p class="tool-card__description">
-          Upload guard: max {{ MAX_UPLOAD_FILES }} files, {{ MAX_FILE_SIZE_MB }} MB each,
+          Upload limits: max {{ MAX_UPLOAD_FILES }} files, {{ MAX_FILE_SIZE_MB }} MB each,
           {{ MAX_TOTAL_UPLOAD_MB }} MB total.
         </p>
       </div>
 
       <div class="merge-step">
-        <p class="merge-step__title">Step 2: Choose compression mode</p>
+        <p class="merge-step__title">Step 2: Choose quality mode</p>
         <select v-model="mode" class="rotation-select" :disabled="loading">
-          <option value="light">Light (high quality)</option>
+          <option value="light">High quality (larger files)</option>
           <option value="balanced">Balanced</option>
-          <option value="aggressive">Aggressive (smaller files)</option>
-          <option value="advanced">Advanced</option>
+          <option value="aggressive">Smaller files (more compression)</option>
+          <option value="advanced">Custom settings</option>
         </select>
       </div>
 
       <div v-if="mode === 'advanced'" class="merge-step">
-        <p class="merge-step__title">Advanced options</p>
+        <p class="merge-step__title">Custom settings</p>
         <div class="advanced-grid">
           <label>
-            Quality (1-100)
+            Quality (1-100, higher means better quality)
             <input
               v-model.number="advancedOptions.quality"
               type="number"
@@ -88,7 +87,7 @@ const onFilesSelected = (event) => {
             />
           </label>
           <label>
-            Format
+            Output format
             <select v-model="advancedOptions.format" class="rotation-select">
               <option value="jpeg">JPEG</option>
               <option value="png">PNG</option>
@@ -97,7 +96,7 @@ const onFilesSelected = (event) => {
             </select>
           </label>
           <label>
-            Max width
+            Max width (pixels)
             <input
               v-model.number="advancedOptions.maxWidth"
               type="number"
@@ -106,7 +105,7 @@ const onFilesSelected = (event) => {
             />
           </label>
           <label>
-            Max height
+            Max height (pixels)
             <input
               v-model.number="advancedOptions.maxHeight"
               type="number"
@@ -115,7 +114,7 @@ const onFilesSelected = (event) => {
             />
           </label>
           <label>
-            Effort (0-9)
+            Processing strength (0-9, higher may be slower)
             <input
               v-model.number="advancedOptions.effort"
               type="number"
@@ -126,20 +125,20 @@ const onFilesSelected = (event) => {
           </label>
           <label class="advanced-checkbox">
             <input v-model="advancedOptions.lossless" type="checkbox" />
-            Lossless (WEBP)
+            Keep exact quality (available for WEBP)
           </label>
         </div>
       </div>
 
       <div class="merge-step">
-        <p class="merge-step__title">Step 3: Compress</p>
+        <p class="merge-step__title">Step 3: Create compressed files</p>
         <button
           type="button"
           class="button button--primary"
           :disabled="!canCompress"
           @click="compress(props.apiBaseUrl)"
         >
-          {{ loading ? "Compressing..." : "Compress Images" }}
+          {{ loading ? "Creating..." : "Create Compressed Files" }}
         </button>
 
         <div v-if="loading" class="progress-panel" aria-live="polite">
@@ -150,7 +149,6 @@ const onFilesSelected = (event) => {
           <div class="progress-track">
             <div class="progress-track__bar" :style="{ width: `${progressPercent}%` }" />
           </div>
-          <p class="tool-card__description">Estimated time remaining: {{ etaSeconds }}s</p>
         </div>
       </div>
 
@@ -160,7 +158,7 @@ const onFilesSelected = (event) => {
         Request reference: <code>{{ requestId }}</code>
       </p>
       <p v-if="archiveUrl" class="tool-card__description">
-        Compression complete.
+        Your compressed files are ready.
         <a :href="archiveUrl" :download="archiveName">Download {{ archiveName }}</a>
       </p>
     </div>

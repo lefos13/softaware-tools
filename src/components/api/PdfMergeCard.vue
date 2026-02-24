@@ -25,7 +25,6 @@ const {
   fileName,
   draggingId,
   progressPercent,
-  etaSeconds,
   progressLabel,
   selectFiles,
   moveFile,
@@ -55,9 +54,7 @@ const formatFileSize = (size) => {
   <section aria-labelledby="pdf-merge-endpoint">
     <div class="section-head section-head--spaced">
       <h2 id="pdf-merge-endpoint" class="section-head__title">PDF Merge Flow</h2>
-      <p class="section-head__subtitle">
-        1) select files, 2) drag/order, 3) set rotation, 4) merge (POST /api/pdf/merge)
-      </p>
+      <p class="section-head__subtitle">Combine multiple PDFs into one final document.</p>
     </div>
 
     <div class="tool-card">
@@ -66,7 +63,7 @@ const formatFileSize = (size) => {
         <input type="file" accept="application/pdf" multiple @change="onFilesSelected" />
         <p class="tool-card__description">Selected files: {{ files.length }}</p>
         <p class="tool-card__description">
-          Upload guard: max {{ MAX_UPLOAD_FILES }} files, {{ MAX_FILE_SIZE_MB }} MB each,
+          Upload limits: max {{ MAX_UPLOAD_FILES }} files, {{ MAX_FILE_SIZE_MB }} MB each,
           {{ MAX_TOTAL_UPLOAD_MB }} MB total.
         </p>
       </div>
@@ -120,7 +117,7 @@ const formatFileSize = (size) => {
                 ↓
               </button>
               <label>
-                Rotation
+                Rotate pages
                 <select
                   class="rotation-select"
                   :disabled="loading"
@@ -139,17 +136,17 @@ const formatFileSize = (size) => {
       </div>
 
       <div class="merge-step">
-        <p class="merge-step__title">Step 4: Final merge</p>
+        <p class="merge-step__title">Step 4: Create merged file</p>
         <button
           type="button"
           class="button button--primary"
           :disabled="!canMerge"
           @click="merge(props.apiBaseUrl)"
         >
-          {{ loading ? "Merging..." : "Merge PDFs" }}
+          {{ loading ? "Creating..." : "Create Merged PDF" }}
         </button>
         <p v-if="!apiHealthy" class="tool-card__description tool-card__description--error">
-          Merge disabled while API guard reports the server as unavailable.
+          This action is unavailable while the server is offline.
         </p>
 
         <div v-if="loading" class="progress-panel" aria-live="polite">
@@ -160,7 +157,6 @@ const formatFileSize = (size) => {
           <div class="progress-track">
             <div class="progress-track__bar" :style="{ width: `${progressPercent}%` }" />
           </div>
-          <p class="tool-card__description">Estimated time remaining: {{ etaSeconds }}s</p>
         </div>
       </div>
 
@@ -170,7 +166,7 @@ const formatFileSize = (size) => {
         Request reference: <code>{{ requestId }}</code>
       </p>
       <p v-if="fileUrl" class="tool-card__description">
-        Merge complete.
+        Your merged file is ready.
         <a :href="fileUrl" :download="fileName">Download {{ fileName }}</a>
       </p>
     </div>

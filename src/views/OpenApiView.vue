@@ -1,6 +1,10 @@
 <script setup>
 // Why this exists: OpenAPI analysis is moved out of user processing flows to keep task UIs focused.
+import { inject } from "vue";
 import OpenApiSummary from "../components/api/OpenApiSummary.vue";
+import SwaggerViewer from "../components/api/SwaggerViewer.vue";
+
+const portalContext = inject("portalContext");
 </script>
 
 <template>
@@ -12,5 +16,6 @@ import OpenApiSummary from "../components/api/OpenApiSummary.vue";
       </p>
     </div>
     <OpenApiSummary />
+    <SwaggerViewer :api-base-url="portalContext.apiBaseUrl.value" />
   </section>
 </template>

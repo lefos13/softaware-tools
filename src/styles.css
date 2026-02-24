@@ -206,18 +206,11 @@ body {
 }
 
 .tool-card {
-  padding: 1rem;
+  padding: 1.2rem;
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 20px;
   background: var(--surface);
-  transition:
-    transform 130ms ease,
-    box-shadow 130ms ease;
-}
-
-.tool-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 24px rgba(24, 33, 47, 0.1);
+  box-shadow: 0 14px 28px rgba(24, 33, 47, 0.06);
 }
 
 .tool-card--launcher {
@@ -345,13 +338,23 @@ body {
   color: var(--error);
 }
 
+/* Why this exists: all flow forms now use grouped blocks and consistent control
+   spacing so option-heavy tools feel cleaner and easier to scan. */
 .merge-step {
   margin-bottom: 1rem;
+  padding: 0.9rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fdfefe;
+  display: grid;
+  gap: 0.55rem;
 }
 
 .merge-step__title {
-  margin: 0 0 0.45rem;
+  margin: 0;
   font-weight: 700;
+  font-size: 0.98rem;
+  letter-spacing: 0.01em;
 }
 
 .launcher-grid {
@@ -374,7 +377,7 @@ body {
 .preview-card {
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 0.75rem;
+  padding: 0.82rem;
   background: #fcfdff;
   cursor: grab;
 }
@@ -420,6 +423,11 @@ body {
   background: #f8fafc;
 }
 
+/* Added so split flow source preview is easier to inspect without affecting merge-card thumbnail sizing. */
+.pdf-preview-shell--split {
+  height: min(62vh, 640px);
+}
+
 .pdf-preview {
   width: 100%;
   height: 100%;
@@ -438,36 +446,165 @@ body {
 
 .rotation-select {
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.3rem;
+  border-radius: 10px;
+  padding: 0.48rem 0.56rem;
+  min-height: 2.3rem;
+  background: #ffffff;
 }
 
 .preview-card__actions .rotation-select {
   margin-left: 0.4rem;
 }
 
+.tool-card input[type="text"],
+.tool-card input[type="number"],
+.tool-card input[type="file"],
+.tool-card select {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.52rem 0.6rem;
+  background: #ffffff;
+  color: var(--ink);
+}
+
+.tool-card input[type="file"] {
+  width: 100%;
+}
+
+.tool-card label {
+  color: var(--ink-soft);
+  font-size: 0.93rem;
+  font-weight: 600;
+}
+
+/* Added so image conversion can show before/after previews and picker-based seed selection for transparent background mode. */
+.image-preview-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.image-preview-card {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.65rem;
+  background: #fcfdff;
+}
+
+.image-preview-card__label {
+  margin: 0 0 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.image-preview-shell {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: auto;
+  padding: 0.4rem;
+  display: flex;
+  place-items: center;
+  justify-content: center;
+  align-items: center;
+  background: #f8fafc;
+}
+
+.image-preview-shell--checker {
+  background-color: #f3f4f6;
+  background-image:
+    linear-gradient(45deg, #d1d5db 25%, transparent 25%),
+    linear-gradient(-45deg, #d1d5db 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #d1d5db 75%),
+    linear-gradient(-45deg, transparent 75%, #d1d5db 75%);
+  background-size: 18px 18px;
+  background-position:
+    0 0,
+    0 9px,
+    9px -9px,
+    -9px 0;
+}
+
+.image-preview-shell--picker {
+  cursor: crosshair;
+}
+
+.image-preview-stage {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.image-preview-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: min(68vh, 760px);
+  object-fit: contain;
+}
+
+.image-picker-dot {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  background: #ef4444;
+  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.7);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
 .advanced-grid {
   display: grid;
-  gap: 0.65rem;
+  gap: 0.7rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .advanced-grid label {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.35rem;
   color: var(--ink-soft);
 }
 
 .advanced-checkbox {
   flex-direction: row !important;
   align-items: center;
+  gap: 0.5rem !important;
+}
+
+.advanced-checkbox input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(13, 148, 136, 0.35);
+  border-radius: 999px;
+  background: rgba(13, 148, 136, 0.1);
+  color: var(--brand-strong);
+  padding: 0.2rem 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: lowercase;
 }
 
 .progress-panel {
   margin-top: 0.85rem;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 0.7rem;
+  border-radius: 14px;
+  padding: 0.78rem;
   background: #f8fbff;
 }
 
@@ -570,9 +707,74 @@ body {
   background: #0f172a;
   color: #dbeafe;
   padding: 0.75rem;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   max-height: 560px;
   font-size: 0.82rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.report-json--nested {
+  margin-top: 0.35rem;
+  max-height: 220px;
+}
+
+.pretty-report {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.pretty-report__section {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.7rem;
+  background: #f8fbff;
+}
+
+.pretty-report__title {
+  margin: 0 0 0.45rem;
+  font-size: 0.95rem;
+}
+
+.pretty-grid {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.pretty-grid p {
+  margin: 0;
+}
+
+.pretty-subsection {
+  margin-top: 0.6rem;
+}
+
+.pretty-subsection__title {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.pretty-list {
+  margin: 0.35rem 0 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.pretty-list li {
+  overflow-wrap: anywhere;
+}
+
+.pretty-message {
+  margin: 0.35rem 0 0;
+  color: #7f1d1d;
+}
+
+.pretty-wrap {
+  overflow-wrap: anywhere;
 }
 
 .guard-overlay {
@@ -615,6 +817,10 @@ body {
   }
 
   .launcher-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .image-preview-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -2,9 +2,12 @@
 import { computed, ref } from "vue";
 import AdminReportsView from "../views/AdminReportsView.vue";
 import HomeView from "../views/HomeView.vue";
+import ImageConvertFlowView from "../views/ImageConvertFlowView.vue";
 import ImageFlowView from "../views/ImageFlowView.vue";
 import OpenApiView from "../views/OpenApiView.vue";
 import PdfFlowView from "../views/PdfFlowView.vue";
+import PdfExtractToWordFlowView from "../views/PdfExtractToWordFlowView.vue";
+import PdfSplitFlowView from "../views/PdfSplitFlowView.vue";
 
 const routes = [
   {
@@ -20,10 +23,28 @@ const routes = [
     component: PdfFlowView,
   },
   {
+    path: "/flows/pdf-split",
+    name: "pdf-split",
+    label: "PDF Split",
+    component: PdfSplitFlowView,
+  },
+  {
+    path: "/flows/pdf-extract-to-word",
+    name: "pdf-extract-to-word",
+    label: "PDF to Word",
+    component: PdfExtractToWordFlowView,
+  },
+  {
     path: "/flows/image",
     name: "image",
     label: "Image Compression",
     component: ImageFlowView,
+  },
+  {
+    path: "/flows/image-convert",
+    name: "image-convert",
+    label: "Image Convert / Background removal",
+    component: ImageConvertFlowView,
   },
   {
     path: "/contract/openapi",

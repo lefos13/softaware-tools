@@ -29,13 +29,19 @@ const activeRouteName = computed(() => router.currentRoute.value.name);
 const currentPath = computed(() => router.currentPath.value);
 const currentComponent = computed(() => router.currentComponent.value);
 const navigationRoutes = computed(() =>
-  router.routes.filter((route) => !["pdf", "image"].includes(route.name))
+  router.routes.filter(
+    (route) =>
+      !["pdf", "pdf-split", "pdf-extract-to-word", "image", "image-convert"].includes(route.name)
+  )
 );
 const pageTitle = computed(() => {
   const titles = {
     home: "Service Launcher",
     pdf: "PDF Merge Flow",
+    "pdf-split": "PDF Split Flow",
+    "pdf-extract-to-word": "PDF to Word Extraction Flow",
     image: "Image Compression Flow",
+    "image-convert": "Image Convert Flow",
     contract: "OpenAPI Contract",
     "admin-reports": "Admin Reports",
   };
