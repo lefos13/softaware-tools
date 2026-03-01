@@ -1,6 +1,7 @@
 <script setup>
 // Why this exists: this guided card captures OCR extraction options and reuses the shared progress UX so users can convert mixed text/scanned PDFs directly to Word.
 import { computed } from "vue";
+import DonationPrompt from "../DonationPrompt.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { usePdfExtractToWord } from "../../composables/usePdfExtractToWord";
 
@@ -148,6 +149,7 @@ const onFilesSelected = (event) => {
         Your file is ready.
         <a :href="resultUrl" :download="resultName">Download {{ resultName }}</a>
       </p>
+      <DonationPrompt v-if="resultUrl" compact />
     </div>
   </section>
 </template>

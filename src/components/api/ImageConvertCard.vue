@@ -1,6 +1,7 @@
 <script setup>
 // Why this exists: image conversion now supports UX-first transparent-background workflows with automatic/picker detection, single-image guardrails, and before/after previews.
 import { computed, ref } from "vue";
+import DonationPrompt from "../DonationPrompt.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { useImageConversion } from "../../composables/useImageConversion";
 
@@ -305,6 +306,7 @@ const onOriginalPreviewClick = (event) => {
         Your converted files are ready.
         <a :href="archiveUrl" :download="archiveName">Download {{ archiveName }}</a>
       </p>
+      <DonationPrompt v-if="archiveUrl" compact />
     </div>
   </section>
 </template>

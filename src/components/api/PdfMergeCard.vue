@@ -1,6 +1,7 @@
 <script setup>
 // This component now shows live progress and ETA during the final merge step so users can track request completion.
 import { computed } from "vue";
+import DonationPrompt from "../DonationPrompt.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { usePdfMerge } from "../../composables/usePdfMerge";
 
@@ -169,6 +170,7 @@ const formatFileSize = (size) => {
         Your merged file is ready.
         <a :href="fileUrl" :download="fileName">Download {{ fileName }}</a>
       </p>
+      <DonationPrompt v-if="fileUrl" compact />
     </div>
   </section>
 </template>

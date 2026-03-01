@@ -650,6 +650,50 @@ body {
   line-height: 1.55;
 }
 
+.donation-prompt {
+  padding: 1.1rem;
+  border: 1px solid rgba(13, 148, 136, 0.3);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 90% 10%, rgba(249, 115, 22, 0.12), transparent 28%),
+    radial-gradient(circle at 12% 100%, rgba(13, 148, 136, 0.14), transparent 34%), var(--surface);
+}
+
+.donation-prompt--compact {
+  margin-top: 0.85rem;
+}
+
+.donation-prompt__badge {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--brand-strong);
+}
+
+.donation-prompt__title {
+  margin: 0.35rem 0 0;
+  font-size: 1.16rem;
+}
+
+.donation-prompt__text {
+  margin: 0.45rem 0 0;
+  color: var(--ink-soft);
+}
+
+.donation-prompt__button {
+  display: inline-block;
+  margin-top: 0.8rem;
+  text-decoration: none;
+}
+
+.donation-prompt__hint {
+  margin: 0.6rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
 .admin-head {
   display: flex;
   flex-wrap: wrap;

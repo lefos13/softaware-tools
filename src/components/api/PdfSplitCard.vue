@@ -1,6 +1,7 @@
 <script setup>
 // Why this exists: PDF split is a dedicated, guided flow with multiple split modes and validations while reusing the same task progress UX as other long-running operations.
 import { computed } from "vue";
+import DonationPrompt from "../DonationPrompt.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { usePdfSplit } from "../../composables/usePdfSplit";
 
@@ -231,6 +232,7 @@ const onFilesSelected = (event) => {
         Your split files are ready.
         <a :href="archiveUrl" :download="archiveName">Download {{ archiveName }}</a>
       </p>
+      <DonationPrompt v-if="archiveUrl" compact />
     </div>
   </section>
 </template>

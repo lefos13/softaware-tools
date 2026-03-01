@@ -44,6 +44,7 @@ const pageTitle = computed(() => {
     "image-convert": "Image Convert Flow",
     contract: "OpenAPI Contract",
     "admin-reports": "Admin Reports",
+    donate: "Support / Donate",
   };
 
   return titles[activeRouteName.value] || "Softaware Tools";
@@ -65,7 +66,7 @@ onBeforeUnmount(() => {
       <p class="hero__badge">Softaware Tools API Client</p>
       <h1 class="hero__title">{{ pageTitle }}</h1>
       <p class="hero__subtitle">
-        Dedicated routes for each service flow, contract docs, and admin operational reports.
+        Dedicated routes for each service flow, contract docs, admin reports, and community support.
       </p>
 
       <nav class="top-nav" aria-label="Portal navigation">

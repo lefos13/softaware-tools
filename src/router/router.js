@@ -1,6 +1,7 @@
 // Why this exists: the portal now has multiple independent flows, so we centralize route matching and navigation.
 import { computed, ref } from "vue";
 import AdminReportsView from "../views/AdminReportsView.vue";
+import DonateView from "../views/DonateView.vue";
 import HomeView from "../views/HomeView.vue";
 import ImageConvertFlowView from "../views/ImageConvertFlowView.vue";
 import ImageFlowView from "../views/ImageFlowView.vue";
@@ -57,6 +58,12 @@ const routes = [
     name: "admin-reports",
     label: "Admin Reports",
     component: AdminReportsView,
+  },
+  {
+    path: "/donate",
+    name: "donate",
+    label: "Donate",
+    component: DonateView,
   },
 ];
 

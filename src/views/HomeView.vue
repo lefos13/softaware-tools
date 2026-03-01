@@ -61,6 +61,12 @@ const goTo = (path) => {
         description="Convert batches of images to JPEG, PNG, WEBP, AVIF, TIFF, or GIF."
         @action="goTo('/flows/image-convert')"
       />
+      <ToolCard
+        title="Support / Donate"
+        tag="Support"
+        description="Support ongoing API uptime and maintenance through PayPal."
+        @action="goTo('/donate')"
+      />
     </div>
   </section>
 </template>

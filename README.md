@@ -41,6 +41,7 @@ Husky is configured with a `pre-commit` hook that runs `lint-staged`, which mean
 ## Current Starter Includes
 
 - Router-based portal with dedicated routes for home, PDF merge flow, PDF split flow, image compression flow, image conversion flow, API contract, and admin reports
+- Dedicated support/donation page with PayPal CTA
 - Friendly landing page with service launcher cards
 - Reusable `ToolCard` component for quick tool additions
 - Mobile-first responsive layout
@@ -54,7 +55,18 @@ Husky is configured with a `pre-commit` hook that runs `lint-staged`, which mean
 - Transparent background UX for image conversion: single-image guard, auto/picker detection, and before/after preview
 - Frontend upload guard for count, per-file size, and total request size limits
 - Final-step progress bars with live upload telemetry plus real backend task-progress polling and ETA
+- Donation prompt after successful service usage to help fund API uptime
 - Admin reports view that reads backend request-failure report list/detail APIs
+
+## PayPal donation link
+
+Set the PayPal donation URL through Vite env variables:
+
+```bash
+VITE_PAYPAL_DONATE_URL=https://www.paypal.com/donate/?business=YOUR_PAYPAL_ACCOUNT
+```
+
+If this variable is not set, the UI falls back to `https://www.paypal.com/donate`.
 
 This is a simple free of charge portal with multiple tools for formatting, merging, and compressing files.
 
