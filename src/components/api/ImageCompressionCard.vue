@@ -1,7 +1,10 @@
 <script setup>
-// This component now shows live progress and ETA during final compression so users can track completion and wait time.
-import { computed } from "vue";
-import DonationPrompt from "../DonationPrompt.vue";
+/*
+  Compression flow now uses the shared success overlay to keep completion behavior aligned.
+  It centralizes download and donation actions instead of duplicating inline sections.
+*/
+import { computed, ref, watch } from "vue";
+import SuccessThankYouModal from "../SuccessThankYouModal.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { useImageCompression } from "../../composables/useImageCompression";
 
@@ -33,9 +36,25 @@ const {
 } = useImageCompression();
 
 const canCompress = computed(() => props.apiHealthy && files.value.length > 0 && !loading.value);
+const showSuccessModal = ref(false);
+
+watch(archiveUrl, (nextUrl, prevUrl) => {
+  if (nextUrl && nextUrl !== prevUrl) {
+    showSuccessModal.value = true;
+    return;
+  }
+
+  if (!nextUrl) {
+    showSuccessModal.value = false;
+  }
+});
 
 const onFilesSelected = (event) => {
   selectFiles(Array.from(event.target.files || []));
+};
+
+const closeSuccessModal = () => {
+  showSuccessModal.value = false;
 };
 </script>
 
@@ -158,11 +177,20 @@ const onFilesSelected = (event) => {
       <p v-if="requestId" class="tool-card__description">
         Request reference: <code>{{ requestId }}</code>
       </p>
-      <p v-if="archiveUrl" class="tool-card__description">
+      <p v-if="archiveUrl && !showSuccessModal" class="tool-card__description">
         Your compressed files are ready.
-        <a :href="archiveUrl" :download="archiveName">Download {{ archiveName }}</a>
+        <button type="button" class="button button--secondary" @click="showSuccessModal = true">
+          Open download modal
+        </button>
       </p>
-      <DonationPrompt v-if="archiveUrl" compact />
+      <SuccessThankYouModal
+        :visible="showSuccessModal"
+        title="Compressed files are ready"
+        description="Download your compressed archive and support the project if it helped you."
+        :download-url="archiveUrl"
+        :download-name="archiveName"
+        @close="closeSuccessModal"
+      />
     </div>
   </section>
 </template>

@@ -1,5 +1,8 @@
 <script setup>
-// Why this exists: landing page now acts as a service hub and routes users to dedicated processing flows.
+/*
+  Home launcher now focuses only on service workflows.
+  Support actions remain available from navigation instead of a dedicated card.
+*/
 import { inject } from "vue";
 import ToolCard from "../components/ToolCard.vue";
 
@@ -15,8 +18,8 @@ const goTo = (path) => {
     <div class="section-head section-head--spaced">
       <h2 class="section-head__title">Choose Service</h2>
       <p class="section-head__subtitle">
-        Pick a dedicated flow. API contract analysis and admin reporting are separated from user
-        flows.
+        Choose what you want to do. Each service opens a guided screen with simple steps from upload
+        to final download.
       </p>
     </div>
 
@@ -24,48 +27,42 @@ const goTo = (path) => {
       <ToolCard
         title="PDF Merge"
         tag="PDF"
-        icon="pdf"
+        graphic="pdf-merge"
         variant="pdf"
-        description="Upload PDFs, preview order/rotation, then merge into one final document."
+        description="Combine multiple PDF files into one clean document in the exact order you choose."
         @action="goTo('/flows/pdf')"
       />
       <ToolCard
         title="PDF Split"
         tag="PDF"
-        icon="pdf"
+        graphic="pdf-split"
         variant="pdf"
-        description="Split one PDF by range, selected pages, chunk size, or custom groups."
+        description="Break one PDF into smaller files by page range, selected pages, or custom groups."
         @action="goTo('/flows/pdf-split')"
       />
       <ToolCard
         title="PDF to Word OCR"
         tag="PDF"
-        icon="pdf"
+        graphic="pdf-ocr"
         variant="pdf"
-        description="Extract native/scanned PDF text and download a DOCX document."
+        description="Turn PDF content into an editable Word file, including scanned pages with OCR."
         @action="goTo('/flows/pdf-extract-to-word')"
       />
       <ToolCard
         title="Image Compression"
         tag="Image"
-        icon="image"
+        graphic="image-compress"
         variant="image"
-        description="Compress one or many images using presets or advanced controls."
+        description="Reduce image file sizes while keeping quality good for sharing, upload, or web use."
         @action="goTo('/flows/image')"
       />
       <ToolCard
         title="Image Convert / Background removal"
         tag="Image"
-        icon="image"
+        graphic="image-convert"
         variant="image"
-        description="Convert batches of images to JPEG, PNG, WEBP, AVIF, TIFF, or GIF."
+        description="Convert image formats and optionally remove backgrounds for cleaner final assets."
         @action="goTo('/flows/image-convert')"
-      />
-      <ToolCard
-        title="Support / Donate"
-        tag="Support"
-        description="Support ongoing API uptime and maintenance through PayPal."
-        @action="goTo('/donate')"
       />
     </div>
   </section>

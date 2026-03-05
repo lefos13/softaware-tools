@@ -1,7 +1,10 @@
 <script setup>
-// This component now shows live progress and ETA during the final merge step so users can track request completion.
-import { computed } from "vue";
-import DonationPrompt from "../DonationPrompt.vue";
+/*
+  Merge flow now opens a shared success overlay when output is ready.
+  The card keeps processing controls while completion actions move to one reusable modal.
+*/
+import { computed, ref, watch } from "vue";
+import SuccessThankYouModal from "../SuccessThankYouModal.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { usePdfMerge } from "../../composables/usePdfMerge";
 
@@ -37,9 +40,25 @@ const {
 } = usePdfMerge();
 
 const canMerge = computed(() => props.apiHealthy && files.value.length >= 2 && !loading.value);
+const showSuccessModal = ref(false);
+
+watch(fileUrl, (nextUrl, prevUrl) => {
+  if (nextUrl && nextUrl !== prevUrl) {
+    showSuccessModal.value = true;
+    return;
+  }
+
+  if (!nextUrl) {
+    showSuccessModal.value = false;
+  }
+});
 
 const onFilesSelected = (event) => {
   selectFiles(Array.from(event.target.files || []));
+};
+
+const closeSuccessModal = () => {
+  showSuccessModal.value = false;
 };
 
 const formatFileSize = (size) => {
@@ -166,11 +185,20 @@ const formatFileSize = (size) => {
       <p v-if="requestId" class="tool-card__description">
         Request reference: <code>{{ requestId }}</code>
       </p>
-      <p v-if="fileUrl" class="tool-card__description">
+      <p v-if="fileUrl && !showSuccessModal" class="tool-card__description">
         Your merged file is ready.
-        <a :href="fileUrl" :download="fileName">Download {{ fileName }}</a>
+        <button type="button" class="button button--secondary" @click="showSuccessModal = true">
+          Open download modal
+        </button>
       </p>
-      <DonationPrompt v-if="fileUrl" compact />
+      <SuccessThankYouModal
+        :visible="showSuccessModal"
+        title="Merged PDF is ready"
+        description="Download your merged file and support the project if it helped you."
+        :download-url="fileUrl"
+        :download-name="fileName"
+        @close="closeSuccessModal"
+      />
     </div>
   </section>
 </template>

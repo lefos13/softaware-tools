@@ -1,5 +1,8 @@
 <script setup>
-// Why this exists: the portal now uses route-based views so each service/admin area is isolated while API guard stays global.
+/*
+  Navigation now highlights Donate as a stronger CTA while preserving route behavior.
+  This keeps support access visible without using a home launcher card.
+*/
 import { computed, onBeforeUnmount, provide, ref } from "vue";
 import { useHealthCheck } from "./composables/useHealthCheck";
 import { createPortalRouter } from "./router/router";
@@ -49,6 +52,30 @@ const pageTitle = computed(() => {
 
   return titles[activeRouteName.value] || "Softaware Tools";
 });
+const pageSummary = computed(() => {
+  const summaries = {
+    home: "Start here to pick a service. Each tool has its own guided workflow and a clear final download step.",
+    pdf: "Merge multiple PDF files into one document, with ordering and rotation controls before you generate the final file.",
+    "pdf-split":
+      "Split one PDF into smaller outputs using ranges, selected pages, repeated chunks, or custom named groups.",
+    "pdf-extract-to-word":
+      "Extract text from regular or scanned PDFs and produce an editable Word document with OCR-aware options.",
+    image:
+      "Compress one or many images to reduce file size while balancing quality and performance for your use case.",
+    "image-convert":
+      "Convert images into different formats and optionally remove background for transparent-ready assets.",
+    contract:
+      "Review the live OpenAPI contract so front-end and back-end request/response structures stay aligned.",
+    "admin-reports":
+      "Inspect operational and task reports to monitor system behavior, outcomes, and troubleshooting details.",
+    donate:
+      "Support ongoing maintenance and reliability of these services through a secure PayPal contribution.",
+  };
+
+  return (
+    summaries[activeRouteName.value] || "Choose a tool and continue with a focused, guided flow."
+  );
+});
 
 const onNavigate = (path, event) => {
   event.preventDefault();
@@ -65,9 +92,7 @@ onBeforeUnmount(() => {
     <header class="hero">
       <p class="hero__badge">Softaware Tools API Client</p>
       <h1 class="hero__title">{{ pageTitle }}</h1>
-      <p class="hero__subtitle">
-        Dedicated routes for each service flow, contract docs, admin reports, and community support.
-      </p>
+      <p class="hero__subtitle">{{ pageSummary }}</p>
 
       <nav class="top-nav" aria-label="Portal navigation">
         <a
@@ -75,7 +100,10 @@ onBeforeUnmount(() => {
           :key="route.path"
           :href="route.path"
           class="top-nav__link"
-          :class="{ 'top-nav__link--active': currentPath === route.path }"
+          :class="{
+            'top-nav__link--active': currentPath === route.path,
+            'top-nav__link--donate': route.name === 'donate',
+          }"
           @click="onNavigate(route.path, $event)"
         >
           {{ route.label }}

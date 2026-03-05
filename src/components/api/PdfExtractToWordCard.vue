@@ -1,7 +1,10 @@
 <script setup>
-// Why this exists: this guided card captures OCR extraction options and reuses the shared progress UX so users can convert mixed text/scanned PDFs directly to Word.
-import { computed } from "vue";
-import DonationPrompt from "../DonationPrompt.vue";
+/*
+  Extraction flow now reuses the shared success overlay for completion actions.
+  The result download and donation prompt stay consistent with all other services.
+*/
+import { computed, ref, watch } from "vue";
+import SuccessThankYouModal from "../SuccessThankYouModal.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { usePdfExtractToWord } from "../../composables/usePdfExtractToWord";
 
@@ -37,9 +40,25 @@ const {
 } = usePdfExtractToWord();
 
 const canExtract = computed(() => props.apiHealthy && hasFile.value && !loading.value);
+const showSuccessModal = ref(false);
+
+watch(resultUrl, (nextUrl, prevUrl) => {
+  if (nextUrl && nextUrl !== prevUrl) {
+    showSuccessModal.value = true;
+    return;
+  }
+
+  if (!nextUrl) {
+    showSuccessModal.value = false;
+  }
+});
 
 const onFilesSelected = (event) => {
   selectFiles(Array.from(event.target.files || []));
+};
+
+const closeSuccessModal = () => {
+  showSuccessModal.value = false;
 };
 </script>
 
@@ -145,11 +164,20 @@ const onFilesSelected = (event) => {
       <p v-if="requestId" class="tool-card__description">
         Request reference: <code>{{ requestId }}</code>
       </p>
-      <p v-if="resultUrl" class="tool-card__description">
+      <p v-if="resultUrl && !showSuccessModal" class="tool-card__description">
         Your file is ready.
-        <a :href="resultUrl" :download="resultName">Download {{ resultName }}</a>
+        <button type="button" class="button button--secondary" @click="showSuccessModal = true">
+          Open download modal
+        </button>
       </p>
-      <DonationPrompt v-if="resultUrl" compact />
+      <SuccessThankYouModal
+        :visible="showSuccessModal"
+        title="Word file is ready"
+        description="Download your extracted file and support the project if it helped you."
+        :download-url="resultUrl"
+        :download-name="resultName"
+        @close="closeSuccessModal"
+      />
     </div>
   </section>
 </template>

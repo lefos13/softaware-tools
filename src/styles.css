@@ -89,6 +89,29 @@ body {
   background: rgba(13, 148, 136, 0.1);
 }
 
+/*
+  Donate is elevated as a persistent CTA in the menu so support remains discoverable
+  after removing the dedicated support card from the launcher grid.
+*/
+.top-nav__link--donate {
+  color: #ffffff;
+  border-color: #dc2626;
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.3);
+}
+
+.top-nav__link--donate:hover {
+  color: #ffffff;
+  border-color: #b91c1c;
+  background: linear-gradient(135deg, #dc2626, #ea580c);
+}
+
+.top-nav__link--donate.top-nav__link--active {
+  color: #ffffff;
+  border-color: #b91c1c;
+  background: linear-gradient(135deg, #b91c1c, #c2410c);
+}
+
 .hero__status {
   margin: 0.9rem 0 0;
   font-weight: 700;
@@ -166,6 +189,14 @@ body {
 .flow-view {
   display: grid;
   gap: 1rem;
+}
+
+/*
+  Grid children can overflow on mobile when they contain long endpoint strings.
+  Resetting min-width allows cards and sections to shrink within the route shell.
+*/
+.flow-view > * {
+  min-width: 0;
 }
 
 .section-head {
@@ -286,6 +317,35 @@ body {
   fill: rgba(249, 115, 22, 0.1);
 }
 
+.tool-card__line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+
+.tool-card__line--merge {
+  stroke: rgba(6, 95, 70, 0.85);
+}
+
+.tool-card__line--split {
+  stroke: rgba(30, 64, 175, 0.8);
+}
+
+.tool-card__line--ocr {
+  stroke: rgba(180, 83, 9, 0.84);
+  stroke-width: 3.2;
+}
+
+.tool-card__line--compress {
+  stroke: rgba(3, 105, 161, 0.84);
+}
+
+.tool-card__line--convert {
+  stroke: rgba(22, 101, 52, 0.84);
+  stroke-width: 3.4;
+}
+
 .tool-card__icon-badge {
   position: absolute;
   right: 8px;
@@ -360,8 +420,7 @@ body {
 .launcher-grid {
   margin-top: 1rem;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(290px, 320px));
-  justify-content: center;
+  grid-template-columns: 1fr;
   gap: 1rem;
 }
 
@@ -650,6 +709,12 @@ body {
   line-height: 1.55;
 }
 
+.quick-info__list li,
+.quick-info code {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .donation-prompt {
   padding: 1.1rem;
   border: 1px solid rgba(13, 148, 136, 0.3);
@@ -707,6 +772,10 @@ body {
   gap: 0.9rem;
 }
 
+.admin-layout > * {
+  min-width: 0;
+}
+
 .admin-list,
 .admin-detail {
   min-height: 220px;
@@ -742,6 +811,8 @@ body {
 .report-list__item span {
   font-size: 0.85rem;
   color: var(--ink-soft);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .report-json {
@@ -821,6 +892,50 @@ body {
   overflow-wrap: anywhere;
 }
 
+/*
+  Success overlay keeps completion actions in a single modal with clear focus on download and support.
+  Shared styling is reused by all service cards to avoid divergent post-success UIs.
+*/
+.success-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 24;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.62);
+}
+
+.success-overlay__card {
+  width: min(740px, 100%);
+  border: 1px solid rgba(13, 148, 136, 0.35);
+  border-radius: 18px;
+  padding: 1rem;
+  background: #f8fcff;
+  box-shadow: 0 24px 40px rgba(15, 23, 42, 0.28);
+}
+
+.success-overlay__close {
+  justify-self: end;
+}
+
+.success-overlay__title {
+  margin: 0.55rem 0 0;
+  font-size: 1.3rem;
+  color: var(--brand-strong);
+}
+
+.success-overlay__text {
+  margin: 0.45rem 0 0;
+  color: var(--ink-soft);
+}
+
+.success-overlay__download {
+  display: inline-block;
+  margin-top: 0.85rem;
+  text-decoration: none;
+}
+
 .guard-overlay {
   position: fixed;
   inset: 0;
@@ -866,6 +981,56 @@ body {
 
   .image-preview-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/*
+  Responsive tuning keeps navigation readable, cards balanced, and flow content usable
+  from narrow phones up to wide desktops with a fixed 3-column launcher on larger screens.
+*/
+@media (max-width: 559px) {
+  .hero {
+    padding: 1.25rem;
+  }
+
+  .hero__title {
+    font-size: clamp(1.5rem, 8vw, 2rem);
+  }
+
+  .top-nav__link {
+    width: 100%;
+    text-align: center;
+  }
+
+  .tool-card--launcher {
+    min-height: 208px;
+  }
+
+  .preview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .advanced-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /*
+    Admin reports on phones should use page scrolling instead of stacked internal scroll areas.
+    This prevents nested-scroll friction and keeps report selection/details easier to navigate.
+  */
+  .admin-list,
+  .admin-detail {
+    min-height: 0;
+  }
+
+  .report-list {
+    max-height: none;
+  }
+}
+
+@media (min-width: 980px) {
+  .launcher-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

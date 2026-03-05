@@ -1,7 +1,10 @@
 <script setup>
-// Why this exists: PDF split is a dedicated, guided flow with multiple split modes and validations while reusing the same task progress UX as other long-running operations.
-import { computed } from "vue";
-import DonationPrompt from "../DonationPrompt.vue";
+/*
+  Split flow now shares the same completion overlay with other services.
+  Result download and donation prompt are shown through one reusable modal component.
+*/
+import { computed, ref, watch } from "vue";
+import SuccessThankYouModal from "../SuccessThankYouModal.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { usePdfSplit } from "../../composables/usePdfSplit";
 
@@ -40,9 +43,25 @@ const {
 } = usePdfSplit();
 
 const canSplit = computed(() => props.apiHealthy && Boolean(file.value) && !loading.value);
+const showSuccessModal = ref(false);
+
+watch(archiveUrl, (nextUrl, prevUrl) => {
+  if (nextUrl && nextUrl !== prevUrl) {
+    showSuccessModal.value = true;
+    return;
+  }
+
+  if (!nextUrl) {
+    showSuccessModal.value = false;
+  }
+});
 
 const onFilesSelected = (event) => {
   selectFiles(Array.from(event.target.files || []));
+};
+
+const closeSuccessModal = () => {
+  showSuccessModal.value = false;
 };
 </script>
 
@@ -228,11 +247,20 @@ const onFilesSelected = (event) => {
       <p v-if="requestId" class="tool-card__description">
         Request reference: <code>{{ requestId }}</code>
       </p>
-      <p v-if="archiveUrl" class="tool-card__description">
+      <p v-if="archiveUrl && !showSuccessModal" class="tool-card__description">
         Your split files are ready.
-        <a :href="archiveUrl" :download="archiveName">Download {{ archiveName }}</a>
+        <button type="button" class="button button--secondary" @click="showSuccessModal = true">
+          Open download modal
+        </button>
       </p>
-      <DonationPrompt v-if="archiveUrl" compact />
+      <SuccessThankYouModal
+        :visible="showSuccessModal"
+        title="Split files are ready"
+        description="Download your split archive and support the project if it helped you."
+        :download-url="archiveUrl"
+        :download-name="archiveName"
+        @close="closeSuccessModal"
+      />
     </div>
   </section>
 </template>

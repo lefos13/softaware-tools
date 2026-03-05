@@ -93,6 +93,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/*
+  Swagger content can exceed narrow mobile widths.
+  The host now allows horizontal scrolling instead of clipping API operation details.
+*/
 .swagger-card {
   padding: 1rem;
   border: 1px solid var(--border);
@@ -103,12 +107,20 @@ onBeforeUnmount(() => {
 .swagger-host {
   border: 1px solid var(--border);
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   background: #ffffff;
 }
 
 .swagger-host :deep(.swagger-ui) {
   font-family: "Avenir Next", "Segoe UI", sans-serif;
+  min-width: 0;
+}
+
+.swagger-card .section-head__subtitle code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .swagger-host :deep(.topbar) {

@@ -1,5 +1,8 @@
 <script setup>
-// Why this exists: service launcher cards are full-click targets so users can enter flows with one clean interaction.
+/*
+  Service cards now render service-specific graphics so users can quickly distinguish tools.
+  Visual variants are chosen by a dedicated graphic key passed from the launcher.
+*/
 defineProps({
   title: {
     type: String,
@@ -13,9 +16,9 @@ defineProps({
     type: String,
     required: true,
   },
-  icon: {
+  graphic: {
     type: String,
-    default: "grid",
+    default: "default",
   },
   variant: {
     type: String,
@@ -34,7 +37,121 @@ const emit = defineEmits(["action"]);
     @click="emit('action')"
   >
     <div class="tool-card__visual" aria-hidden="true">
-      <svg viewBox="0 0 220 110" class="tool-card__graphic">
+      <svg v-if="graphic === 'pdf-merge'" viewBox="0 0 220 110" class="tool-card__graphic">
+        <rect
+          x="14"
+          y="18"
+          width="62"
+          height="74"
+          rx="10"
+          class="tool-card__shape tool-card__shape--a"
+        />
+        <rect
+          x="58"
+          y="12"
+          width="62"
+          height="74"
+          rx="10"
+          class="tool-card__shape tool-card__shape--b"
+        />
+        <rect
+          x="102"
+          y="18"
+          width="62"
+          height="74"
+          rx="10"
+          class="tool-card__shape tool-card__shape--c"
+        />
+        <path d="M50 56h120" class="tool-card__line tool-card__line--merge" />
+        <path d="M160 50l12 6-12 6" class="tool-card__line tool-card__line--merge" />
+      </svg>
+      <svg v-else-if="graphic === 'pdf-split'" viewBox="0 0 220 110" class="tool-card__graphic">
+        <rect
+          x="26"
+          y="18"
+          width="78"
+          height="74"
+          rx="12"
+          class="tool-card__shape tool-card__shape--a"
+        />
+        <rect
+          x="118"
+          y="18"
+          width="78"
+          height="74"
+          rx="12"
+          class="tool-card__shape tool-card__shape--b"
+        />
+        <path d="M110 22v66" class="tool-card__line tool-card__line--split" />
+        <path
+          d="M100 48l10-10 10 10M100 62l10 10 10-10"
+          class="tool-card__line tool-card__line--split"
+        />
+      </svg>
+      <svg v-else-if="graphic === 'pdf-ocr'" viewBox="0 0 220 110" class="tool-card__graphic">
+        <rect
+          x="18"
+          y="14"
+          width="78"
+          height="82"
+          rx="12"
+          class="tool-card__shape tool-card__shape--a"
+        />
+        <rect
+          x="124"
+          y="24"
+          width="78"
+          height="62"
+          rx="12"
+          class="tool-card__shape tool-card__shape--c"
+        />
+        <path
+          d="M38 34h38M38 46h34M38 58h38M38 70h26"
+          class="tool-card__line tool-card__line--ocr"
+        />
+        <path d="M101 54h20" class="tool-card__line tool-card__line--ocr" />
+        <path d="M114 48l8 6-8 6" class="tool-card__line tool-card__line--ocr" />
+      </svg>
+      <svg
+        v-else-if="graphic === 'image-compress'"
+        viewBox="0 0 220 110"
+        class="tool-card__graphic"
+      >
+        <rect
+          x="18"
+          y="16"
+          width="84"
+          height="78"
+          rx="12"
+          class="tool-card__shape tool-card__shape--a"
+        />
+        <rect
+          x="126"
+          y="28"
+          width="72"
+          height="54"
+          rx="12"
+          class="tool-card__shape tool-card__shape--b"
+        />
+        <path d="M112 55h10" class="tool-card__line tool-card__line--compress" />
+        <path d="M118 50l8 5-8 5" class="tool-card__line tool-card__line--compress" />
+      </svg>
+      <svg v-else-if="graphic === 'image-convert'" viewBox="0 0 220 110" class="tool-card__graphic">
+        <rect
+          x="20"
+          y="18"
+          width="72"
+          height="72"
+          rx="12"
+          class="tool-card__shape tool-card__shape--a"
+        />
+        <circle cx="162" cy="54" r="34" class="tool-card__shape tool-card__shape--c" />
+        <path d="M94 35h18v18" class="tool-card__line tool-card__line--convert" />
+        <path d="M112 35 90 57" class="tool-card__line tool-card__line--convert" />
+        <path d="M130 74h-18V56" class="tool-card__line tool-card__line--convert" />
+        <path d="M112 74l22-22" class="tool-card__line tool-card__line--convert" />
+      </svg>
+      <svg v-else viewBox="0 0 220 110" class="tool-card__graphic">
         <rect
           x="10"
           y="15"
@@ -53,28 +170,6 @@ const emit = defineEmits(["action"]);
           class="tool-card__shape tool-card__shape--c"
         />
       </svg>
-      <span class="tool-card__icon-badge">
-        <svg v-if="icon === 'pdf'" viewBox="0 0 24 24" class="tool-card__icon" aria-hidden="true">
-          <path
-            d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm7 1.5V9h4.5M9 14h1.2c.9 0 1.5.6 1.5 1.5S11.1 17 10.2 17H9v-3Zm0 1h1.1c.3 0 .6.2.6.5s-.3.5-.6.5H9V15Zm4-1h1.1c1 0 1.9.8 1.9 1.9s-.9 2.1-1.9 2.1H13v-4Zm1 1v2h.2c.5 0 .9-.4.9-1.1 0-.6-.4-.9-.9-.9H14Zm3-1h2v1h-1v3h-1v-3h0v-1Z"
-          />
-        </svg>
-        <svg
-          v-else-if="icon === 'image'"
-          viewBox="0 0 24 24"
-          class="tool-card__icon"
-          aria-hidden="true"
-        >
-          <path
-            d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm1 2v12h12V6H6Zm9 2a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM8 16h8l-2.8-3.4a.8.8 0 0 0-1.2 0L10.6 14 9.5 12.7a.8.8 0 0 0-1.2 0L8 13.1V16Z"
-          />
-        </svg>
-        <svg v-else viewBox="0 0 24 24" class="tool-card__icon" aria-hidden="true">
-          <path
-            d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm12 0h4v4h-4v-4Zm-3 0h2v2h-2v-2Zm0 3h2v2h-2v-2Zm3 3h4v1h-4v-1Z"
-          />
-        </svg>
-      </span>
     </div>
     <p class="tool-card__tag">{{ tag }}</p>
     <h3 class="tool-card__title">{{ title }}</h3>

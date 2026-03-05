@@ -1,7 +1,10 @@
 <script setup>
-// Why this exists: image conversion now supports UX-first transparent-background workflows with automatic/picker detection, single-image guardrails, and before/after previews.
-import { computed, ref } from "vue";
-import DonationPrompt from "../DonationPrompt.vue";
+/*
+  Conversion flow now shows completion through the shared success overlay.
+  This keeps the download + donation experience consistent with the other tools.
+*/
+import { computed, ref, watch } from "vue";
+import SuccessThankYouModal from "../SuccessThankYouModal.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { useImageConversion } from "../../composables/useImageConversion";
 
@@ -60,6 +63,18 @@ const canConvert = computed(
     !loading.value &&
     singleFileTransparentRuleSatisfied.value
 );
+const showSuccessModal = ref(false);
+
+watch(archiveUrl, (nextUrl, prevUrl) => {
+  if (nextUrl && nextUrl !== prevUrl) {
+    showSuccessModal.value = true;
+    return;
+  }
+
+  if (!nextUrl) {
+    showSuccessModal.value = false;
+  }
+});
 
 const onFilesSelected = (event) => {
   selectFiles(Array.from(event.target.files || []));
@@ -95,6 +110,10 @@ const onOriginalPreviewClick = (event) => {
   const y = (event.clientY - rect.top) / rect.height;
 
   setBackgroundSeed({ x, y });
+};
+
+const closeSuccessModal = () => {
+  showSuccessModal.value = false;
 };
 </script>
 
@@ -302,11 +321,20 @@ const onOriginalPreviewClick = (event) => {
       <p v-if="requestId" class="tool-card__description">
         Request reference: <code>{{ requestId }}</code>
       </p>
-      <p v-if="archiveUrl" class="tool-card__description">
+      <p v-if="archiveUrl && !showSuccessModal" class="tool-card__description">
         Your converted files are ready.
-        <a :href="archiveUrl" :download="archiveName">Download {{ archiveName }}</a>
+        <button type="button" class="button button--secondary" @click="showSuccessModal = true">
+          Open download modal
+        </button>
       </p>
-      <DonationPrompt v-if="archiveUrl" compact />
+      <SuccessThankYouModal
+        :visible="showSuccessModal"
+        title="Converted files are ready"
+        description="Download your converted archive and support the project if it helped you."
+        :download-url="archiveUrl"
+        :download-name="archiveName"
+        @close="closeSuccessModal"
+      />
     </div>
   </section>
 </template>
