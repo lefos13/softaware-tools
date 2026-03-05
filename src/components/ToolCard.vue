@@ -151,6 +151,28 @@ const emit = defineEmits(["action"]);
         <path d="M130 74h-18V56" class="tool-card__line tool-card__line--convert" />
         <path d="M112 74l22-22" class="tool-card__line tool-card__line--convert" />
       </svg>
+      <svg v-else-if="graphic === 'json-services'" viewBox="0 0 220 110" class="tool-card__graphic">
+        <rect
+          x="18"
+          y="16"
+          width="184"
+          height="78"
+          rx="14"
+          class="tool-card__shape tool-card__shape--b"
+        />
+        <path
+          d="M42 32c-10 0-10 12-10 22s0 22 10 22"
+          class="tool-card__line tool-card__line--json"
+        />
+        <path
+          d="M178 32c10 0 10 12 10 22s0 22-10 22"
+          class="tool-card__line tool-card__line--json"
+        />
+        <path d="M86 40h48M86 55h36M86 70h48" class="tool-card__line tool-card__line--json" />
+        <circle cx="72" cy="40" r="4" class="tool-card__shape tool-card__shape--c" />
+        <circle cx="72" cy="55" r="4" class="tool-card__shape tool-card__shape--a" />
+        <circle cx="72" cy="70" r="4" class="tool-card__shape tool-card__shape--c" />
+      </svg>
       <svg v-else viewBox="0 0 220 110" class="tool-card__graphic">
         <rect
           x="10"

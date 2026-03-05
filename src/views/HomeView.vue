@@ -7,6 +7,7 @@ import { inject } from "vue";
 import ToolCard from "../components/ToolCard.vue";
 
 const router = inject("portalRouter");
+const jsonServicesEnabled = import.meta.env.VITE_ENABLE_JSON_SERVICES === "true";
 
 const goTo = (path) => {
   router.navigate(path);
@@ -63,6 +64,15 @@ const goTo = (path) => {
         variant="image"
         description="Convert image formats and optionally remove backgrounds for cleaner final assets."
         @action="goTo('/flows/image-convert')"
+      />
+      <ToolCard
+        v-if="jsonServicesEnabled"
+        title="JSON Services"
+        tag="JSON"
+        graphic="json-services"
+        variant="json"
+        description="Use mini JSON tools for validation, conversion, diff, patch, redaction, and visual exports."
+        @action="goTo('/flows/json')"
       />
     </div>
   </section>

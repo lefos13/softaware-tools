@@ -34,7 +34,15 @@ const currentComponent = computed(() => router.currentComponent.value);
 const navigationRoutes = computed(() =>
   router.routes.filter(
     (route) =>
-      !["pdf", "pdf-split", "pdf-extract-to-word", "image", "image-convert"].includes(route.name)
+      ![
+        "pdf",
+        "pdf-split",
+        "pdf-extract-to-word",
+        "image",
+        "image-convert",
+        "json-services",
+        "json-tool",
+      ].includes(route.name)
   )
 );
 const pageTitle = computed(() => {
@@ -45,6 +53,8 @@ const pageTitle = computed(() => {
     "pdf-extract-to-word": "PDF to Word Extraction Flow",
     image: "Image Compression Flow",
     "image-convert": "Image Convert Flow",
+    "json-services": "JSON Services",
+    "json-tool": "JSON Tool Workspace",
     contract: "OpenAPI Contract",
     "admin-reports": "Admin Reports",
     donate: "Support / Donate",
@@ -64,6 +74,10 @@ const pageSummary = computed(() => {
       "Compress one or many images to reduce file size while balancing quality and performance for your use case.",
     "image-convert":
       "Convert images into different formats and optionally remove background for transparent-ready assets.",
+    "json-services":
+      "Browse JSON mini tools for formatting, conversion, comparison, analysis, protection, and visual exports.",
+    "json-tool":
+      "Run the selected JSON mini tool with dynamic options, dual-input support where needed, and instant downloadable output.",
     contract:
       "Review the live OpenAPI contract so front-end and back-end request/response structures stay aligned.",
     "admin-reports":
