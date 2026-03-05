@@ -1,7 +1,7 @@
 <script setup>
 /*
-  Home launcher now focuses only on service workflows.
-  Support actions remain available from navigation instead of a dedicated card.
+  Home now exposes only top-level service families and routes users to
+  dedicated subservice hubs where each workflow can be selected.
 */
 import { inject } from "vue";
 import ToolCard from "../components/ToolCard.vue";
@@ -26,44 +26,20 @@ const goTo = (path) => {
 
     <div class="launcher-grid">
       <ToolCard
-        title="PDF Merge"
+        title="PDF Services"
         tag="PDF"
         graphic="pdf-merge"
         variant="pdf"
-        description="Combine multiple PDF files into one clean document in the exact order you choose."
-        @action="goTo('/flows/pdf')"
+        description="Open PDF subservices: merge, split, and PDF to Word OCR."
+        @action="goTo('/flows/pdf-services')"
       />
       <ToolCard
-        title="PDF Split"
-        tag="PDF"
-        graphic="pdf-split"
-        variant="pdf"
-        description="Break one PDF into smaller files by page range, selected pages, or custom groups."
-        @action="goTo('/flows/pdf-split')"
-      />
-      <ToolCard
-        title="PDF to Word OCR"
-        tag="PDF"
-        graphic="pdf-ocr"
-        variant="pdf"
-        description="Turn PDF content into an editable Word file, including scanned pages with OCR."
-        @action="goTo('/flows/pdf-extract-to-word')"
-      />
-      <ToolCard
-        title="Image Compression"
+        title="Image Services"
         tag="Image"
         graphic="image-compress"
         variant="image"
-        description="Reduce image file sizes while keeping quality good for sharing, upload, or web use."
-        @action="goTo('/flows/image')"
-      />
-      <ToolCard
-        title="Image Convert / Background removal"
-        tag="Image"
-        graphic="image-convert"
-        variant="image"
-        description="Convert image formats and optionally remove backgrounds for cleaner final assets."
-        @action="goTo('/flows/image-convert')"
+        description="Open image subservices: compress and convert."
+        @action="goTo('/flows/image-services')"
       />
       <ToolCard
         v-if="jsonServicesEnabled"
@@ -71,7 +47,7 @@ const goTo = (path) => {
         tag="JSON"
         graphic="json-services"
         variant="json"
-        description="Use mini JSON tools for validation, conversion, diff, patch, redaction, and visual exports."
+        description="Open JSON subservices for formatting, conversion, comparison, analysis, and visual exports."
         @action="goTo('/flows/json')"
       />
     </div>

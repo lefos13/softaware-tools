@@ -27,54 +27,78 @@ body {
     radial-gradient(circle at 90% 10%, rgba(249, 115, 22, 0.14), transparent 24%), var(--bg);
 }
 
+/*
+  The main header now spans the full viewport width and stays compact, while
+  page content remains constrained for readability inside the route shell.
+*/
+.portal-app {
+  min-height: 100vh;
+}
+
+.portal-header {
+  width: 100%;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(8px);
+}
+
+.portal-header__inner {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0.7rem 1.1rem 0.8rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.portal-header__top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 1rem;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.portal-header__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.7rem;
+  align-items: center;
+}
+
 .portal-page {
   max-width: 1160px;
   margin: 0 auto;
-  padding: 2rem 1.1rem 3rem;
+  padding: 1rem 1.1rem 3rem;
   position: relative;
-}
-
-.hero {
-  padding: 2rem;
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  background: linear-gradient(135deg, var(--surface), var(--surface-soft));
-  box-shadow: var(--shadow);
 }
 
 .hero__badge {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--brand-strong);
 }
 
 .hero__title {
-  margin: 0.5rem 0 0;
-  font-size: clamp(1.9rem, 4vw, 3rem);
-  line-height: 1.1;
-}
-
-.hero__subtitle {
-  margin: 1rem 0 0;
-  max-width: 54ch;
-  color: var(--ink-soft);
+  margin: 0.15rem 0 0;
+  font-size: clamp(1.15rem, 2.6vw, 1.5rem);
+  line-height: 1.15;
 }
 
 .top-nav {
-  margin-top: 1rem;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.55rem;
+  gap: 0.4rem;
 }
 
 .top-nav__link {
-  padding: 0.45rem 0.85rem;
+  padding: 0.34rem 0.7rem;
   border: 1px solid var(--border);
   border-radius: 999px;
   text-decoration: none;
+  font-size: 0.86rem;
   color: var(--ink-soft);
   background: var(--surface);
   transition:
@@ -113,8 +137,9 @@ body {
 }
 
 .hero__status {
-  margin: 0.9rem 0 0;
+  margin: 0;
   font-weight: 700;
+  font-size: 0.83rem;
 }
 
 .hero__status--ok {
@@ -183,7 +208,41 @@ body {
 }
 
 .route-shell {
-  margin-top: 1.1rem;
+  margin-top: 0.7rem;
+}
+
+/*
+  Breadcrumbs are placed under the header to provide compact inner-route
+  navigation without increasing header visual weight.
+*/
+.breadcrumb {
+  margin: 0 0 0.95rem;
+  padding: 0.42rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  font-size: 0.84rem;
+}
+
+.breadcrumb__link {
+  color: var(--brand-strong);
+  text-decoration: none;
+}
+
+.breadcrumb__link:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb__sep {
+  color: #94a3b8;
+}
+
+.breadcrumb__current {
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .flow-view {
@@ -429,6 +488,21 @@ body {
   gap: 1rem;
 }
 
+/*
+  Home sections now group service families so launcher cards stay scannable
+  while preserving the same card component and responsive grid behavior.
+*/
+.service-group {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.launcher-grid--compact {
+  margin-top: 0;
+}
+
 .flow-shell {
   margin-top: 1rem;
 }
@@ -441,6 +515,50 @@ body {
 
 .json-tool-card {
   min-height: 178px;
+}
+
+/*
+  JSON subservice cards include a deterministic SVG visual keyed by tool id and
+  category to provide unique visuals without maintaining separate assets.
+*/
+.json-tool-card--with-visual {
+  align-items: start;
+}
+
+.json-tool-card__visual {
+  width: 100%;
+  border: 1px solid rgba(30, 64, 175, 0.16);
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(239, 246, 255, 0.95), rgba(248, 250, 252, 0.95));
+  padding: 0.3rem;
+}
+
+.json-tool-card__graphic {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.json-tool-card__shape {
+  fill: rgba(148, 163, 184, 0.15);
+  stroke: rgba(30, 64, 175, 0.38);
+  stroke-width: 1.6;
+}
+
+.json-tool-card__bar {
+  fill: rgba(14, 116, 144, 0.76);
+}
+
+.json-tool-card__glyph {
+  fill: none;
+  stroke: rgba(30, 41, 59, 0.84);
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.json-tool-card__dot {
+  fill: rgba(59, 130, 246, 0.82);
 }
 
 .json-workspace {
@@ -1051,8 +1169,12 @@ body {
 }
 
 @media (min-width: 760px) {
+  .portal-header__inner {
+    padding: 0.72rem 1.5rem 0.84rem;
+  }
+
   .portal-page {
-    padding: 2.3rem 1.5rem 4rem;
+    padding: 1.25rem 1.5rem 4rem;
   }
 
   .preview-grid {
@@ -1085,12 +1207,16 @@ body {
   from narrow phones up to wide desktops with a fixed 3-column launcher on larger screens.
 */
 @media (max-width: 559px) {
-  .hero {
-    padding: 1.25rem;
+  .portal-header__inner {
+    padding: 0.6rem 0.9rem 0.7rem;
   }
 
   .hero__title {
-    font-size: clamp(1.5rem, 8vw, 2rem);
+    font-size: clamp(1rem, 6vw, 1.25rem);
+  }
+
+  .portal-header__row {
+    align-items: stretch;
   }
 
   .top-nav__link {

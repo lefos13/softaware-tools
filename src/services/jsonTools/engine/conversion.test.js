@@ -44,6 +44,13 @@ describe("jsonTools conversion", () => {
     expect(json).toContain('"name": "foo"');
   });
 
+  it("serializes nested json values when converting to csv", () => {
+    const csv = convertJsonToCsv('{"person":{"name":"Alice"},"tags":["a","b"]}');
+    expect(csv).not.toContain("[object Object]");
+    expect(csv).toContain('"{""name"":""Alice""}"');
+    expect(csv).toContain('[""a"",""b""]');
+  });
+
   it("converts json <-> base64", () => {
     const encoded = convertJsonToBase64('{"a":1}');
     const decoded = convertBase64ToJson(encoded, { indent: 2 });
@@ -68,5 +75,27 @@ describe("jsonTools conversion", () => {
 
     const query = convertJsonToSqlQuery('{"id":1}', { tableName: "users", queryMode: "select" });
     expect(query).toContain("SELECT * FROM users");
+  });
+
+  it("serializes nested json values for sql insert and sql query", () => {
+    const insertSql = convertJsonToSqlInsert(
+      '{"involvedContacts":[{"name":"Alice"}],"application":{"transactionType":"issuance"}}',
+      {
+        tableName: "records",
+        formatSql: false,
+      }
+    );
+    expect(insertSql).not.toContain("[object Object]");
+    expect(insertSql).toContain("involvedContacts, application");
+    expect(insertSql).toContain('[{"name":"Alice"}]');
+    expect(insertSql).toContain('{"transactionType":"issuance"}');
+
+    const query = convertJsonToSqlQuery(
+      '{"application":{"transactionType":"issuance"},"involvedContacts":[{"name":"Alice"}]}',
+      { tableName: "records", queryMode: "select" }
+    );
+    expect(query).not.toContain("[object Object]");
+    expect(query).toContain('application = \'{"transactionType":"issuance"}\'');
+    expect(query).toContain('involvedContacts = \'[{"name":"Alice"}]\'');
   });
 });

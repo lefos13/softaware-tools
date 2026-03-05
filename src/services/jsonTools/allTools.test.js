@@ -61,22 +61,25 @@ const isVisualTool = (toolId) => toolId === "json-to-image" || toolId === "scree
 
 describe("jsonTools exhaustive verification", () => {
   const createObjectURL = vi.fn(() => "blob:mock-url");
-  const revokeObjectURL = vi.fn();
-
-  class MockImage {
-    set src(_value) {
-      setTimeout(() => this.onload?.(), 0);
-    }
-  }
 
   beforeEach(() => {
-    vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
-    vi.stubGlobal("Image", MockImage);
+    vi.stubGlobal("URL", { createObjectURL });
     vi.stubGlobal("document", {
       createElement: vi.fn(() => ({
         width: 0,
         height: 0,
-        getContext: () => ({ drawImage: vi.fn() }),
+        getContext: () => ({
+          beginPath: vi.fn(),
+          moveTo: vi.fn(),
+          lineTo: vi.fn(),
+          quadraticCurveTo: vi.fn(),
+          closePath: vi.fn(),
+          fillRect: vi.fn(),
+          fill: vi.fn(),
+          stroke: vi.fn(),
+          measureText: (text) => ({ width: String(text).length * 7 }),
+          fillText: vi.fn(),
+        }),
         toBlob: (cb) => cb(new Blob(["png"], { type: "image/png" })),
       })),
     });
@@ -85,7 +88,6 @@ describe("jsonTools exhaustive verification", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     createObjectURL.mockClear();
-    revokeObjectURL.mockClear();
   });
 
   JSON_TOOLS.forEach((tool) => {

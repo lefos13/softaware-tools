@@ -3,7 +3,7 @@
   Shared output actions avoid repeated copy/download button logic across tools
   and keep completion controls consistent within JSON workspace.
 */
-defineProps({
+const props = defineProps({
   disabled: {
     type: Boolean,
     default: false,
@@ -19,6 +19,19 @@ defineProps({
 });
 
 const emit = defineEmits(["copy", "clear"]);
+
+/*
+  Download clicks should only be blocked when there is no generated output.
+  Preventing all anchor clicks stops browser downloads even when a file is ready.
+*/
+const onDownloadClick = (event) => {
+  if (!event) {
+    return;
+  }
+  if (props.disabled || !props.outputUrl) {
+    event.preventDefault();
+  }
+};
 </script>
 
 <template>
@@ -36,7 +49,7 @@ const emit = defineEmits(["copy", "clear"]);
       :class="{ 'json-actions__download--disabled': !outputUrl || disabled }"
       :href="disabled ? '' : outputUrl"
       :download="downloadFileName"
-      @click.prevent="disabled || !outputUrl ? null : undefined"
+      @click="onDownloadClick"
     >
       Download
     </a>

@@ -1,7 +1,7 @@
 <script setup>
 /*
-  Navigation now highlights Donate as a stronger CTA while preserving route behavior.
-  This keeps support access visible without using a home launcher card.
+  Header remains compact/full-width, while route hierarchy is shown in a
+  dedicated breadcrumb bar below it for clearer inner-flow navigation.
 */
 import { computed, onBeforeUnmount, provide, ref } from "vue";
 import { useHealthCheck } from "./composables/useHealthCheck";
@@ -36,9 +36,11 @@ const navigationRoutes = computed(() =>
     (route) =>
       ![
         "pdf",
+        "pdf-services",
         "pdf-split",
         "pdf-extract-to-word",
         "image",
+        "image-services",
         "image-convert",
         "json-services",
         "json-tool",
@@ -48,9 +50,11 @@ const navigationRoutes = computed(() =>
 const pageTitle = computed(() => {
   const titles = {
     home: "Service Launcher",
+    "pdf-services": "PDF Services",
     pdf: "PDF Merge Flow",
     "pdf-split": "PDF Split Flow",
     "pdf-extract-to-word": "PDF to Word Extraction Flow",
+    "image-services": "Image Services",
     image: "Image Compression Flow",
     "image-convert": "Image Convert Flow",
     "json-services": "JSON Services",
@@ -62,33 +66,71 @@ const pageTitle = computed(() => {
 
   return titles[activeRouteName.value] || "Softaware Tools";
 });
-const pageSummary = computed(() => {
-  const summaries = {
-    home: "Start here to pick a service. Each tool has its own guided workflow and a clear final download step.",
-    pdf: "Merge multiple PDF files into one document, with ordering and rotation controls before you generate the final file.",
-    "pdf-split":
-      "Split one PDF into smaller outputs using ranges, selected pages, repeated chunks, or custom named groups.",
-    "pdf-extract-to-word":
-      "Extract text from regular or scanned PDFs and produce an editable Word document with OCR-aware options.",
-    image:
-      "Compress one or many images to reduce file size while balancing quality and performance for your use case.",
-    "image-convert":
-      "Convert images into different formats and optionally remove background for transparent-ready assets.",
-    "json-services":
-      "Browse JSON mini tools for formatting, conversion, comparison, analysis, protection, and visual exports.",
-    "json-tool":
-      "Run the selected JSON mini tool with dynamic options, dual-input support where needed, and instant downloadable output.",
-    contract:
-      "Review the live OpenAPI contract so front-end and back-end request/response structures stay aligned.",
-    "admin-reports":
-      "Inspect operational and task reports to monitor system behavior, outcomes, and troubleshooting details.",
-    donate:
-      "Support ongoing maintenance and reliability of these services through a secure PayPal contribution.",
+
+/*
+  Breadcrumbs provide one-click upward navigation from inner routes while
+  keeping the top header minimal and visually stable.
+*/
+const breadcrumbs = computed(() => {
+  const byName = {
+    home: [{ label: "Home", path: "/" }],
+    "pdf-services": [
+      { label: "Home", path: "/" },
+      { label: "PDF Services", path: "/flows/pdf-services" },
+    ],
+    pdf: [
+      { label: "Home", path: "/" },
+      { label: "PDF Services", path: "/flows/pdf-services" },
+      { label: "PDF Merge", path: "/flows/pdf" },
+    ],
+    "pdf-split": [
+      { label: "Home", path: "/" },
+      { label: "PDF Services", path: "/flows/pdf-services" },
+      { label: "PDF Split", path: "/flows/pdf-split" },
+    ],
+    "pdf-extract-to-word": [
+      { label: "Home", path: "/" },
+      { label: "PDF Services", path: "/flows/pdf-services" },
+      { label: "PDF to Word", path: "/flows/pdf-extract-to-word" },
+    ],
+    "image-services": [
+      { label: "Home", path: "/" },
+      { label: "Image Services", path: "/flows/image-services" },
+    ],
+    image: [
+      { label: "Home", path: "/" },
+      { label: "Image Services", path: "/flows/image-services" },
+      { label: "Image Compression", path: "/flows/image" },
+    ],
+    "image-convert": [
+      { label: "Home", path: "/" },
+      { label: "Image Services", path: "/flows/image-services" },
+      { label: "Image Convert", path: "/flows/image-convert" },
+    ],
+    "json-services": [
+      { label: "Home", path: "/" },
+      { label: "JSON Services", path: "/flows/json" },
+    ],
+    "json-tool": [
+      { label: "Home", path: "/" },
+      { label: "JSON Services", path: "/flows/json" },
+      { label: "Tool", path: currentPath.value },
+    ],
+    contract: [
+      { label: "Home", path: "/" },
+      { label: "API Contract", path: "/contract/openapi" },
+    ],
+    "admin-reports": [
+      { label: "Home", path: "/" },
+      { label: "Admin Reports", path: "/admin/reports" },
+    ],
+    donate: [
+      { label: "Home", path: "/" },
+      { label: "Donate", path: "/donate" },
+    ],
   };
 
-  return (
-    summaries[activeRouteName.value] || "Choose a tool and continue with a focused, guided flow."
-  );
+  return byName[activeRouteName.value] || [{ label: "Home", path: "/" }];
 });
 
 const onNavigate = (path, event) => {
@@ -102,35 +144,57 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="portal-page">
-    <header class="hero">
-      <p class="hero__badge">Softaware Tools API Client</p>
-      <h1 class="hero__title">{{ pageTitle }}</h1>
-      <p class="hero__subtitle">{{ pageSummary }}</p>
+  <div class="portal-app">
+    <header class="portal-header">
+      <div class="portal-header__inner">
+        <div class="portal-header__top">
+          <div>
+            <p class="hero__badge">Softaware Tools API Client</p>
+            <h1 class="hero__title">{{ pageTitle }}</h1>
+          </div>
+          <p class="hero__status" :class="isHealthy ? 'hero__status--ok' : 'hero__status--down'">
+            API guard: {{ checking ? "checking..." : status }}
+            <span v-if="lastCheckedAt"> · {{ new Date(lastCheckedAt).toLocaleTimeString() }}</span>
+          </p>
+        </div>
 
-      <nav class="top-nav" aria-label="Portal navigation">
-        <a
-          v-for="route in navigationRoutes"
-          :key="route.path"
-          :href="route.path"
-          class="top-nav__link"
-          :class="{
-            'top-nav__link--active': currentPath === route.path,
-            'top-nav__link--donate': route.name === 'donate',
-          }"
-          @click="onNavigate(route.path, $event)"
-        >
-          {{ route.label }}
-        </a>
-      </nav>
-
-      <p class="hero__status" :class="isHealthy ? 'hero__status--ok' : 'hero__status--down'">
-        API guard: {{ checking ? "checking..." : status }}
-        <span v-if="lastCheckedAt"> · {{ new Date(lastCheckedAt).toLocaleTimeString() }}</span>
-      </p>
+        <div class="portal-header__row">
+          <nav class="top-nav" aria-label="Portal navigation">
+            <a
+              v-for="route in navigationRoutes"
+              :key="route.path"
+              :href="route.path"
+              class="top-nav__link"
+              :class="{
+                'top-nav__link--active': currentPath === route.path,
+                'top-nav__link--donate': route.name === 'donate',
+              }"
+              @click="onNavigate(route.path, $event)"
+            >
+              {{ route.label }}
+            </a>
+          </nav>
+        </div>
+      </div>
     </header>
 
-    <main class="route-shell">
+    <main class="portal-page route-shell">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <template v-for="(crumb, index) in breadcrumbs" :key="`${crumb.path}-${index}`">
+          <a
+            v-if="index < breadcrumbs.length - 1"
+            :href="crumb.path"
+            class="breadcrumb__link"
+            @click="onNavigate(crumb.path, $event)"
+          >
+            {{ crumb.label }}
+          </a>
+          <span v-else class="breadcrumb__current" aria-current="page">{{ crumb.label }}</span>
+          <span v-if="index < breadcrumbs.length - 1" class="breadcrumb__sep" aria-hidden="true">
+            /
+          </span>
+        </template>
+      </nav>
       <component :is="currentComponent" />
     </main>
 

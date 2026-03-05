@@ -8,11 +8,13 @@ import DonateView from "../views/DonateView.vue";
 import HomeView from "../views/HomeView.vue";
 import ImageConvertFlowView from "../views/ImageConvertFlowView.vue";
 import ImageFlowView from "../views/ImageFlowView.vue";
+import ImageServicesView from "../views/ImageServicesView.vue";
 import JsonServicesView from "../views/JsonServicesView.vue";
 import JsonToolWorkspaceView from "../views/JsonToolWorkspaceView.vue";
 import OpenApiView from "../views/OpenApiView.vue";
 import PdfFlowView from "../views/PdfFlowView.vue";
 import PdfExtractToWordFlowView from "../views/PdfExtractToWordFlowView.vue";
+import PdfServicesView from "../views/PdfServicesView.vue";
 import PdfSplitFlowView from "../views/PdfSplitFlowView.vue";
 import { JSON_TOOL_BY_ID } from "../services/jsonTools/registry";
 
@@ -24,6 +26,12 @@ const staticRoutes = [
     name: "home",
     label: "Home",
     component: HomeView,
+  },
+  {
+    path: "/flows/pdf-services",
+    name: "pdf-services",
+    label: "PDF Services",
+    component: PdfServicesView,
   },
   {
     path: "/flows/pdf",
@@ -42,6 +50,12 @@ const staticRoutes = [
     name: "pdf-extract-to-word",
     label: "PDF to Word",
     component: PdfExtractToWordFlowView,
+  },
+  {
+    path: "/flows/image-services",
+    name: "image-services",
+    label: "Image Services",
+    component: ImageServicesView,
   },
   {
     path: "/flows/image",

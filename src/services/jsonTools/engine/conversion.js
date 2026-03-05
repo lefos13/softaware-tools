@@ -90,7 +90,38 @@ export const convertXmlToJson = (input, options) => {
 export const convertJsonToCsv = (input) => {
   const parsed = parseJsonInput(input);
   const rows = Array.isArray(parsed) ? parsed : [parsed];
-  return Papa.unparse(rows, { header: true });
+
+  /*
+    CSV cell values must be primitives. Nested JSON structures are serialized so
+    exported rows remain readable and do not collapse into "[object Object]".
+  */
+  const toCsvCellValue = (value) => {
+    if (value === undefined) {
+      return "";
+    }
+
+    if (value === null) {
+      return null;
+    }
+
+    if (typeof value === "object") {
+      return JSON.stringify(value);
+    }
+
+    return value;
+  };
+
+  const normalizedRows = rows.map((row) => {
+    if (!row || typeof row !== "object" || Array.isArray(row)) {
+      return { value: toCsvCellValue(row) };
+    }
+
+    return Object.fromEntries(
+      Object.entries(row).map(([key, value]) => [key, toCsvCellValue(value)])
+    );
+  });
+
+  return Papa.unparse(normalizedRows, { header: true });
 };
 
 export const convertCsvToJson = (input, options) => {
@@ -137,6 +168,14 @@ const quoteSql = (value) => {
 
   if (typeof value === "boolean") {
     return value ? "TRUE" : "FALSE";
+  }
+
+  /*
+    Nested JSON values cannot be represented as native SQL scalar literals.
+    They are serialized to JSON text so object/array data remains intact.
+  */
+  if (typeof value === "object") {
+    return `'${JSON.stringify(value).replace(/'/g, "''")}'`;
   }
 
   return `'${String(value).replace(/'/g, "''")}'`;
