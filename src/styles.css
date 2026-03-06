@@ -65,6 +65,14 @@ body {
   align-items: center;
 }
 
+.portal-header__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .portal-page {
   max-width: 1160px;
   margin: 0 auto;
@@ -148,6 +156,25 @@ body {
 
 .hero__status--down {
   color: #991b1b;
+}
+
+.language-toggle {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.language-toggle__label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.language-toggle__button {
+  padding: 0.45rem 0.8rem;
+  font-size: 0.84rem;
 }
 
 .button {

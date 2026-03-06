@@ -5,14 +5,25 @@
 */
 import { computed, inject, ref } from "vue";
 import JsonToolCard from "../components/json/JsonToolCard.vue";
+import { localizeJsonTool, usePortalI18n } from "../i18n";
 import { JSON_TOOLS, JSON_TOOL_CATEGORIES } from "../services/jsonTools/registry";
 
 const portalRouter = inject("portalRouter");
+const { t, locale } = usePortalI18n();
 const searchTerm = ref("");
+const localizedTools = computed(() =>
+  JSON_TOOLS.map((tool) => localizeJsonTool(tool, { t, locale: locale.value }))
+);
+const localizedCategories = computed(() =>
+  JSON_TOOL_CATEGORIES.map((category) => ({
+    source: category,
+    label: t(`json.categories.${category}`, {}, category),
+  }))
+);
 
 const groupedTools = computed(() => {
   const query = searchTerm.value.trim().toLowerCase();
-  const filtered = JSON_TOOLS.filter((tool) => {
+  const filtered = localizedTools.value.filter((tool) => {
     if (!query) {
       return true;
     }
@@ -24,10 +35,12 @@ const groupedTools = computed(() => {
     );
   });
 
-  return JSON_TOOL_CATEGORIES.map((category) => ({
-    category,
-    items: filtered.filter((tool) => tool.category === category),
-  })).filter((group) => group.items.length > 0);
+  return localizedCategories.value
+    .map((category) => ({
+      category: category.label,
+      items: filtered.filter((tool) => tool.category === category.label),
+    }))
+    .filter((group) => group.items.length > 0);
 });
 
 const openTool = (toolId) => {
@@ -38,24 +51,23 @@ const openTool = (toolId) => {
 <template>
   <section class="flow-view" aria-label="JSON services launcher">
     <div class="section-head section-head--spaced">
-      <h2 class="section-head__title">JSON Services</h2>
-      <p class="section-head__subtitle">
-        Select a JSON mini tool for formatting, conversion, analysis, compare, structure, security,
-        and visual export workflows.
-      </p>
+      <h2 class="section-head__title">{{ t("json.title") }}</h2>
+      <p class="section-head__subtitle">{{ t("json.subtitle") }}</p>
     </div>
 
     <article class="tool-card">
       <label>
-        Search tools
+        {{ t("json.searchTools") }}
         <input
           v-model="searchTerm"
           type="text"
           class="rotation-select"
-          placeholder="Search by name, category, or description"
+          :placeholder="t('json.searchPlaceholder')"
         />
       </label>
-      <p class="tool-card__description">Available tools: {{ JSON_TOOLS.length }}</p>
+      <p class="tool-card__description">
+        {{ t("app.availableTools") }}: {{ localizedTools.length }}
+      </p>
     </article>
 
     <section v-for="group in groupedTools" :key="group.category" class="flow-view">

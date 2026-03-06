@@ -1,8 +1,10 @@
 <script setup>
 /*
-  Side-by-side input viewer helps compare-style tools keep both source documents
-  visible in the shared workspace without introducing separate pages.
+  Comparison pane headings now use the shared translation store so the JSON
+  workspace reads naturally in both supported languages.
 */
+import { usePortalI18n } from "../../i18n";
+
 defineProps({
   primaryInput: {
     type: String,
@@ -13,16 +15,18 @@ defineProps({
     default: "",
   },
 });
+
+const { t } = usePortalI18n();
 </script>
 
 <template>
   <div class="json-diff-viewer">
     <article class="json-diff-viewer__pane">
-      <h4 class="json-diff-viewer__title">Primary Input</h4>
+      <h4 class="json-diff-viewer__title">{{ t("json.workspace.primaryInput") }}</h4>
       <pre class="report-json report-json--nested">{{ primaryInput }}</pre>
     </article>
     <article class="json-diff-viewer__pane">
-      <h4 class="json-diff-viewer__title">Secondary Input</h4>
+      <h4 class="json-diff-viewer__title">{{ t("json.workspace.secondaryInput") }}</h4>
       <pre class="report-json report-json--nested">{{ secondaryInput }}</pre>
     </article>
   </div>

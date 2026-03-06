@@ -6,6 +6,7 @@
 import { computed, ref, watch } from "vue";
 import SuccessThankYouModal from "../SuccessThankYouModal.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
+import { usePortalI18n } from "../../i18n";
 import { usePdfExtractToWord } from "../../composables/usePdfExtractToWord";
 
 const props = defineProps({
@@ -18,6 +19,7 @@ const props = defineProps({
     required: true,
   },
 });
+const { t } = usePortalI18n();
 
 const {
   file,
@@ -65,87 +67,89 @@ const closeSuccessModal = () => {
 <template>
   <section aria-labelledby="pdf-extract-endpoint">
     <div class="section-head section-head--spaced">
-      <h2 id="pdf-extract-endpoint" class="section-head__title">PDF to Word Extraction Flow</h2>
-      <p class="section-head__subtitle">
-        Extract text from regular and scanned PDFs into a Word file.
-      </p>
+      <h2 id="pdf-extract-endpoint" class="section-head__title">
+        {{ t("tools.pdfToWord.title") }}
+      </h2>
+      <p class="section-head__subtitle">{{ t("tools.pdfToWord.subtitle") }}</p>
     </div>
 
     <div class="tool-card">
       <div class="merge-step">
-        <p class="merge-step__title">Step 1: Select one PDF</p>
+        <p class="merge-step__title">{{ t("tools.pdfToWord.step1") }}</p>
         <input type="file" accept="application/pdf" @change="onFilesSelected" />
-        <p class="tool-card__description">Selected: {{ file ? file.name : "None" }}</p>
         <p class="tool-card__description">
-          Upload limits: exactly 1 file, max {{ MAX_UPLOAD_FILES }} files allowed globally,
-          {{ MAX_FILE_SIZE_MB }} MB each, {{ MAX_TOTAL_UPLOAD_MB }} MB total.
+          {{ t("tools.common.selected", { value: file ? file.name : t("app.none") }) }}
+        </p>
+        <p class="tool-card__description">
+          {{
+            t("app.singleFileUploadLimits", {
+              files: MAX_UPLOAD_FILES,
+              fileSize: MAX_FILE_SIZE_MB,
+              totalSize: MAX_TOTAL_UPLOAD_MB,
+            })
+          }}
         </p>
       </div>
 
       <div v-if="filePreviewUrl" class="merge-step">
-        <p class="merge-step__title">Source preview</p>
+        <p class="merge-step__title">{{ t("tools.pdfToWord.sourcePreview") }}</p>
         <div class="pdf-preview-shell pdf-preview-shell--split">
           <iframe
             :src="`${filePreviewUrl}#page=1&toolbar=0&navpanes=0&scrollbar=0`"
-            title="Source PDF preview"
+            :title="t('tools.pdfToWord.sourcePreview')"
             class="pdf-preview"
           />
         </div>
       </div>
 
       <div class="merge-step">
-        <p class="merge-step__title">Step 2: Text reading options</p>
+        <p class="merge-step__title">{{ t("tools.pdfToWord.step2") }}</p>
 
         <label>
-          Document language
+          {{ t("tools.pdfToWord.documentLanguage") }}
           <select v-model="languageMode" class="rotation-select" :disabled="loading">
-            <option value="en">English</option>
-            <option value="gr">Greek</option>
-            <option value="both">English + Greek</option>
+            <option value="en">{{ t("tools.extractionLanguages.en") }}</option>
+            <option value="gr">{{ t("tools.extractionLanguages.gr") }}</option>
+            <option value="both">{{ t("tools.extractionLanguages.both") }}</option>
           </select>
         </label>
-        <p class="tool-card__description">
-          Pick the language your PDF uses so scanned text is recognized more accurately.
-        </p>
+        <p class="tool-card__description">{{ t("tools.pdfToWord.languageHelp") }}</p>
 
         <label>
-          Reading quality
+          {{ t("tools.pdfToWord.readingQuality") }}
           <select v-model="extractionQualityMode" class="rotation-select" :disabled="loading">
-            <option value="fast">Quick (fastest)</option>
-            <option value="quality">Better accuracy</option>
-            <option value="maximum">Maximum accuracy (slowest)</option>
-            <option value="ultra">Best possible accuracy (slowest)</option>
+            <option value="fast">{{ t("tools.extractionQuality.fast") }}</option>
+            <option value="quality">{{ t("tools.extractionQuality.quality") }}</option>
+            <option value="maximum">{{ t("tools.extractionQuality.maximum") }}</option>
+            <option value="ultra">{{ t("tools.extractionQuality.ultra") }}</option>
           </select>
         </label>
-        <p class="tool-card__description">
-          For scanned or difficult PDFs, choose Maximum or Best possible accuracy for the strongest
-          text detection.
-        </p>
+        <p class="tool-card__description">{{ t("tools.pdfToWord.qualityHelp") }}</p>
 
         <div class="advanced-grid">
           <label class="advanced-checkbox">
             <input v-model="includePageBreaks" type="checkbox" :disabled="loading" />
-            Keep page breaks in the Word file
+            {{ t("tools.pdfToWord.keepPageBreaks") }}
           </label>
           <label class="advanced-checkbox">
             <input v-model="includeOcrUsageNotes" type="checkbox" :disabled="loading" />
-            Add a short note on pages where scanned-text reading was used
+            {{ t("tools.pdfToWord.addOcrNotes") }}
           </label>
         </div>
       </div>
 
       <div class="merge-step">
-        <p class="merge-step__title">Step 3: Create Word file</p>
+        <p class="merge-step__title">{{ t("tools.pdfToWord.step3") }}</p>
         <button
           type="button"
           class="button button--primary"
           :disabled="!canExtract"
           @click="extract(props.apiBaseUrl)"
         >
-          {{ loading ? "Creating..." : "Create Word File" }}
+          {{ loading ? t("tools.pdfToWord.creating") : t("tools.pdfToWord.create") }}
         </button>
         <p v-if="!apiHealthy" class="tool-card__description tool-card__description--error">
-          This action is unavailable while the server is offline.
+          {{ t("app.serverOfflineAction") }}
         </p>
 
         <div v-if="loading" class="progress-panel" aria-live="polite">
@@ -162,18 +166,18 @@ const closeSuccessModal = () => {
       <p v-if="error" class="tool-card__description tool-card__description--error">{{ error }}</p>
       <p v-if="message" class="tool-card__description">{{ message }}</p>
       <p v-if="requestId" class="tool-card__description">
-        Request reference: <code>{{ requestId }}</code>
+        {{ t("tools.common.requestReference") }}: <code>{{ requestId }}</code>
       </p>
       <p v-if="resultUrl && !showSuccessModal" class="tool-card__description">
-        Your file is ready.
+        {{ t("tools.pdfToWord.ready") }}
         <button type="button" class="button button--secondary" @click="showSuccessModal = true">
-          Open download modal
+          {{ t("app.openDownloadModal") }}
         </button>
       </p>
       <SuccessThankYouModal
         :visible="showSuccessModal"
-        title="Word file is ready"
-        description="Download your extracted file and support the project if it helped you."
+        :title="t('tools.pdfToWord.modalTitle')"
+        :description="t('tools.pdfToWord.modalDescription')"
         :download-url="resultUrl"
         :download-name="resultName"
         @close="closeSuccessModal"

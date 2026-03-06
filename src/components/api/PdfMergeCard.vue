@@ -6,6 +6,7 @@
 import { computed, ref, watch } from "vue";
 import SuccessThankYouModal from "../SuccessThankYouModal.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
+import { usePortalI18n } from "../../i18n";
 import { usePdfMerge } from "../../composables/usePdfMerge";
 
 const props = defineProps({
@@ -18,6 +19,7 @@ const props = defineProps({
     required: true,
   },
 });
+const { t } = usePortalI18n();
 
 const {
   files,
@@ -73,23 +75,30 @@ const formatFileSize = (size) => {
 <template>
   <section aria-labelledby="pdf-merge-endpoint">
     <div class="section-head section-head--spaced">
-      <h2 id="pdf-merge-endpoint" class="section-head__title">PDF Merge Flow</h2>
-      <p class="section-head__subtitle">Combine multiple PDFs into one final document.</p>
+      <h2 id="pdf-merge-endpoint" class="section-head__title">{{ t("tools.pdfMerge.title") }}</h2>
+      <p class="section-head__subtitle">{{ t("tools.pdfMerge.subtitle") }}</p>
     </div>
 
     <div class="tool-card">
       <div class="merge-step">
-        <p class="merge-step__title">Step 1: Select PDFs</p>
+        <p class="merge-step__title">{{ t("tools.pdfMerge.step1") }}</p>
         <input type="file" accept="application/pdf" multiple @change="onFilesSelected" />
-        <p class="tool-card__description">Selected files: {{ files.length }}</p>
         <p class="tool-card__description">
-          Upload limits: max {{ MAX_UPLOAD_FILES }} files, {{ MAX_FILE_SIZE_MB }} MB each,
-          {{ MAX_TOTAL_UPLOAD_MB }} MB total.
+          {{ t("tools.pdfMerge.selectedFiles", { count: files.length }) }}
+        </p>
+        <p class="tool-card__description">
+          {{
+            t("app.uploadLimits", {
+              files: MAX_UPLOAD_FILES,
+              fileSize: MAX_FILE_SIZE_MB,
+              totalSize: MAX_TOTAL_UPLOAD_MB,
+            })
+          }}
         </p>
       </div>
 
       <div v-if="files.length" class="merge-step">
-        <p class="merge-step__title">Step 2-3: Preview, order, and rotation</p>
+        <p class="merge-step__title">{{ t("tools.pdfMerge.step2") }}</p>
         <div class="preview-grid">
           <article
             v-for="(entry, index) in files"
@@ -103,7 +112,9 @@ const formatFileSize = (size) => {
             @drop="dropBefore(entry.id)"
           >
             <div class="preview-card__head">
-              <p class="preview-card__order">Order {{ index + 1 }}</p>
+              <p class="preview-card__order">
+                {{ t("tools.pdfMerge.order", { index: index + 1 }) }}
+              </p>
               <p class="preview-card__name" :title="entry.name">{{ entry.name }}</p>
               <p class="preview-card__meta">{{ formatFileSize(entry.size) }}</p>
             </div>
@@ -111,7 +122,7 @@ const formatFileSize = (size) => {
             <div class="pdf-preview-shell">
               <iframe
                 :src="`${entry.previewUrl}#page=1&toolbar=0&navpanes=0&scrollbar=0`"
-                :title="`Preview ${entry.name}`"
+                :title="t('tools.pdfMerge.previewTitle', { name: entry.name })"
                 class="pdf-preview"
                 :style="{ transform: `rotate(${entry.rotation}deg)` }"
               />
@@ -122,7 +133,7 @@ const formatFileSize = (size) => {
                 type="button"
                 class="button button--icon"
                 :disabled="index === 0 || loading"
-                aria-label="Move up"
+                :aria-label="t('tools.pdfMerge.moveUp')"
                 @click="moveFile(entry.id, 'up')"
               >
                 ↑
@@ -131,13 +142,13 @@ const formatFileSize = (size) => {
                 type="button"
                 class="button button--icon"
                 :disabled="index === files.length - 1 || loading"
-                aria-label="Move down"
+                :aria-label="t('tools.pdfMerge.moveDown')"
                 @click="moveFile(entry.id, 'down')"
               >
                 ↓
               </button>
               <label>
-                Rotate pages
+                {{ t("tools.pdfMerge.rotatePages") }}
                 <select
                   class="rotation-select"
                   :disabled="loading"
@@ -156,17 +167,17 @@ const formatFileSize = (size) => {
       </div>
 
       <div class="merge-step">
-        <p class="merge-step__title">Step 4: Create merged file</p>
+        <p class="merge-step__title">{{ t("tools.pdfMerge.step4") }}</p>
         <button
           type="button"
           class="button button--primary"
           :disabled="!canMerge"
           @click="merge(props.apiBaseUrl)"
         >
-          {{ loading ? "Creating..." : "Create Merged PDF" }}
+          {{ loading ? t("tools.pdfMerge.creating") : t("tools.pdfMerge.create") }}
         </button>
         <p v-if="!apiHealthy" class="tool-card__description tool-card__description--error">
-          This action is unavailable while the server is offline.
+          {{ t("app.serverOfflineAction") }}
         </p>
 
         <div v-if="loading" class="progress-panel" aria-live="polite">
@@ -183,18 +194,18 @@ const formatFileSize = (size) => {
       <p v-if="error" class="tool-card__description tool-card__description--error">{{ error }}</p>
       <p v-if="message" class="tool-card__description">{{ message }}</p>
       <p v-if="requestId" class="tool-card__description">
-        Request reference: <code>{{ requestId }}</code>
+        {{ t("tools.common.requestReference") }}: <code>{{ requestId }}</code>
       </p>
       <p v-if="fileUrl && !showSuccessModal" class="tool-card__description">
-        Your merged file is ready.
+        {{ t("tools.pdfMerge.ready") }}
         <button type="button" class="button button--secondary" @click="showSuccessModal = true">
-          Open download modal
+          {{ t("app.openDownloadModal") }}
         </button>
       </p>
       <SuccessThankYouModal
         :visible="showSuccessModal"
-        title="Merged PDF is ready"
-        description="Download your merged file and support the project if it helped you."
+        :title="t('tools.pdfMerge.modalTitle')"
+        :description="t('tools.pdfMerge.modalDescription')"
         :download-url="fileUrl"
         :download-name="fileName"
         @close="closeSuccessModal"

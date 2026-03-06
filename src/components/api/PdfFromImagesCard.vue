@@ -4,12 +4,14 @@
   direct download, covering a frequent admin/document assembly use case.
 */
 import { computed, ref } from "vue";
+import { usePortalI18n } from "../../i18n";
 import { pdfFromImages } from "../../services/pdfService";
 
 const props = defineProps({
   apiBaseUrl: { type: String, required: true },
   apiHealthy: { type: Boolean, required: true },
 });
+const { t } = usePortalI18n();
 
 const files = ref([]);
 const loading = ref(false);
@@ -42,7 +44,7 @@ const run = async () => {
   error.value = "";
 
   if (files.value.length === 0) {
-    error.value = "Select one or more images first.";
+    error.value = t("tools.errors.selectImagesFirst");
     return;
   }
 
@@ -54,7 +56,8 @@ const run = async () => {
     message.value = result.message;
     requestId.value = result.requestId;
   } catch (runError) {
-    error.value = runError instanceof Error ? runError.message : "Images to PDF request failed";
+    error.value =
+      runError instanceof Error ? runError.message : t("tools.errors.imagesToPdfFailed");
   } finally {
     loading.value = false;
   }
@@ -64,31 +67,35 @@ const run = async () => {
 <template>
   <section aria-label="PDF from images">
     <div class="section-head section-head--spaced">
-      <h2 class="section-head__title">Images to PDF</h2>
-      <p class="section-head__subtitle">Convert one or more images into a single PDF document.</p>
+      <h2 class="section-head__title">{{ t("tools.pdfFromImages.title") }}</h2>
+      <p class="section-head__subtitle">{{ t("tools.pdfFromImages.subtitle") }}</p>
     </div>
 
     <article class="tool-card">
       <div class="merge-step">
-        <p class="merge-step__title">Source images</p>
+        <p class="merge-step__title">{{ t("tools.pdfFromImages.sourceImages") }}</p>
         <input type="file" accept="image/*" multiple @change="onFilesSelected" />
-        <p class="tool-card__description">Selected images: {{ files.length }}</p>
+        <p class="tool-card__description">
+          {{ t("tools.pdfFromImages.selectedImages", { count: files.length }) }}
+        </p>
       </div>
 
       <div class="merge-step">
         <button type="button" class="button button--primary" :disabled="!canRun" @click="run">
-          {{ loading ? "Generating..." : "Generate PDF" }}
+          {{ loading ? t("tools.pdfFromImages.generating") : t("tools.pdfFromImages.generate") }}
         </button>
       </div>
 
       <p v-if="error" class="tool-card__description tool-card__description--error">{{ error }}</p>
       <p v-if="message" class="tool-card__description">{{ message }}</p>
       <p v-if="requestId" class="tool-card__description">
-        Request reference: <code>{{ requestId }}</code>
+        {{ t("tools.common.requestReference") }}: <code>{{ requestId }}</code>
       </p>
       <p v-if="outputUrl" class="tool-card__description">
-        Ready:
-        <a :href="outputUrl" :download="outputName">Download {{ outputName }}</a>
+        {{ t("app.readyPrefix") }}:
+        <a :href="outputUrl" :download="outputName">{{
+          t("tools.common.download", { name: outputName })
+        }}</a>
       </p>
     </article>
   </section>

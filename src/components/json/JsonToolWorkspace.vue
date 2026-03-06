@@ -1,11 +1,12 @@
 <script setup>
 /*
-  Reusable JSON workspace renders dynamic option controls and unified I/O panels
-  so all mini tools can run inside one consistent interaction model.
+  Shared JSON workspace now uses the portal translation store so generic
+  controls, placeholders, and output actions can switch languages centrally.
 */
 import { computed } from "vue";
 import JsonDiffViewer from "./JsonDiffViewer.vue";
 import JsonOutputDownloadBar from "./JsonOutputDownloadBar.vue";
+import { usePortalI18n } from "../../i18n";
 import { useJsonToolRunner } from "../../composables/useJsonToolRunner";
 
 const props = defineProps({
@@ -15,6 +16,7 @@ const props = defineProps({
   },
 });
 const toolRef = computed(() => props.tool);
+const { t } = usePortalI18n();
 
 const {
   primaryInput,
@@ -68,10 +70,10 @@ const onCopy = async () => {
     <div class="json-workspace__controls">
       <label class="advanced-checkbox">
         <input v-model="autoRun" type="checkbox" />
-        Auto-run on change
+        {{ t("json.workspace.autoRun") }}
       </label>
       <button type="button" class="button button--secondary" @click="resetOptions">
-        Reset options
+        {{ t("json.workspace.resetOptions") }}
       </button>
       <button
         v-if="hasSecondaryInput"
@@ -79,7 +81,7 @@ const onCopy = async () => {
         class="button button--secondary"
         @click="swapInputs"
       >
-        Swap inputs
+        {{ t("json.workspace.swapInputs") }}
       </button>
       <button
         type="button"
@@ -87,18 +89,18 @@ const onCopy = async () => {
         :disabled="loading"
         @click="runTool({ force: true })"
       >
-        {{ loading ? "Running..." : "Run tool" }}
+        {{ loading ? t("json.workspace.running") : t("json.workspace.runTool") }}
       </button>
     </div>
 
     <div class="json-workspace__grid">
       <div class="merge-step">
-        <p class="merge-step__title">Primary Input</p>
+        <p class="merge-step__title">{{ t("json.workspace.primaryInput") }}</p>
         <textarea
           v-model="primaryInput"
           class="json-textarea"
           rows="14"
-          :placeholder="tool.inputLabel || 'Paste JSON or source text here'"
+          :placeholder="tool.inputLabel || t('json.workspace.inputPlaceholder')"
         />
         <input
           type="file"
@@ -108,12 +110,12 @@ const onCopy = async () => {
       </div>
 
       <div v-if="hasSecondaryInput" class="merge-step">
-        <p class="merge-step__title">Secondary Input</p>
+        <p class="merge-step__title">{{ t("json.workspace.secondaryInput") }}</p>
         <textarea
           v-model="secondaryInput"
           class="json-textarea"
           rows="14"
-          :placeholder="tool.secondaryInputLabel || 'Paste secondary JSON input here'"
+          :placeholder="tool.secondaryInputLabel || t('json.workspace.secondaryInputPlaceholder')"
         />
         <input
           type="file"
@@ -124,7 +126,7 @@ const onCopy = async () => {
     </div>
 
     <div v-if="tool.optionsSchema.length > 0" class="merge-step">
-      <p class="merge-step__title">Options</p>
+      <p class="merge-step__title">{{ t("json.workspace.options") }}</p>
       <div class="advanced-grid">
         <label v-for="field in tool.optionsSchema" :key="field.key">
           {{ field.label }}
@@ -153,19 +155,19 @@ const onCopy = async () => {
           </select>
           <span v-else-if="field.type === 'checkbox'" class="advanced-checkbox">
             <input v-model="options[field.key]" type="checkbox" />
-            Enabled
+            {{ t("json.workspace.enabled") }}
           </span>
         </label>
       </div>
     </div>
 
     <div v-if="hasSecondaryInput" class="merge-step">
-      <p class="merge-step__title">Input Comparison</p>
+      <p class="merge-step__title">{{ t("json.workspace.inputComparison") }}</p>
       <JsonDiffViewer :primary-input="primaryInput" :secondary-input="secondaryInput" />
     </div>
 
     <div class="merge-step">
-      <p class="merge-step__title">Output</p>
+      <p class="merge-step__title">{{ t("json.workspace.output") }}</p>
       <p v-if="error" class="tool-card__description tool-card__description--error">
         <strong>{{ error.code }}</strong
         >: {{ error.message }}
@@ -175,7 +177,7 @@ const onCopy = async () => {
       <img
         v-if="tool.outputKind === 'visual' && outputUrl"
         :src="outputUrl"
-        alt="Generated JSON visual output"
+        :alt="t('json.workspace.generatedVisualAlt')"
         class="json-visual-output"
       />
       <textarea v-else v-model="outputText" class="json-textarea" rows="14" readonly />

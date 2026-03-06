@@ -6,6 +6,7 @@
 import { computed, ref, watch } from "vue";
 import SuccessThankYouModal from "../SuccessThankYouModal.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
+import { usePortalI18n } from "../../i18n";
 import { useImageConversion } from "../../composables/useImageConversion";
 
 const props = defineProps({
@@ -18,6 +19,7 @@ const props = defineProps({
     required: true,
   },
 });
+const { t } = usePortalI18n();
 
 const {
   files,
@@ -120,54 +122,59 @@ const closeSuccessModal = () => {
 <template>
   <section aria-labelledby="image-convert-endpoint">
     <div class="section-head section-head--spaced">
-      <h2 id="image-convert-endpoint" class="section-head__title">Image Convert Flow</h2>
-      <p class="section-head__subtitle">
-        Convert images to another format and optionally remove background.
-      </p>
+      <h2 id="image-convert-endpoint" class="section-head__title">
+        {{ t("tools.imageConvert.title") }}
+      </h2>
+      <p class="section-head__subtitle">{{ t("tools.imageConvert.subtitle") }}</p>
     </div>
 
     <div class="tool-card">
       <div class="merge-step">
-        <p class="merge-step__title">Step 1: Select images</p>
+        <p class="merge-step__title">{{ t("tools.imageConvert.step1") }}</p>
         <input
           type="file"
           accept="image/jpeg,image/png,image/webp,image/avif,image/gif,image/tiff"
           multiple
           @change="onFilesSelected"
         />
-        <p class="tool-card__description">Selected files: {{ files.length }}</p>
+        <p class="tool-card__description">{{ t("app.selectedFiles") }}: {{ files.length }}</p>
         <p class="tool-card__description">
-          Upload limits: max {{ MAX_UPLOAD_FILES }} files, {{ MAX_FILE_SIZE_MB }} MB each,
-          {{ MAX_TOTAL_UPLOAD_MB }} MB total.
+          {{
+            t("app.uploadLimits", {
+              files: MAX_UPLOAD_FILES,
+              fileSize: MAX_FILE_SIZE_MB,
+              totalSize: MAX_TOTAL_UPLOAD_MB,
+            })
+          }}
         </p>
         <p v-if="conversionOptions.transparentBackground" class="tool-card__description">
-          Transparent background mode requires exactly one uploaded image.
+          {{ t("tools.imageConvert.transparentNeedsOne") }}
         </p>
         <p
           v-if="conversionOptions.transparentBackground && !singleFileTransparentRuleSatisfied"
           class="tool-card__description tool-card__description--error"
         >
-          Remove extra files to continue with transparent conversion.
+          {{ t("tools.imageConvert.transparentNeedsOneError") }}
         </p>
       </div>
 
       <div class="merge-step">
-        <p class="merge-step__title">Step 2: Choose output format</p>
+        <p class="merge-step__title">{{ t("tools.imageConvert.step2") }}</p>
         <select v-model="targetFormat" class="rotation-select" :disabled="loading">
-          <option value="jpeg">JPEG (.jpg)</option>
-          <option value="png">PNG (.png)</option>
-          <option value="webp">WEBP (.webp)</option>
-          <option value="avif">AVIF (.avif)</option>
-          <option value="tiff">TIFF (.tiff)</option>
-          <option value="gif">GIF (.gif)</option>
+          <option value="jpeg">{{ t("tools.formatLabels.jpeg") }}</option>
+          <option value="png">{{ t("tools.formatLabels.png") }}</option>
+          <option value="webp">{{ t("tools.formatLabels.webp") }}</option>
+          <option value="avif">{{ t("tools.formatLabels.avif") }}</option>
+          <option value="tiff">{{ t("tools.formatLabels.tiff") }}</option>
+          <option value="gif">{{ t("tools.formatLabels.gif") }}</option>
         </select>
       </div>
 
       <div class="merge-step">
-        <p class="merge-step__title">Step 3: File options</p>
+        <p class="merge-step__title">{{ t("tools.imageConvert.step3") }}</p>
         <div class="advanced-grid">
           <label>
-            Quality (1-100, higher means better quality)
+            {{ t("tools.imageConvert.quality") }}
             <input
               v-model.number="conversionOptions.quality"
               type="number"
@@ -178,7 +185,7 @@ const closeSuccessModal = () => {
             />
           </label>
           <label>
-            Processing strength (0-9, higher may be slower)
+            {{ t("tools.imageConvert.effort") }}
             <input
               v-model.number="conversionOptions.effort"
               type="number"
@@ -190,7 +197,7 @@ const closeSuccessModal = () => {
           </label>
           <label class="advanced-checkbox">
             <input v-model="conversionOptions.lossless" type="checkbox" :disabled="loading" />
-            Keep exact quality (WEBP/TIFF)
+            {{ t("tools.imageConvert.lossless") }}
           </label>
           <label class="advanced-checkbox">
             <input
@@ -198,24 +205,24 @@ const closeSuccessModal = () => {
               type="checkbox"
               :disabled="loading || !supportsTransparency"
             />
-            Remove background (make transparent)
+            {{ t("tools.imageConvert.transparent") }}
           </label>
         </div>
 
         <div v-if="conversionOptions.transparentBackground" class="advanced-grid">
           <label>
-            Background selection method
+            {{ t("tools.imageConvert.backgroundSelection") }}
             <select
               v-model="conversionOptions.backgroundDetectionMode"
               class="rotation-select"
               :disabled="loading"
             >
-              <option value="auto">Automatic (from image edges)</option>
-              <option value="picker">Manual (click background in preview)</option>
+              <option value="auto">{{ t("tools.imageConvert.backgroundAuto") }}</option>
+              <option value="picker">{{ t("tools.imageConvert.backgroundPicker") }}</option>
             </select>
           </label>
           <label>
-            Color similarity (0-255)
+            {{ t("tools.imageConvert.colorTolerance") }}
             <input
               v-model.number="conversionOptions.colorTolerance"
               type="number"
@@ -228,18 +235,20 @@ const closeSuccessModal = () => {
         </div>
 
         <p class="tool-card__description">
-          Background removal works best when the background color is fairly even.
+          {{ t("tools.imageConvert.backgroundHelp") }}
         </p>
         <p v-if="!supportsTransparency" class="tool-card__description">
-          This format cannot keep transparency. Choose PNG/WEBP/AVIF/TIFF/GIF.
+          {{ t("tools.imageConvert.noTransparency") }}
         </p>
       </div>
 
       <div v-if="originalPreviewUrl || formattedPreviewUrl" class="merge-step">
-        <p class="merge-step__title">Step 4: Preview</p>
+        <p class="merge-step__title">{{ t("tools.imageConvert.step4") }}</p>
         <div class="image-preview-grid">
           <figure v-if="originalPreviewUrl" class="image-preview-card">
-            <figcaption class="image-preview-card__label">Original</figcaption>
+            <figcaption class="image-preview-card__label">
+              {{ t("tools.imageConvert.original") }}
+            </figcaption>
             <div
               class="image-preview-shell"
               :class="{ 'image-preview-shell--picker': isPickerMode }"
@@ -250,7 +259,7 @@ const closeSuccessModal = () => {
                   ref="originalPreviewImageRef"
                   class="image-preview-image"
                   :src="originalPreviewUrl"
-                  alt="Original preview"
+                  :alt="t('tools.imageConvert.previewAltOriginal')"
                 />
                 <span
                   v-for="(point, index) in isPickerMode ? pickerPoints : []"
@@ -261,29 +270,31 @@ const closeSuccessModal = () => {
               </div>
             </div>
             <p v-if="isPickerMode" class="tool-card__description">
-              Click a few background spots so we can remove the right color.
+              {{ t("tools.imageConvert.pickerHelp") }}
             </p>
             <p v-if="isPickerMode && pickerPoints.length > 0" class="tool-card__description">
-              Selected points: {{ pickerPoints.length }}
+              {{ t("tools.imageConvert.selectedPoints", { count: pickerPoints.length }) }}
               <button
                 type="button"
                 class="button"
                 :disabled="loading"
                 @click="clearBackgroundSeeds"
               >
-                Clear points
+                {{ t("tools.imageConvert.clearPoints") }}
               </button>
             </p>
           </figure>
 
           <figure v-if="formattedPreviewUrl" class="image-preview-card">
-            <figcaption class="image-preview-card__label">Converted preview</figcaption>
+            <figcaption class="image-preview-card__label">
+              {{ t("tools.imageConvert.converted") }}
+            </figcaption>
             <div class="image-preview-shell image-preview-shell--checker">
               <div class="image-preview-stage">
                 <img
                   class="image-preview-image"
                   :src="formattedPreviewUrl"
-                  alt="Converted preview"
+                  :alt="t('tools.imageConvert.previewAltConverted')"
                 />
               </div>
             </div>
@@ -295,14 +306,14 @@ const closeSuccessModal = () => {
       </div>
 
       <div class="merge-step">
-        <p class="merge-step__title">Step 5: Create converted files</p>
+        <p class="merge-step__title">{{ t("tools.imageConvert.step5") }}</p>
         <button
           type="button"
           class="button button--primary"
           :disabled="!canConvert"
           @click="convert(props.apiBaseUrl)"
         >
-          {{ loading ? "Creating..." : "Create Converted Files" }}
+          {{ loading ? t("tools.imageConvert.creating") : t("tools.imageConvert.create") }}
         </button>
 
         <div v-if="loading" class="progress-panel" aria-live="polite">
@@ -319,18 +330,18 @@ const closeSuccessModal = () => {
       <p v-if="error" class="tool-card__description tool-card__description--error">{{ error }}</p>
       <p v-if="message" class="tool-card__description">{{ message }}</p>
       <p v-if="requestId" class="tool-card__description">
-        Request reference: <code>{{ requestId }}</code>
+        {{ t("tools.common.requestReference") }}: <code>{{ requestId }}</code>
       </p>
       <p v-if="archiveUrl && !showSuccessModal" class="tool-card__description">
-        Your converted files are ready.
+        {{ t("tools.imageConvert.ready") }}
         <button type="button" class="button button--secondary" @click="showSuccessModal = true">
-          Open download modal
+          {{ t("app.openDownloadModal") }}
         </button>
       </p>
       <SuccessThankYouModal
         :visible="showSuccessModal"
-        title="Converted files are ready"
-        description="Download your converted archive and support the project if it helped you."
+        :title="t('tools.imageConvert.modalTitle')"
+        :description="t('tools.imageConvert.modalDescription')"
         :download-url="archiveUrl"
         :download-name="archiveName"
         @close="closeSuccessModal"

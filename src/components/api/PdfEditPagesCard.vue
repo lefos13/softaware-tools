@@ -4,12 +4,14 @@
   editPlan JSON internally so non-technical users can run page operations.
 */
 import { computed, ref } from "vue";
+import { usePortalI18n } from "../../i18n";
 import { editPdfPages } from "../../services/pdfService";
 
 const props = defineProps({
   apiBaseUrl: { type: String, required: true },
   apiHealthy: { type: Boolean, required: true },
 });
+const { t } = usePortalI18n();
 
 const file = ref(null);
 const keepPagesInput = ref("");
@@ -51,7 +53,7 @@ const parsePageList = (rawValue) => {
     .forEach((token) => {
       const page = Number.parseInt(token, 10);
       if (!Number.isInteger(page) || page < 1) {
-        throw new Error(`Invalid page number: "${token}"`);
+        throw new Error(t("tools.errors.invalidPageNumber", { token }));
       }
 
       if (!seen.has(page)) {
@@ -87,11 +89,11 @@ const buildRotatePayload = () => {
     const page = Number.parseInt(pageText, 10);
     const angle = Number.parseInt(String(row.angle), 10);
     if (!Number.isInteger(page) || page < 1) {
-      throw new Error(`Rotate row ${index + 1}: page must be a positive integer`);
+      throw new Error(t("tools.errors.rotateRowPage", { index: index + 1 }));
     }
 
     if (!allowedAngles.has(angle)) {
-      throw new Error(`Rotate row ${index + 1}: angle must be one of 0, 90, 180, 270`);
+      throw new Error(t("tools.errors.rotateRowAngle", { index: index + 1 }));
     }
 
     out.push({ page, angle });
@@ -116,7 +118,7 @@ const run = async () => {
   error.value = "";
 
   if (!file.value) {
-    error.value = "Select one PDF file first.";
+    error.value = t("tools.errors.selectPdfFirst");
     return;
   }
 
@@ -130,7 +132,8 @@ const run = async () => {
     reorder = parsePageList(reorderPagesInput.value);
     rotate = buildRotatePayload();
   } catch (parseError) {
-    error.value = parseError instanceof Error ? parseError.message : "Invalid form values.";
+    error.value =
+      parseError instanceof Error ? parseError.message : t("tools.errors.invalidFormValues");
     return;
   }
 
@@ -156,7 +159,7 @@ const run = async () => {
     message.value = result.message;
     requestId.value = result.requestId;
   } catch (runError) {
-    error.value = runError instanceof Error ? runError.message : "Edit pages request failed";
+    error.value = runError instanceof Error ? runError.message : t("tools.errors.editPagesFailed");
   } finally {
     loading.value = false;
   }
@@ -166,29 +169,29 @@ const run = async () => {
 <template>
   <section aria-label="PDF edit pages">
     <div class="section-head section-head--spaced">
-      <h2 class="section-head__title">PDF Edit Pages</h2>
-      <p class="section-head__subtitle">Rotate, reorder, delete, or keep selected pages.</p>
+      <h2 class="section-head__title">{{ t("tools.pdfEditPages.title") }}</h2>
+      <p class="section-head__subtitle">{{ t("tools.pdfEditPages.subtitle") }}</p>
     </div>
 
     <article class="tool-card">
       <div class="merge-step">
-        <p class="merge-step__title">Source PDF</p>
+        <p class="merge-step__title">{{ t("tools.pdfEditPages.sourcePdf") }}</p>
         <input type="file" accept="application/pdf" @change="onFileSelected" />
       </div>
 
       <div class="merge-step">
-        <p class="merge-step__title">Keep pages (optional)</p>
+        <p class="merge-step__title">{{ t("tools.pdfEditPages.keepPages") }}</p>
         <input
           v-model="keepPagesInput"
           type="text"
           class="rotation-select"
           placeholder="Example: 1,2,3,4"
         />
-        <p class="tool-card__description">Leave blank to keep all pages before other operations.</p>
+        <p class="tool-card__description">{{ t("tools.pdfEditPages.keepPagesHelp") }}</p>
       </div>
 
       <div class="merge-step">
-        <p class="merge-step__title">Delete pages (optional)</p>
+        <p class="merge-step__title">{{ t("tools.pdfEditPages.deletePages") }}</p>
         <input
           v-model="deletePagesInput"
           type="text"
@@ -198,20 +201,18 @@ const run = async () => {
       </div>
 
       <div class="merge-step">
-        <p class="merge-step__title">Reorder pages (optional)</p>
+        <p class="merge-step__title">{{ t("tools.pdfEditPages.reorderPages") }}</p>
         <input
           v-model="reorderPagesInput"
           type="text"
           class="rotation-select"
           placeholder="Example: 4,1,3"
         />
-        <p class="tool-card__description">
-          Provide only the pages you want first. Remaining selected pages keep their order.
-        </p>
+        <p class="tool-card__description">{{ t("tools.pdfEditPages.reorderPagesHelp") }}</p>
       </div>
 
       <div class="merge-step">
-        <p class="merge-step__title">Rotate specific pages (optional)</p>
+        <p class="merge-step__title">{{ t("tools.pdfEditPages.rotatePages") }}</p>
         <div class="rotate-grid">
           <div v-for="(row, index) in rotateRows" :key="index" class="rotate-grid__row">
             <input
@@ -219,7 +220,7 @@ const run = async () => {
               type="number"
               min="1"
               class="rotation-select"
-              placeholder="Page"
+              :placeholder="t('tools.pdfEditPages.rotateRowPage')"
             />
             <select v-model.number="row.angle" class="rotation-select">
               <option :value="0">0°</option>
@@ -228,29 +229,31 @@ const run = async () => {
               <option :value="270">270°</option>
             </select>
             <button type="button" class="button button--secondary" @click="removeRotateRow(index)">
-              Remove
+              {{ t("tools.pdfEditPages.remove") }}
             </button>
           </div>
         </div>
         <button type="button" class="button button--secondary" @click="addRotateRow">
-          Add rotate row
+          {{ t("tools.pdfEditPages.addRotateRow") }}
         </button>
       </div>
 
       <div class="merge-step">
         <button type="button" class="button button--primary" :disabled="!canRun" @click="run">
-          {{ loading ? "Applying..." : "Apply page edits" }}
+          {{ loading ? t("tools.pdfEditPages.applying") : t("tools.pdfEditPages.apply") }}
         </button>
       </div>
 
       <p v-if="error" class="tool-card__description tool-card__description--error">{{ error }}</p>
       <p v-if="message" class="tool-card__description">{{ message }}</p>
       <p v-if="requestId" class="tool-card__description">
-        Request reference: <code>{{ requestId }}</code>
+        {{ t("tools.common.requestReference") }}: <code>{{ requestId }}</code>
       </p>
       <p v-if="outputUrl" class="tool-card__description">
-        Ready:
-        <a :href="outputUrl" :download="outputName">Download {{ outputName }}</a>
+        {{ t("app.readyPrefix") }}:
+        <a :href="outputUrl" :download="outputName">{{
+          t("tools.common.download", { name: outputName })
+        }}</a>
       </p>
     </article>
   </section>

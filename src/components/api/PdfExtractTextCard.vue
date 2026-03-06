@@ -4,12 +4,14 @@
   per-page ZIP option for workflows needing page-level separation.
 */
 import { computed, ref } from "vue";
+import { usePortalI18n } from "../../i18n";
 import { extractPdfText } from "../../services/pdfService";
 
 const props = defineProps({
   apiBaseUrl: { type: String, required: true },
   apiHealthy: { type: Boolean, required: true },
 });
+const { t } = usePortalI18n();
 
 const file = ref(null);
 const perPageZip = ref(false);
@@ -45,7 +47,7 @@ const run = async () => {
   error.value = "";
 
   if (!file.value) {
-    error.value = "Select one PDF file first.";
+    error.value = t("tools.errors.selectPdfFirst");
     return;
   }
 
@@ -60,7 +62,8 @@ const run = async () => {
     message.value = result.message;
     requestId.value = result.requestId;
   } catch (runError) {
-    error.value = runError instanceof Error ? runError.message : "Extract text request failed";
+    error.value =
+      runError instanceof Error ? runError.message : t("tools.errors.extractTextFailed");
   } finally {
     loading.value = false;
   }
@@ -70,41 +73,43 @@ const run = async () => {
 <template>
   <section aria-label="PDF extract text">
     <div class="section-head section-head--spaced">
-      <h2 class="section-head__title">PDF Extract Text</h2>
-      <p class="section-head__subtitle">Export native PDF text to `.txt` or ZIP per page.</p>
+      <h2 class="section-head__title">{{ t("tools.pdfExtractText.title") }}</h2>
+      <p class="section-head__subtitle">{{ t("tools.pdfExtractText.subtitle") }}</p>
     </div>
 
     <article class="tool-card">
       <div class="merge-step">
-        <p class="merge-step__title">Source PDF</p>
+        <p class="merge-step__title">{{ t("tools.pdfExtractText.sourcePdf") }}</p>
         <input type="file" accept="application/pdf" @change="onFileSelected" />
       </div>
 
       <div class="merge-step">
         <label class="checkbox-row">
           <input v-model="perPageZip" type="checkbox" />
-          Return ZIP with one `.txt` per page
+          {{ t("tools.pdfExtractText.perPageZip") }}
         </label>
         <label class="checkbox-row">
           <input v-model="includePageHeaders" type="checkbox" :disabled="perPageZip" />
-          Include page headers in merged `.txt`
+          {{ t("tools.pdfExtractText.includePageHeaders") }}
         </label>
       </div>
 
       <div class="merge-step">
         <button type="button" class="button button--primary" :disabled="!canRun" @click="run">
-          {{ loading ? "Extracting..." : "Extract text" }}
+          {{ loading ? t("tools.pdfExtractText.extracting") : t("tools.pdfExtractText.extract") }}
         </button>
       </div>
 
       <p v-if="error" class="tool-card__description tool-card__description--error">{{ error }}</p>
       <p v-if="message" class="tool-card__description">{{ message }}</p>
       <p v-if="requestId" class="tool-card__description">
-        Request reference: <code>{{ requestId }}</code>
+        {{ t("tools.common.requestReference") }}: <code>{{ requestId }}</code>
       </p>
       <p v-if="outputUrl" class="tool-card__description">
-        Ready:
-        <a :href="outputUrl" :download="outputName">Download {{ outputName }}</a>
+        {{ t("app.readyPrefix") }}:
+        <a :href="outputUrl" :download="outputName">{{
+          t("tools.common.download", { name: outputName })
+        }}</a>
       </p>
     </article>
   </section>

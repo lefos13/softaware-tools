@@ -4,6 +4,7 @@
   only reveals superadmin controls when the validated token role allows it.
 */
 import { computed, inject, ref } from "vue";
+import { usePortalI18n } from "../i18n";
 import {
   getFailureReport,
   invalidateAllAdminTokens,
@@ -13,7 +14,13 @@ import {
 } from "../services/adminReportsService";
 
 const portalContext = inject("portalContext");
+const { locale } = usePortalI18n();
 const TOKEN_STORAGE_KEY = "admin_reports_token";
+const tr = (en, el) => (locale.value === "el" ? el : en);
+const formatDateTime = (value, fallbackEn = "n/a", fallbackEl = "δ/υ") =>
+  value
+    ? new Date(value).toLocaleString(locale.value === "el" ? "el-GR" : "en-US")
+    : tr(fallbackEn, fallbackEl);
 
 const loading = ref(false);
 const detailLoading = ref(false);
@@ -101,7 +108,9 @@ const loadAdminTokenCatalog = async () => {
     selectedTokenIds.value = selectedTokenIds.value.filter((tokenId) => availableIds.has(tokenId));
   } catch (loadError) {
     error.value =
-      loadError instanceof Error ? loadError.message : "Could not load admin token inventory";
+      loadError instanceof Error
+        ? loadError.message
+        : tr("Could not load admin token inventory", "Δεν ήταν δυνατή η φόρτωση των admin tokens");
   } finally {
     tokenCatalogLoading.value = false;
   }
@@ -124,7 +133,13 @@ const loadReportDetail = async (fileName) => {
     );
     selectedReport.value = detail?.report || null;
   } catch (loadError) {
-    error.value = loadError instanceof Error ? loadError.message : "Could not load report details";
+    error.value =
+      loadError instanceof Error
+        ? loadError.message
+        : tr(
+            "Could not load report details",
+            "Δεν ήταν δυνατή η φόρτωση των στοιχείων της αναφοράς"
+          );
   } finally {
     detailLoading.value = false;
   }
@@ -166,7 +181,10 @@ const loadReports = async () => {
       await loadReportDetail(selectedFileName.value);
     }
   } catch (loadError) {
-    error.value = loadError instanceof Error ? loadError.message : "Could not load reports";
+    error.value =
+      loadError instanceof Error
+        ? loadError.message
+        : tr("Could not load reports", "Δεν ήταν δυνατή η φόρτωση των αναφορών");
     resetReportsState();
   } finally {
     loading.value = false;
@@ -180,7 +198,7 @@ const authenticate = async () => {
   try {
     const nextToken = tokenInput.value.trim();
     if (!nextToken) {
-      error.value = "Enter an admin token.";
+      error.value = tr("Enter an admin token.", "Συμπληρώστε ένα admin token.");
       return;
     }
 
@@ -188,7 +206,10 @@ const authenticate = async () => {
     sessionStorage.setItem(TOKEN_STORAGE_KEY, nextToken);
     await loadReports();
   } catch (authError) {
-    error.value = authError instanceof Error ? authError.message : "Could not validate token";
+    error.value =
+      authError instanceof Error
+        ? authError.message
+        : tr("Could not validate token", "Δεν ήταν δυνατός ο έλεγχος του token");
     activeToken.value = "";
     sessionStorage.removeItem(TOKEN_STORAGE_KEY);
   } finally {
@@ -210,7 +231,10 @@ const runInvalidateAll = async () => {
   }
 
   const accepted = window.confirm(
-    "Invalidate all admin and superadmin tokens now? This will also revoke your current token."
+    tr(
+      "Invalidate all admin and superadmin tokens now? This will also revoke your current token.",
+      "Να ακυρωθούν τώρα όλα τα admin και superadmin tokens; Θα ακυρωθεί και το τρέχον token σας."
+    )
   );
   if (!accepted) {
     return;
@@ -223,7 +247,10 @@ const runInvalidateAll = async () => {
     await invalidateAllAdminTokens(portalContext.apiBaseUrl.value, activeToken.value);
     clearToken();
   } catch (runError) {
-    error.value = runError instanceof Error ? runError.message : "Could not invalidate tokens";
+    error.value =
+      runError instanceof Error
+        ? runError.message
+        : tr("Could not invalidate tokens", "Δεν ήταν δυνατή η ακύρωση των tokens");
   } finally {
     invalidateLoading.value = false;
   }
@@ -235,7 +262,10 @@ const runRevokeSelected = async () => {
   }
 
   const accepted = window.confirm(
-    `Revoke ${selectedTokenIds.value.length} selected token(s)? This can include your current session.`
+    tr(
+      `Revoke ${selectedTokenIds.value.length} selected token(s)? This can include your current session.`,
+      `Να ανακληθούν ${selectedTokenIds.value.length} επιλεγμένα token(s); Μπορεί να περιλαμβάνεται και η τρέχουσα συνεδρία σας.`
+    )
   );
   if (!accepted) {
     return;
@@ -259,7 +289,13 @@ const runRevokeSelected = async () => {
     selectedTokenIds.value = [];
     await loadAdminTokenCatalog();
   } catch (runError) {
-    error.value = runError instanceof Error ? runError.message : "Could not revoke selected tokens";
+    error.value =
+      runError instanceof Error
+        ? runError.message
+        : tr(
+            "Could not revoke selected tokens",
+            "Δεν ήταν δυνατή η ανάκληση των επιλεγμένων tokens"
+          );
   } finally {
     revokeSelectedLoading.value = false;
   }
@@ -274,10 +310,17 @@ if (activeToken.value) {
   <section class="flow-view" aria-label="Admin reports">
     <div class="section-head section-head--spaced admin-head">
       <div>
-        <p class="admin-kicker">Restricted Area</p>
-        <h2 class="section-head__title">Admin Failure Reports</h2>
+        <p class="admin-kicker">{{ tr("Restricted Area", "Περιορισμένη πρόσβαση") }}</p>
+        <h2 class="section-head__title">
+          {{ tr("Admin Failure Reports", "Αναφορές αποτυχίας admin") }}
+        </h2>
         <p class="section-head__subtitle">
-          Enter an admin token to view owner-scoped failure reports.
+          {{
+            tr(
+              "Enter an admin token to view owner-scoped failure reports.",
+              "Συμπληρώστε admin token για να δείτε αναφορές αποτυχίας για τον συγκεκριμένο owner."
+            )
+          }}
         </p>
       </div>
       <button
@@ -287,19 +330,26 @@ if (activeToken.value) {
         :disabled="loading"
         @click="loadReports"
       >
-        {{ loading ? "Refreshing..." : "Refresh" }}
+        {{ loading ? tr("Refreshing...", "Ανανέωση...") : tr("Refresh", "Ανανέωση") }}
       </button>
     </div>
 
     <article class="tool-card admin-access admin-access--highlight">
-      <h3 class="tool-card__title">Access Token</h3>
-      <p class="tool-card__description">Use the plaintext token generated by softaware studios.</p>
+      <h3 class="tool-card__title">{{ tr("Access Token", "Token πρόσβασης") }}</h3>
+      <p class="tool-card__description">
+        {{
+          tr(
+            "Use the plaintext token generated by softaware studios.",
+            "Χρησιμοποιήστε το token απλού κειμένου που δημιουργήθηκε από τη softaware studios."
+          )
+        }}
+      </p>
       <div class="admin-access__row">
         <input
           v-model="tokenInput"
           type="password"
           class="field"
-          placeholder="Enter admin token"
+          :placeholder="tr('Enter admin token', 'Συμπληρώστε admin token')"
           autocomplete="off"
         />
         <button
@@ -308,7 +358,7 @@ if (activeToken.value) {
           :disabled="tokenLoading || loading"
           @click="authenticate"
         >
-          {{ tokenLoading ? "Validating..." : "Enter" }}
+          {{ tokenLoading ? tr("Validating...", "Έλεγχος...") : tr("Enter", "Είσοδος") }}
         </button>
         <button
           v-if="isAuthenticated"
@@ -317,24 +367,29 @@ if (activeToken.value) {
           :disabled="tokenLoading || loading || invalidateLoading"
           @click="clearToken"
         >
-          Clear
+          {{ tr("Clear", "Καθαρισμός") }}
         </button>
       </div>
       <p v-if="isAuthenticated" class="tool-card__description">
-        Role: <strong>{{ viewerRole || "unknown" }}</strong> · Scope owner:
-        <code>{{ viewerOwnerId || "n/a" }}</code>
+        {{ tr("Role", "Ρόλος") }}: <strong>{{ viewerRole || tr("unknown", "άγνωστο") }}</strong> ·
+        {{ tr("Scope owner", "Owner πρόσβασης") }}:
+        <code>{{ viewerOwnerId || tr("n/a", "δ/υ") }}</code>
       </p>
       <div v-if="isAuthenticated" class="admin-chip-row">
-        <span class="admin-chip">Validated session</span>
-        <span class="admin-chip">Scoped access active</span>
+        <span class="admin-chip">{{ tr("Validated session", "Επιβεβαιωμένη συνεδρία") }}</span>
+        <span class="admin-chip">{{ tr("Scoped access active", "Ενεργή scoped πρόσβαση") }}</span>
       </div>
     </article>
 
     <article v-if="isSuperAdmin" class="tool-card admin-super">
-      <h3 class="tool-card__title">Superadmin Controls</h3>
+      <h3 class="tool-card__title">{{ tr("Superadmin Controls", "Έλεγχοι superadmin") }}</h3>
       <p class="tool-card__description">
-        Review token sessions, revoke selected tokens, or invalidate all admin/superadmin tokens
-        immediately.
+        {{
+          tr(
+            "Review token sessions, revoke selected tokens, or invalidate all admin/superadmin tokens immediately.",
+            "Δείτε τις συνεδρίες token, ανακαλέστε επιλεγμένα tokens ή ακυρώστε αμέσως όλα τα admin/superadmin tokens."
+          )
+        }}
       </p>
       <div class="preview-card__actions">
         <button
@@ -343,7 +398,11 @@ if (activeToken.value) {
           :disabled="tokenCatalogLoading || revokeSelectedLoading || invalidateLoading"
           @click="loadAdminTokenCatalog"
         >
-          {{ tokenCatalogLoading ? "Refreshing tokens..." : "Refresh token inventory" }}
+          {{
+            tokenCatalogLoading
+              ? tr("Refreshing tokens...", "Ανανέωση tokens...")
+              : tr("Refresh token inventory", "Ανανέωση λίστας tokens")
+          }}
         </button>
         <button
           type="button"
@@ -356,13 +415,22 @@ if (activeToken.value) {
           "
           @click="runRevokeSelected"
         >
-          {{ revokeSelectedLoading ? "Revoking..." : `Revoke selected (${selectedTokenCount})` }}
+          {{
+            revokeSelectedLoading
+              ? tr("Revoking...", "Ανάκληση...")
+              : tr(
+                  `Revoke selected (${selectedTokenCount})`,
+                  `Ανάκληση επιλεγμένων (${selectedTokenCount})`
+                )
+          }}
         </button>
       </div>
       <div class="admin-token-catalog">
-        <p v-if="tokenCatalogLoading" class="tool-card__description">Loading token inventory...</p>
+        <p v-if="tokenCatalogLoading" class="tool-card__description">
+          {{ tr("Loading token inventory...", "Φόρτωση λίστας tokens...") }}
+        </p>
         <p v-else-if="adminTokens.length === 0" class="tool-card__description">
-          No admin tokens found.
+          {{ tr("No admin tokens found.", "Δεν βρέθηκαν admin tokens.") }}
         </p>
         <ul v-else class="admin-token-list" role="list">
           <li
@@ -379,13 +447,19 @@ if (activeToken.value) {
               />
               <span class="admin-token-list__meta">
                 <strong>{{ tokenItem.role }}</strong>
-                <span>owner {{ tokenItem.ownerId || "public" }}</span>
+                <span
+                  >{{ tr("owner", "owner") }}
+                  {{ tokenItem.ownerId || tr("public", "public") }}</span
+                >
                 <span>id {{ tokenItem.tokenId }}</span>
                 <span>
                   {{
                     tokenItem.expiresAt
-                      ? `expires ${new Date(tokenItem.expiresAt).toLocaleString()}`
-                      : "no expiry"
+                      ? tr(
+                          `expires ${formatDateTime(tokenItem.expiresAt)}`,
+                          `λήγει ${formatDateTime(tokenItem.expiresAt)}`
+                        )
+                      : tr("no expiry", "χωρίς λήξη")
                   }}
                 </span>
               </span>
@@ -395,11 +469,15 @@ if (activeToken.value) {
                 v-if="tokenItem.isCurrent || tokenItem.tokenId === currentAdminTokenId"
                 class="admin-chip"
               >
-                Current session
+                {{ tr("Current session", "Τρέχουσα συνεδρία") }}
               </span>
-              <span v-if="tokenItem.isActive" class="admin-chip">Active</span>
-              <span v-else-if="tokenItem.revokedAt" class="admin-chip">Revoked</span>
-              <span v-else-if="tokenItem.isExpired" class="admin-chip">Expired</span>
+              <span v-if="tokenItem.isActive" class="admin-chip">{{ tr("Active", "Ενεργό") }}</span>
+              <span v-else-if="tokenItem.revokedAt" class="admin-chip">{{
+                tr("Revoked", "Ανακλήθηκε")
+              }}</span>
+              <span v-else-if="tokenItem.isExpired" class="admin-chip">{{
+                tr("Expired", "Έληξε")
+              }}</span>
             </div>
           </li>
         </ul>
@@ -410,7 +488,11 @@ if (activeToken.value) {
         :disabled="invalidateLoading || loading || tokenCatalogLoading || revokeSelectedLoading"
         @click="runInvalidateAll"
       >
-        {{ invalidateLoading ? "Invalidating..." : "Invalidate all tokens" }}
+        {{
+          invalidateLoading
+            ? tr("Invalidating...", "Ακύρωση...")
+            : tr("Invalidate all tokens", "Ακύρωση όλων των tokens")
+        }}
       </button>
     </article>
 
@@ -418,11 +500,16 @@ if (activeToken.value) {
 
     <div v-if="isAuthenticated" class="admin-layout">
       <article class="tool-card admin-list">
-        <h3 class="tool-card__title">Recent Reports</h3>
-        <p class="tool-card__description">Total: {{ reports.length }}</p>
+        <h3 class="tool-card__title">{{ tr("Recent Reports", "Πρόσφατες αναφορές") }}</h3>
+        <p class="tool-card__description">{{ tr("Total", "Σύνολο") }}: {{ reports.length }}</p>
 
         <p v-if="!loading && reports.length === 0" class="tool-card__description">
-          No reports found for this owner scope.
+          {{
+            tr(
+              "No reports found for this owner scope.",
+              "Δεν βρέθηκαν αναφορές για αυτό το owner scope."
+            )
+          }}
         </p>
 
         <ul v-else class="report-list" role="list">
@@ -439,7 +526,9 @@ if (activeToken.value) {
                 {{ item.path || "-" }}</span
               >
               <span>{{
-                item.createdAt ? new Date(item.createdAt).toLocaleString() : "Unknown time"
+                item.createdAt
+                  ? formatDateTime(item.createdAt, "Unknown time", "Άγνωστη ώρα")
+                  : tr("Unknown time", "Άγνωστη ώρα")
               }}</span>
             </button>
           </li>
@@ -447,9 +536,9 @@ if (activeToken.value) {
       </article>
 
       <article class="tool-card admin-detail">
-        <h3 class="tool-card__title">Report Details</h3>
+        <h3 class="tool-card__title">{{ tr("Report Details", "Στοιχεία αναφοράς") }}</h3>
         <p v-if="selectedSummary" class="tool-card__description">
-          File: <code>{{ selectedSummary.fileName }}</code>
+          {{ tr("File", "Αρχείο") }}: <code>{{ selectedSummary.fileName }}</code>
         </p>
         <div v-if="selectedReport" class="preview-card__actions">
           <button
@@ -458,7 +547,7 @@ if (activeToken.value) {
             :disabled="reportViewMode === 'pretty'"
             @click="reportViewMode = 'pretty'"
           >
-            Pretty
+            {{ tr("Pretty", "Μορφοποιημένο") }}
           </button>
           <button
             type="button"
@@ -466,49 +555,58 @@ if (activeToken.value) {
             :disabled="reportViewMode === 'raw'"
             @click="reportViewMode = 'raw'"
           >
-            Raw
+            {{ tr("Raw", "Ακατέργαστο") }}
           </button>
         </div>
-        <p v-if="detailLoading" class="tool-card__description">Loading report details...</p>
+        <p v-if="detailLoading" class="tool-card__description">
+          {{ tr("Loading report details...", "Φόρτωση στοιχείων αναφοράς...") }}
+        </p>
         <p v-else-if="!selectedReport" class="tool-card__description">
-          Select a report to inspect details.
+          {{
+            tr(
+              "Select a report to inspect details.",
+              "Επιλέξτε μια αναφορά για να δείτε λεπτομέρειες."
+            )
+          }}
         </p>
         <template v-else>
           <div v-if="reportViewMode === 'pretty'" class="pretty-report">
             <section class="pretty-report__section">
-              <h4 class="pretty-report__title">Summary</h4>
+              <h4 class="pretty-report__title">{{ tr("Summary", "Σύνοψη") }}</h4>
               <div class="pretty-grid">
                 <p>
-                  <strong>Request ID:</strong> <code>{{ selectedReport.requestId || "n/a" }}</code>
+                  <strong>{{ tr("Request ID", "Request ID") }}:</strong>
+                  <code>{{ selectedReport.requestId || tr("n/a", "δ/υ") }}</code>
                 </p>
                 <p>
-                  <strong>Task ID:</strong> <code>{{ selectedReport.taskId || "n/a" }}</code>
+                  <strong>{{ tr("Task ID", "Task ID") }}:</strong>
+                  <code>{{ selectedReport.taskId || tr("n/a", "δ/υ") }}</code>
                 </p>
                 <p>
-                  <strong>Created:</strong>
-                  {{
-                    selectedReport.createdAt
-                      ? new Date(selectedReport.createdAt).toLocaleString()
-                      : "n/a"
-                  }}
+                  <strong>{{ tr("Created", "Δημιουργήθηκε") }}:</strong>
+                  {{ formatDateTime(selectedReport.createdAt) }}
                 </p>
-                <p><strong>Type:</strong> {{ selectedReport.reportType || "request-failure" }}</p>
+                <p>
+                  <strong>{{ tr("Type", "Τύπος") }}:</strong>
+                  {{ selectedReport.reportType || "request-failure" }}
+                </p>
               </div>
             </section>
 
             <section class="pretty-report__section">
-              <h4 class="pretty-report__title">Operation</h4>
+              <h4 class="pretty-report__title">{{ tr("Operation", "Λειτουργία") }}</h4>
               <div class="pretty-grid">
                 <p>
-                  <strong>Method:</strong>
-                  <code>{{ selectedReport.operation?.method || "n/a" }}</code>
+                  <strong>{{ tr("Method", "Μέθοδος") }}:</strong>
+                  <code>{{ selectedReport.operation?.method || tr("n/a", "δ/υ") }}</code>
                 </p>
                 <p>
-                  <strong>Path:</strong> <code>{{ selectedReport.operation?.path || "n/a" }}</code>
+                  <strong>{{ tr("Path", "Διαδρομή") }}:</strong>
+                  <code>{{ selectedReport.operation?.path || tr("n/a", "δ/υ") }}</code>
                 </p>
               </div>
               <div v-if="operationIntentEntries.length > 0" class="pretty-subsection">
-                <p class="pretty-subsection__title">Intent</p>
+                <p class="pretty-subsection__title">{{ tr("Intent", "Σκοπός") }}</p>
                 <ul class="pretty-list">
                   <li v-for="[key, value] in operationIntentEntries" :key="key">
                     <strong>{{ key }}:</strong>
@@ -519,44 +617,58 @@ if (activeToken.value) {
             </section>
 
             <section class="pretty-report__section">
-              <h4 class="pretty-report__title">Failure</h4>
+              <h4 class="pretty-report__title">{{ tr("Failure", "Σφάλμα") }}</h4>
               <div class="pretty-grid">
-                <p><strong>Status:</strong> {{ selectedReport.failure?.statusCode ?? "n/a" }}</p>
                 <p>
-                  <strong>Code:</strong> <code>{{ selectedReport.failure?.code || "n/a" }}</code>
+                  <strong>{{ tr("Status", "Κατάσταση") }}:</strong>
+                  {{ selectedReport.failure?.statusCode ?? tr("n/a", "δ/υ") }}
+                </p>
+                <p>
+                  <strong>{{ tr("Code", "Κωδικός") }}:</strong>
+                  <code>{{ selectedReport.failure?.code || tr("n/a", "δ/υ") }}</code>
                 </p>
               </div>
-              <p class="pretty-message">{{ selectedReport.failure?.message || "n/a" }}</p>
+              <p class="pretty-message">
+                {{ selectedReport.failure?.message || tr("n/a", "δ/υ") }}
+              </p>
               <div v-if="selectedReport.failure?.details?.length" class="pretty-subsection">
-                <p class="pretty-subsection__title">Details</p>
+                <p class="pretty-subsection__title">{{ tr("Details", "Λεπτομέρειες") }}</p>
                 <ul class="pretty-list">
                   <li v-for="(detail, index) in selectedReport.failure.details" :key="index">
-                    <strong>{{ detail.field || "field" }}:</strong>
-                    {{ detail.issue || "Invalid value" }}
+                    <strong>{{ detail.field || tr("field", "πεδίο") }}:</strong>
+                    {{ detail.issue || tr("Invalid value", "Μη έγκυρη τιμή") }}
                   </li>
                 </ul>
               </div>
             </section>
 
             <section class="pretty-report__section">
-              <h4 class="pretty-report__title">Request Context</h4>
+              <h4 class="pretty-report__title">
+                {{ tr("Request Context", "Στοιχεία αιτήματος") }}
+              </h4>
               <div class="pretty-grid">
                 <p>
-                  <strong>Body keys:</strong>
-                  {{ (selectedReport.requestContext?.bodyKeys || []).join(", ") || "none" }}
+                  <strong>{{ tr("Body keys", "Κλειδιά body") }}:</strong>
+                  {{
+                    (selectedReport.requestContext?.bodyKeys || []).join(", ") ||
+                    tr("none", "κανένα")
+                  }}
                 </p>
                 <p>
-                  <strong>Query keys:</strong>
-                  {{ (selectedReport.requestContext?.queryKeys || []).join(", ") || "none" }}
+                  <strong>{{ tr("Query keys", "Κλειδιά query") }}:</strong>
+                  {{
+                    (selectedReport.requestContext?.queryKeys || []).join(", ") ||
+                    tr("none", "κανένα")
+                  }}
                 </p>
               </div>
               <div class="pretty-grid">
                 <p>
-                  <strong>Uploaded files:</strong>
+                  <strong>{{ tr("Uploaded files", "Ανεβασμένα αρχεία") }}:</strong>
                   {{ selectedReport.requestContext?.uploadedFileCount ?? 0 }}
                 </p>
                 <p>
-                  <strong>Uploaded bytes:</strong>
+                  <strong>{{ tr("Uploaded bytes", "Uploaded bytes") }}:</strong>
                   {{ selectedReport.requestContext?.uploadedBytes ?? 0 }}
                 </p>
               </div>

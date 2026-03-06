@@ -1,5 +1,10 @@
 <script setup>
+/*
+  Donation copy now comes from the shared translation store so the support CTA
+  stays aligned with the selected language in both the page and success modal.
+*/
 import { HAS_CUSTOM_PAYPAL_DONATE_URL, PAYPAL_DONATE_URL } from "../config/donation";
+import { usePortalI18n } from "../i18n";
 
 defineProps({
   compact: {
@@ -7,25 +12,25 @@ defineProps({
     default: false,
   },
 });
+
+const { t } = usePortalI18n();
 </script>
 
 <template>
   <aside class="donation-prompt" :class="{ 'donation-prompt--compact': compact }">
-    <p class="donation-prompt__badge">Support this project</p>
-    <h3 class="donation-prompt__title">Keep these APIs alive and functional</h3>
-    <p class="donation-prompt__text">
-      If this service helped you, please consider a small donation via PayPal.
-    </p>
+    <p class="donation-prompt__badge">{{ t("donation.badge") }}</p>
+    <h3 class="donation-prompt__title">{{ t("donation.title") }}</h3>
+    <p class="donation-prompt__text">{{ t("donation.text") }}</p>
     <a
       class="button button--primary donation-prompt__button"
       :href="PAYPAL_DONATE_URL"
       target="_blank"
       rel="noopener noreferrer"
     >
-      Donate with PayPal
+      {{ t("donation.cta") }}
     </a>
     <p v-if="!HAS_CUSTOM_PAYPAL_DONATE_URL" class="donation-prompt__hint">
-      Set <code>VITE_PAYPAL_DONATE_URL</code> to your PayPal donation link.
+      {{ t("donation.hint") }}
     </p>
   </aside>
 </template>

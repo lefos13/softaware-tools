@@ -1,62 +1,62 @@
 <script setup>
 /*
-  PDF Services hub mirrors JSON Services behavior by listing PDF subservices in
-  one place before users enter a specific tool flow.
+  Service metadata is now resolved through the shared translation store so the
+  PDF hub stays easy to maintain while showing localized, plain-language copy.
 */
 import { inject } from "vue";
 import ToolCard from "../components/ToolCard.vue";
+import { usePortalI18n } from "../i18n";
 
 const portalRouter = inject("portalRouter");
+const { t } = usePortalI18n();
 
 const pdfServices = [
   {
-    title: "PDF Merge",
+    title: () => t("services.pdfMerge.title"),
     graphic: "pdf-merge",
-    description:
-      "Combine multiple PDF files into one clean document in the exact order you choose.",
+    description: () => t("services.pdfMerge.description"),
     route: "/flows/pdf",
   },
   {
-    title: "PDF Split",
+    title: () => t("services.pdfSplit.title"),
     graphic: "pdf-split",
-    description:
-      "Break one PDF into smaller files by page range, selected pages, or custom groups.",
+    description: () => t("services.pdfSplit.description"),
     route: "/flows/pdf-split",
   },
   {
-    title: "PDF to Word OCR",
+    title: () => t("services.pdfToWord.title"),
     graphic: "pdf-ocr",
-    description: "Turn PDF content into an editable Word file, including scanned pages with OCR.",
+    description: () => t("services.pdfToWord.description"),
     route: "/flows/pdf-extract-to-word",
   },
   {
-    title: "PDF Watermark",
+    title: () => t("services.pdfWatermark.title"),
     graphic: "pdf-merge",
-    description: "Add text or image watermarks such as DRAFT or CONFIDENTIAL.",
+    description: () => t("services.pdfWatermark.description"),
     route: "/flows/pdf-watermark",
   },
   {
-    title: "PDF Page Numbers / Bates",
+    title: () => t("services.pdfPageNumbers.title"),
     graphic: "pdf-split",
-    description: "Add page X of Y labels or Bates numbering for legal/admin workflows.",
+    description: () => t("services.pdfPageNumbers.description"),
     route: "/flows/pdf-page-numbers",
   },
   {
-    title: "PDF Edit Pages",
+    title: () => t("services.pdfEditPages.title"),
     graphic: "pdf-split",
-    description: "Rotate, reorder, delete, or keep pages using an operation plan.",
+    description: () => t("services.pdfEditPages.description"),
     route: "/flows/pdf-edit-pages",
   },
   {
-    title: "PDF Extract Text",
+    title: () => t("services.pdfExtractText.title"),
     graphic: "pdf-ocr",
-    description: "Extract native PDF text to .txt or ZIP with one text file per page.",
+    description: () => t("services.pdfExtractText.description"),
     route: "/flows/pdf-extract-text",
   },
   {
-    title: "Images to PDF",
+    title: () => t("services.pdfFromImages.title"),
     graphic: "pdf-merge",
-    description: "Combine one or more images into a single PDF in upload order.",
+    description: () => t("services.pdfFromImages.description"),
     route: "/flows/pdf-from-images",
   },
 ];
@@ -69,21 +69,19 @@ const openService = (route) => {
 <template>
   <section class="flow-view" aria-label="PDF services launcher">
     <div class="section-head section-head--spaced">
-      <h2 class="section-head__title">PDF Services</h2>
-      <p class="section-head__subtitle">
-        Select a PDF subservice to start a focused upload-to-download workflow.
-      </p>
+      <h2 class="section-head__title">{{ t("pages.pdfServices.title") }}</h2>
+      <p class="section-head__subtitle">{{ t("pages.pdfServices.subtitle") }}</p>
     </div>
 
     <div class="launcher-grid">
       <ToolCard
         v-for="service in pdfServices"
         :key="service.route"
-        :title="service.title"
+        :title="service.title()"
         tag="PDF"
         :graphic="service.graphic"
         variant="pdf"
-        :description="service.description"
+        :description="service.description()"
         @action="openService(service.route)"
       />
     </div>

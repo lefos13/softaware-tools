@@ -1,6 +1,10 @@
 <script setup>
-// Why this exists: OpenAPI consumers need a first-class interactive API explorer, so this component renders the backend contract in the official Swagger UI layout.
+/*
+  Swagger viewer labels and fallback errors now use the shared locale store so
+  the contract explorer matches the selected portal language.
+*/
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { usePortalI18n } from "../../i18n";
 import { buildUrl } from "../../services/apiClient";
 
 const props = defineProps({
@@ -12,6 +16,7 @@ const props = defineProps({
 
 const mountNode = ref(null);
 const error = ref("");
+const { t } = usePortalI18n();
 
 let swaggerInstance = null;
 let swaggerModulePromise = null;
@@ -51,11 +56,13 @@ const renderSwagger = async () => {
       showCommonExtensions: true,
       presets: [SwaggerUI.presets.apis],
       onFailure: () => {
-        error.value = `Could not load OpenAPI JSON from ${buildUrl(props.apiBaseUrl, "/api/openapi.json")}`;
+        error.value = t("openApi.swaggerLoadError", {
+          url: buildUrl(props.apiBaseUrl, "/api/openapi.json"),
+        });
       },
     });
   } catch {
-    error.value = "Swagger UI could not be initialized";
+    error.value = t("openApi.swaggerInitError");
   }
 };
 
@@ -81,9 +88,9 @@ onBeforeUnmount(() => {
 <template>
   <section class="swagger-card" aria-label="Swagger contract viewer">
     <div class="section-head section-head--spaced">
-      <h3 class="section-head__title">Swagger Explorer</h3>
+      <h3 class="section-head__title">{{ t("openApi.swaggerTitle") }}</h3>
       <p class="section-head__subtitle">
-        Live contract from <code>{{ apiBaseUrl }}/api/openapi.json</code>
+        {{ t("openApi.swaggerSubtitle") }} <code>{{ apiBaseUrl }}/api/openapi.json</code>
       </p>
     </div>
 

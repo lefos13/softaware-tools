@@ -1,8 +1,9 @@
 <script setup>
 /*
-  Shared output actions avoid repeated copy/download button logic across tools
-  and keep completion controls consistent within JSON workspace.
+  JSON output actions now use shared translated labels so the workspace controls
+  remain consistent with the selected language.
 */
+import { usePortalI18n } from "../../i18n";
 const props = defineProps({
   disabled: {
     type: Boolean,
@@ -19,6 +20,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["copy", "clear"]);
+const { t } = usePortalI18n();
 
 /*
   Download clicks should only be blocked when there is no generated output.
@@ -42,7 +44,7 @@ const onDownloadClick = (event) => {
       :disabled="disabled"
       @click="emit('copy')"
     >
-      Copy output
+      {{ t("json.workspace.copyOutput") }}
     </button>
     <a
       class="button button--primary json-actions__download"
@@ -51,8 +53,10 @@ const onDownloadClick = (event) => {
       :download="downloadFileName"
       @click="onDownloadClick"
     >
-      Download
+      {{ t("json.workspace.download") }}
     </a>
-    <button type="button" class="button button--secondary" @click="emit('clear')">Clear all</button>
+    <button type="button" class="button button--secondary" @click="emit('clear')">
+      {{ t("json.workspace.clearAll") }}
+    </button>
   </div>
 </template>

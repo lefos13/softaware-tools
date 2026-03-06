@@ -1,9 +1,12 @@
 <script setup>
 /*
-  Shared success overlay keeps post-processing actions consistent across services.
-  It surfaces the result download immediately and includes the donation prompt in one place.
+  Success modal labels now come from the shared translation store so completion
+  messaging stays localized while individual tools still control the result copy.
 */
 import DonationPrompt from "./DonationPrompt.vue";
+import { usePortalI18n } from "../i18n";
+
+const { t } = usePortalI18n();
 
 defineProps({
   visible: {
@@ -12,7 +15,7 @@ defineProps({
   },
   title: {
     type: String,
-    default: "Your file is ready",
+    default: "",
   },
   downloadUrl: {
     type: String,
@@ -24,7 +27,7 @@ defineProps({
   },
   description: {
     type: String,
-    default: "Download your output file below.",
+    default: "",
   },
 });
 
@@ -46,16 +49,16 @@ const emit = defineEmits(["close"]);
         class="button button--secondary success-overlay__close"
         @click="emit('close')"
       >
-        Close
+        {{ t("modal.close") }}
       </button>
-      <p class="success-overlay__title">{{ title }}</p>
-      <p class="success-overlay__text">{{ description }}</p>
+      <p class="success-overlay__title">{{ title || t("modal.defaultTitle") }}</p>
+      <p class="success-overlay__text">{{ description || t("modal.defaultDescription") }}</p>
       <a
         class="button button--primary success-overlay__download"
         :href="downloadUrl"
         :download="downloadName"
       >
-        Download {{ downloadName }}
+        {{ t("modal.download", { name: downloadName }) }}
       </a>
       <DonationPrompt compact />
     </article>

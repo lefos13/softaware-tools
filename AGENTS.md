@@ -16,6 +16,10 @@ This file defines local agent instructions for `/Users/eevangelinos/Documents/so
 4. Keep error handling consistent and user-friendly (`code`, `message`, `details[]` where applicable).
 5. Preserve responsiveness across mobile/tablet/desktop and avoid horizontal overflow regressions.
 6. Keep feature rollout safe (prefer flags for large new domains such as JSON services).
+7. Treat translations as a standard product requirement, not an optional enhancement.
+8. When adding or changing user-facing copy, keep English and Greek aligned through the shared translation practice instead of hardcoding one-off text in components.
+9. Write for common users, not technical users: prefer clear, friendly, action-oriented phrases that help people quickly understand which service to use and what each step does.
+10. Avoid unnecessary technical terms in the UI; when technical wording is unavoidable, phrase it in simpler language that still guides the user correctly.
 
 ## 3) Service Architecture Expectations
 
@@ -115,6 +119,8 @@ For every bug fix, add or update at least one test that fails before the fix and
 2. Keep donate/support presentation consistent with current navigation and shared components.
 3. Service launcher content should remain user-friendly, descriptive, and scannable.
 4. Keep unique service card graphics meaningful and consistent with current visual language.
+5. The site audience is everyday users who want an easy-to-use interface for complex tasks, so flows should feel approachable and supportive rather than technical or developer-facing.
+6. Labels, helper text, buttons, and validation messages should point users toward the right service and next action using simple, understandable wording.
 
 ## 7) Change Summary Requirement
 

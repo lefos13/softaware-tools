@@ -6,6 +6,7 @@
 import { computed, ref, watch } from "vue";
 import SuccessThankYouModal from "../SuccessThankYouModal.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
+import { usePortalI18n } from "../../i18n";
 import { usePdfSplit } from "../../composables/usePdfSplit";
 
 const props = defineProps({
@@ -18,6 +19,7 @@ const props = defineProps({
     required: true,
   },
 });
+const { t } = usePortalI18n();
 
 const {
   file,
@@ -68,47 +70,54 @@ const closeSuccessModal = () => {
 <template>
   <section aria-labelledby="pdf-split-endpoint">
     <div class="section-head section-head--spaced">
-      <h2 id="pdf-split-endpoint" class="section-head__title">PDF Split Flow</h2>
-      <p class="section-head__subtitle">Split one PDF into smaller files in the way you choose.</p>
+      <h2 id="pdf-split-endpoint" class="section-head__title">{{ t("tools.pdfSplit.title") }}</h2>
+      <p class="section-head__subtitle">{{ t("tools.pdfSplit.subtitle") }}</p>
     </div>
 
     <div class="tool-card">
       <div class="merge-step">
-        <p class="merge-step__title">Step 1: Select one PDF</p>
+        <p class="merge-step__title">{{ t("tools.pdfSplit.step1") }}</p>
         <input type="file" accept="application/pdf" @change="onFilesSelected" />
-        <p class="tool-card__description">Selected: {{ file ? file.name : "None" }}</p>
         <p class="tool-card__description">
-          Upload limits: exactly 1 file, max {{ MAX_UPLOAD_FILES }} files allowed globally,
-          {{ MAX_FILE_SIZE_MB }} MB each, {{ MAX_TOTAL_UPLOAD_MB }} MB total.
+          {{ t("tools.common.selected", { value: file ? file.name : t("app.none") }) }}
+        </p>
+        <p class="tool-card__description">
+          {{
+            t("app.singleFileUploadLimits", {
+              files: MAX_UPLOAD_FILES,
+              fileSize: MAX_FILE_SIZE_MB,
+              totalSize: MAX_TOTAL_UPLOAD_MB,
+            })
+          }}
         </p>
       </div>
 
       <div v-if="filePreviewUrl" class="merge-step">
-        <p class="merge-step__title">Source preview</p>
+        <p class="merge-step__title">{{ t("tools.pdfSplit.sourcePreview") }}</p>
         <div class="pdf-preview-shell pdf-preview-shell--split">
           <iframe
             :src="`${filePreviewUrl}#page=1&toolbar=0&navpanes=0&scrollbar=0`"
-            title="Source PDF preview"
+            :title="t('tools.pdfSplit.sourcePreview')"
             class="pdf-preview"
           />
         </div>
       </div>
 
       <div class="merge-step">
-        <p class="merge-step__title">Step 2: Choose split mode</p>
+        <p class="merge-step__title">{{ t("tools.pdfSplit.step2") }}</p>
         <select v-model="mode" class="rotation-select" :disabled="loading">
-          <option value="range">Page range (start to end)</option>
-          <option value="selected_pages">Specific pages (single output file)</option>
-          <option value="every_n_pages">Split every N pages</option>
-          <option value="custom_groups">Named groups</option>
+          <option value="range">{{ t("tools.pdfSplit.range") }}</option>
+          <option value="selected_pages">{{ t("tools.pdfSplit.selectedPages") }}</option>
+          <option value="every_n_pages">{{ t("tools.pdfSplit.everyNPages") }}</option>
+          <option value="custom_groups">{{ t("tools.pdfSplit.customGroups") }}</option>
         </select>
       </div>
 
       <div v-if="mode === 'range'" class="merge-step">
-        <p class="merge-step__title">Step 3: Page range options</p>
+        <p class="merge-step__title">{{ t("tools.pdfSplit.step3Range") }}</p>
         <div class="advanced-grid">
           <label>
-            Start page
+            {{ t("tools.pdfSplit.startPage") }}
             <input
               v-model.number="rangeOptions.fromPage"
               type="number"
@@ -117,7 +126,7 @@ const closeSuccessModal = () => {
             />
           </label>
           <label>
-            End page
+            {{ t("tools.pdfSplit.endPage") }}
             <input
               v-model.number="rangeOptions.toPage"
               type="number"
@@ -129,9 +138,9 @@ const closeSuccessModal = () => {
       </div>
 
       <div v-else-if="mode === 'selected_pages'" class="merge-step">
-        <p class="merge-step__title">Step 3: Specific pages</p>
+        <p class="merge-step__title">{{ t("tools.pdfSplit.step3Pages") }}</p>
         <label>
-          Page numbers (comma-separated)
+          {{ t("tools.pdfSplit.pageNumbers") }}
           <input
             v-model="selectedPagesInput"
             type="text"
@@ -140,15 +149,13 @@ const closeSuccessModal = () => {
             :disabled="loading"
           />
         </label>
-        <p class="tool-card__description">
-          Example: 1,5,10. This creates one PDF that includes only those pages.
-        </p>
+        <p class="tool-card__description">{{ t("tools.pdfSplit.pageNumbersHelp") }}</p>
       </div>
 
       <div v-else-if="mode === 'every_n_pages'" class="merge-step">
-        <p class="merge-step__title">Step 3: Split size</p>
+        <p class="merge-step__title">{{ t("tools.pdfSplit.step3Size") }}</p>
         <label>
-          Pages per output file
+          {{ t("tools.pdfSplit.pagesPerFile") }}
           <input
             v-model.number="chunkSize"
             type="number"
@@ -160,15 +167,17 @@ const closeSuccessModal = () => {
       </div>
 
       <div v-else class="merge-step">
-        <p class="merge-step__title">Step 3: Named groups</p>
+        <p class="merge-step__title">{{ t("tools.pdfSplit.step3Groups") }}</p>
         <div class="advanced-grid">
           <article v-for="group in customGroups" :key="group.id" class="preview-card">
             <div class="preview-card__head">
-              <p class="preview-card__order">Group {{ group.id }}</p>
+              <p class="preview-card__order">
+                {{ t("tools.pdfSplit.groupLabel", { id: group.id }) }}
+              </p>
             </div>
             <div class="advanced-grid">
               <label>
-                Group name (output file name hint)
+                {{ t("tools.pdfSplit.groupName") }}
                 <input
                   v-model="group.name"
                   type="text"
@@ -177,7 +186,7 @@ const closeSuccessModal = () => {
                 />
               </label>
               <label>
-                Page ranges (comma-separated, e.g. 1-3,8-10)
+                {{ t("tools.pdfSplit.ranges") }}
                 <input
                   v-model="group.rangesInput"
                   type="text"
@@ -186,7 +195,7 @@ const closeSuccessModal = () => {
                 />
               </label>
               <label>
-                Extra pages (comma-separated, e.g. 12,15)
+                {{ t("tools.pdfSplit.pages") }}
                 <input
                   v-model="group.pagesInput"
                   type="text"
@@ -202,7 +211,7 @@ const closeSuccessModal = () => {
                 :disabled="loading || !canRemoveCustomGroup"
                 @click="removeCustomGroup(group.id)"
               >
-                Remove group
+                {{ t("tools.pdfSplit.removeGroup") }}
               </button>
             </div>
           </article>
@@ -215,20 +224,20 @@ const closeSuccessModal = () => {
             :disabled="loading"
             @click="addCustomGroup"
           >
-            Add group
+            {{ t("tools.pdfSplit.addGroup") }}
           </button>
         </div>
       </div>
 
       <div class="merge-step">
-        <p class="merge-step__title">Step 4: Create split files</p>
+        <p class="merge-step__title">{{ t("tools.pdfSplit.step4") }}</p>
         <button
           type="button"
           class="button button--primary"
           :disabled="!canSplit"
           @click="split(props.apiBaseUrl)"
         >
-          {{ loading ? "Creating..." : "Create Split Files" }}
+          {{ loading ? t("tools.pdfSplit.creating") : t("tools.pdfSplit.create") }}
         </button>
 
         <div v-if="loading" class="progress-panel" aria-live="polite">
@@ -245,18 +254,18 @@ const closeSuccessModal = () => {
       <p v-if="error" class="tool-card__description tool-card__description--error">{{ error }}</p>
       <p v-if="message" class="tool-card__description">{{ message }}</p>
       <p v-if="requestId" class="tool-card__description">
-        Request reference: <code>{{ requestId }}</code>
+        {{ t("tools.common.requestReference") }}: <code>{{ requestId }}</code>
       </p>
       <p v-if="archiveUrl && !showSuccessModal" class="tool-card__description">
-        Your split files are ready.
+        {{ t("tools.pdfSplit.ready") }}
         <button type="button" class="button button--secondary" @click="showSuccessModal = true">
-          Open download modal
+          {{ t("app.openDownloadModal") }}
         </button>
       </p>
       <SuccessThankYouModal
         :visible="showSuccessModal"
-        title="Split files are ready"
-        description="Download your split archive and support the project if it helped you."
+        :title="t('tools.pdfSplit.modalTitle')"
+        :description="t('tools.pdfSplit.modalDescription')"
         :download-url="archiveUrl"
         :download-name="archiveName"
         @close="closeSuccessModal"

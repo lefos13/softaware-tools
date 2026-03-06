@@ -4,6 +4,7 @@
   with minimal controls while preserving the same upload-to-download pattern.
 */
 import { computed, ref } from "vue";
+import { usePortalI18n } from "../../i18n";
 import { watermarkPdf } from "../../services/pdfService";
 
 const props = defineProps({
@@ -16,6 +17,7 @@ const props = defineProps({
     required: true,
   },
 });
+const { t } = usePortalI18n();
 
 const sourceFile = ref(null);
 const watermarkImage = ref(null);
@@ -60,12 +62,12 @@ const run = async () => {
   error.value = "";
 
   if (!sourceFile.value) {
-    error.value = "Select one PDF file first.";
+    error.value = t("tools.errors.selectPdfFirst");
     return;
   }
 
   if (mode.value === "image" && !watermarkImage.value) {
-    error.value = "Select a watermark image when image mode is enabled.";
+    error.value = t("tools.errors.selectWatermarkImage");
     return;
   }
 
@@ -89,7 +91,7 @@ const run = async () => {
     message.value = result.message;
     requestId.value = result.requestId;
   } catch (runError) {
-    error.value = runError instanceof Error ? runError.message : "Watermark request failed";
+    error.value = runError instanceof Error ? runError.message : t("tools.errors.watermarkFailed");
   } finally {
     loading.value = false;
   }
@@ -99,39 +101,39 @@ const run = async () => {
 <template>
   <section aria-label="PDF watermark">
     <div class="section-head section-head--spaced">
-      <h2 class="section-head__title">PDF Watermark</h2>
-      <p class="section-head__subtitle">Apply text or image watermark overlays on a PDF.</p>
+      <h2 class="section-head__title">{{ t("tools.pdfWatermark.title") }}</h2>
+      <p class="section-head__subtitle">{{ t("tools.pdfWatermark.subtitle") }}</p>
     </div>
 
     <article class="tool-card">
       <div class="merge-step">
-        <p class="merge-step__title">Source PDF</p>
+        <p class="merge-step__title">{{ t("tools.pdfWatermark.sourcePdf") }}</p>
         <input type="file" accept="application/pdf" @change="onSourceFileSelected" />
       </div>
 
       <div class="merge-step">
-        <p class="merge-step__title">Watermark mode</p>
+        <p class="merge-step__title">{{ t("tools.pdfWatermark.mode") }}</p>
         <select v-model="mode" class="rotation-select">
-          <option value="text">Text</option>
-          <option value="image">Image</option>
+          <option value="text">{{ t("tools.pdfWatermark.text") }}</option>
+          <option value="image">{{ t("tools.pdfWatermark.image") }}</option>
         </select>
       </div>
 
       <div v-if="mode === 'text'" class="merge-step">
         <label>
-          Watermark text
+          {{ t("tools.pdfWatermark.watermarkText") }}
           <input v-model="text" type="text" class="rotation-select" placeholder="CONFIDENTIAL" />
         </label>
       </div>
 
       <div v-else class="merge-step">
-        <p class="merge-step__title">Watermark image</p>
+        <p class="merge-step__title">{{ t("tools.pdfWatermark.watermarkImage") }}</p>
         <input type="file" accept="image/*" @change="onWatermarkImageSelected" />
       </div>
 
       <div class="merge-step advanced-grid">
         <label>
-          Opacity (0.05 - 1)
+          {{ t("tools.pdfWatermark.opacity") }}
           <input
             v-model.number="opacity"
             type="number"
@@ -142,33 +144,35 @@ const run = async () => {
           />
         </label>
         <label>
-          Position
+          {{ t("tools.pdfWatermark.position") }}
           <select v-model="position" class="rotation-select">
-            <option value="center">Center</option>
-            <option value="top-left">Top left</option>
-            <option value="top-right">Top right</option>
-            <option value="bottom-left">Bottom left</option>
-            <option value="bottom-right">Bottom right</option>
-            <option value="top-center">Top center</option>
-            <option value="bottom-center">Bottom center</option>
+            <option value="center">{{ t("tools.positions.center") }}</option>
+            <option value="top-left">{{ t("tools.positions.top-left") }}</option>
+            <option value="top-right">{{ t("tools.positions.top-right") }}</option>
+            <option value="bottom-left">{{ t("tools.positions.bottom-left") }}</option>
+            <option value="bottom-right">{{ t("tools.positions.bottom-right") }}</option>
+            <option value="top-center">{{ t("tools.positions.top-center") }}</option>
+            <option value="bottom-center">{{ t("tools.positions.bottom-center") }}</option>
           </select>
         </label>
       </div>
 
       <div class="merge-step">
         <button type="button" class="button button--primary" :disabled="!canRun" @click="run">
-          {{ loading ? "Applying..." : "Apply watermark" }}
+          {{ loading ? t("tools.pdfWatermark.applying") : t("tools.pdfWatermark.apply") }}
         </button>
       </div>
 
       <p v-if="error" class="tool-card__description tool-card__description--error">{{ error }}</p>
       <p v-if="message" class="tool-card__description">{{ message }}</p>
       <p v-if="requestId" class="tool-card__description">
-        Request reference: <code>{{ requestId }}</code>
+        {{ t("tools.common.requestReference") }}: <code>{{ requestId }}</code>
       </p>
       <p v-if="outputUrl" class="tool-card__description">
-        Ready:
-        <a :href="outputUrl" :download="outputName">Download {{ outputName }}</a>
+        {{ t("app.readyPrefix") }}:
+        <a :href="outputUrl" :download="outputName">{{
+          t("tools.common.download", { name: outputName })
+        }}</a>
       </p>
     </article>
   </section>
