@@ -1,4 +1,6 @@
 #!/usr/bin/env sh
-# We gate commits with staged lint/format checks so style and basic quality issues
-# are caught before code lands in shared branches.
+# Staged files are fixed first so the final validation pass checks the code as
+# it will actually be committed instead of failing on auto-fixable issues.
 npx lint-staged
+npm run lint
+npm run format:check
