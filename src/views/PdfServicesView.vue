@@ -29,6 +29,36 @@ const pdfServices = [
     description: "Turn PDF content into an editable Word file, including scanned pages with OCR.",
     route: "/flows/pdf-extract-to-word",
   },
+  {
+    title: "PDF Watermark",
+    graphic: "pdf-merge",
+    description: "Add text or image watermarks such as DRAFT or CONFIDENTIAL.",
+    route: "/flows/pdf-watermark",
+  },
+  {
+    title: "PDF Page Numbers / Bates",
+    graphic: "pdf-split",
+    description: "Add page X of Y labels or Bates numbering for legal/admin workflows.",
+    route: "/flows/pdf-page-numbers",
+  },
+  {
+    title: "PDF Edit Pages",
+    graphic: "pdf-split",
+    description: "Rotate, reorder, delete, or keep pages using an operation plan.",
+    route: "/flows/pdf-edit-pages",
+  },
+  {
+    title: "PDF Extract Text",
+    graphic: "pdf-ocr",
+    description: "Extract native PDF text to .txt or ZIP with one text file per page.",
+    route: "/flows/pdf-extract-text",
+  },
+  {
+    title: "Images to PDF",
+    graphic: "pdf-merge",
+    description: "Combine one or more images into a single PDF in upload order.",
+    route: "/flows/pdf-from-images",
+  },
 ];
 
 const openService = (route) => {

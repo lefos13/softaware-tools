@@ -1,0 +1,19 @@
+<script setup>
+/*
+  Route wrapper keeps watermark flow consistent with other service-specific
+  views by injecting shared portal health/base-url context into the card.
+*/
+import { inject } from "vue";
+import PdfWatermarkCard from "../components/api/PdfWatermarkCard.vue";
+
+const portalContext = inject("portalContext");
+</script>
+
+<template>
+  <section class="flow-view">
+    <PdfWatermarkCard
+      :api-base-url="portalContext.apiBaseUrl.value"
+      :api-healthy="portalContext.isHealthy.value"
+    />
+  </section>
+</template>

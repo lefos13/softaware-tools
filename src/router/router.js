@@ -13,9 +13,14 @@ import JsonServicesView from "../views/JsonServicesView.vue";
 import JsonToolWorkspaceView from "../views/JsonToolWorkspaceView.vue";
 import OpenApiView from "../views/OpenApiView.vue";
 import PdfFlowView from "../views/PdfFlowView.vue";
+import PdfFromImagesFlowView from "../views/PdfFromImagesFlowView.vue";
+import PdfPageNumbersFlowView from "../views/PdfPageNumbersFlowView.vue";
+import PdfEditPagesFlowView from "../views/PdfEditPagesFlowView.vue";
+import PdfExtractTextFlowView from "../views/PdfExtractTextFlowView.vue";
 import PdfExtractToWordFlowView from "../views/PdfExtractToWordFlowView.vue";
 import PdfServicesView from "../views/PdfServicesView.vue";
 import PdfSplitFlowView from "../views/PdfSplitFlowView.vue";
+import PdfWatermarkFlowView from "../views/PdfWatermarkFlowView.vue";
 import { JSON_TOOL_BY_ID } from "../services/jsonTools/registry";
 
 const jsonServicesEnabled = import.meta.env.VITE_ENABLE_JSON_SERVICES === "true";
@@ -50,6 +55,36 @@ const staticRoutes = [
     name: "pdf-extract-to-word",
     label: "PDF to Word",
     component: PdfExtractToWordFlowView,
+  },
+  {
+    path: "/flows/pdf-watermark",
+    name: "pdf-watermark",
+    label: "PDF Watermark",
+    component: PdfWatermarkFlowView,
+  },
+  {
+    path: "/flows/pdf-page-numbers",
+    name: "pdf-page-numbers",
+    label: "PDF Page Numbers",
+    component: PdfPageNumbersFlowView,
+  },
+  {
+    path: "/flows/pdf-edit-pages",
+    name: "pdf-edit-pages",
+    label: "PDF Edit Pages",
+    component: PdfEditPagesFlowView,
+  },
+  {
+    path: "/flows/pdf-extract-text",
+    name: "pdf-extract-text",
+    label: "PDF Extract Text",
+    component: PdfExtractTextFlowView,
+  },
+  {
+    path: "/flows/pdf-from-images",
+    name: "pdf-from-images",
+    label: "Images to PDF",
+    component: PdfFromImagesFlowView,
   },
   {
     path: "/flows/image-services",

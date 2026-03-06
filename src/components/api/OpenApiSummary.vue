@@ -8,6 +8,11 @@
         PDF split accepts one `files[]` PDF with modes: range, selected_pages, every_n_pages,
         custom_groups
       </li>
+      <li>PDF watermark supports text/image overlays via `POST /api/pdf/watermark`</li>
+      <li>PDF page numbering and Bates numbering are available via `POST /api/pdf/page-numbers`</li>
+      <li>PDF page edits (rotate/reorder/delete/keep) use `POST /api/pdf/edit-pages`</li>
+      <li>PDF text extraction to `.txt`/ZIP is available at `POST /api/pdf/extract-text`</li>
+      <li>Images to PDF conversion is available at `POST /api/pdf/from-images`</li>
       <li>
         PDF to Word extraction accepts one `files[]` PDF plus `extractOptions` JSON for hybrid
         native+OCR output
@@ -30,8 +35,11 @@
         `GET /api/tasks/:taskId` exposes real backend processing progress with initializing fallback
       </li>
       <li>
-        `GET /api/admin/reports` and `GET /api/admin/reports/:fileName` expose failure reports
+        Admin reports now require `x-admin-token`; superadmins can inspect token inventory with `GET
+        /api/admin/tokens`, revoke selected sessions with `POST /api/admin/tokens/revoke`, and
+        invalidate all tokens with `POST /api/admin/tokens/invalidate-all`
       </li>
+      <li>Mutating API requests are rate-limited per IP (5 requests/minute by default)</li>
       <li>Upload limits: 20 files, 25 MB each, 120 MB total per request</li>
     </ul>
   </aside>
