@@ -173,6 +173,19 @@ const emit = defineEmits(["action"]);
         <circle cx="72" cy="55" r="4" class="tool-card__shape tool-card__shape--a" />
         <circle cx="72" cy="70" r="4" class="tool-card__shape tool-card__shape--c" />
       </svg>
+      <svg v-else-if="graphic === 'books-editor'" viewBox="0 0 220 110" class="tool-card__graphic">
+        <path
+          d="M28 22c0-6 4-10 10-10h58c13 0 24 9 24 22v54H38c-6 0-10-4-10-10V22Z"
+          class="tool-card__shape tool-card__shape--a"
+        />
+        <path
+          d="M120 34c0-13 11-22 24-22h38c6 0 10 4 10 10v56c0 6-4 10-10 10h-62V34Z"
+          class="tool-card__shape tool-card__shape--b"
+        />
+        <path d="M110 20v68" class="tool-card__line tool-card__line--books" />
+        <path d="M52 40h42M52 54h34M52 68h44" class="tool-card__line tool-card__line--books" />
+        <path d="M144 42l12 12 22-24" class="tool-card__line tool-card__line--books-check" />
+      </svg>
       <svg v-else viewBox="0 0 220 110" class="tool-card__graphic">
         <rect
           x="10"

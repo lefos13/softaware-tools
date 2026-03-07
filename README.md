@@ -11,6 +11,13 @@ npm install
 npm run dev
 ```
 
+Optional feature flags:
+
+```bash
+VITE_ENABLE_BOOKS_SERVICES=true
+VITE_ENABLE_JSON_SERVICES=true
+```
+
 ## Build
 
 ```bash
@@ -49,6 +56,7 @@ Husky is configured with a `pre-commit` hook that runs `lint-staged`, which mean
 - Guided PDF merge flow with file previews, drag-and-drop ordering, arrow ordering controls, and rotation before final merge
 - Guided PDF split flow with multiple split strategies (range, selected pages, every N pages, custom groups)
 - Guided PDF-to-Word extraction flow with hybrid native text + OCR fallback for scanned pages
+- Dedicated Books service family with a Greek literature editor flow for DOCX manuscripts
 - Guided image compression flow with preset modes (`light`, `balanced`, `aggressive`) and an `advanced` mode
 - Multi-image compression with one ZIP download artifact
 - Guided image conversion flow with target formats: `jpeg`, `png`, `webp`, `avif`, `tiff`, `gif`

@@ -48,6 +48,8 @@ const navigationRoutes = computed(() =>
         "pdf-edit-pages",
         "pdf-extract-text",
         "pdf-from-images",
+        "books-services",
+        "books-greek-editor",
         "image",
         "image-services",
         "image-convert",
@@ -114,6 +116,15 @@ const breadcrumbs = computed(() => {
       { label: toRouteLabel("home"), path: "/" },
       { label: toRouteLabel("pdf-services"), path: "/flows/pdf-services" },
       { label: toRouteLabel("pdf-from-images"), path: "/flows/pdf-from-images" },
+    ],
+    "books-services": [
+      { label: toRouteLabel("home"), path: "/" },
+      { label: toRouteLabel("books-services"), path: "/flows/books-services" },
+    ],
+    "books-greek-editor": [
+      { label: toRouteLabel("home"), path: "/" },
+      { label: toRouteLabel("books-services"), path: "/flows/books-services" },
+      { label: toRouteLabel("books-greek-editor"), path: "/flows/books-greek-editor" },
     ],
     "image-services": [
       { label: toRouteLabel("home"), path: "/" },

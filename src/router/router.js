@@ -4,6 +4,8 @@
 */
 import { computed, ref } from "vue";
 import AdminReportsView from "../views/AdminReportsView.vue";
+import BooksGreekEditorFlowView from "../views/BooksGreekEditorFlowView.vue";
+import BooksServicesView from "../views/BooksServicesView.vue";
 import DonateView from "../views/DonateView.vue";
 import HomeView from "../views/HomeView.vue";
 import ImageConvertFlowView from "../views/ImageConvertFlowView.vue";
@@ -24,6 +26,7 @@ import PdfWatermarkFlowView from "../views/PdfWatermarkFlowView.vue";
 import { JSON_TOOL_BY_ID } from "../services/jsonTools/registry";
 
 const jsonServicesEnabled = import.meta.env.VITE_ENABLE_JSON_SERVICES === "true";
+const booksServicesEnabled = import.meta.env.VITE_ENABLE_BOOKS_SERVICES === "true";
 
 const staticRoutes = [
   {
@@ -86,6 +89,22 @@ const staticRoutes = [
     label: "Images to PDF",
     component: PdfFromImagesFlowView,
   },
+  ...(booksServicesEnabled
+    ? [
+        {
+          path: "/flows/books-services",
+          name: "books-services",
+          label: "Books Services",
+          component: BooksServicesView,
+        },
+        {
+          path: "/flows/books-greek-editor",
+          name: "books-greek-editor",
+          label: "Greek Literature Editor",
+          component: BooksGreekEditorFlowView,
+        },
+      ]
+    : []),
   {
     path: "/flows/image-services",
     name: "image-services",

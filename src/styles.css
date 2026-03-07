@@ -437,6 +437,16 @@ body {
   stroke-width: 3.2;
 }
 
+.tool-card__line--books {
+  stroke: rgba(120, 53, 15, 0.85);
+  stroke-width: 3.1;
+}
+
+.tool-card__line--books-check {
+  stroke: rgba(21, 128, 61, 0.88);
+  stroke-width: 4.2;
+}
+
 .tool-card__icon-badge {
   position: absolute;
   right: 8px;
@@ -462,6 +472,10 @@ body {
 
 .tool-card--image .tool-card__icon-badge {
   background: rgba(236, 253, 245, 0.9);
+}
+
+.tool-card--books .tool-card__icon-badge {
+  background: rgba(255, 247, 237, 0.92);
 }
 
 .tool-card__tag {
@@ -867,6 +881,61 @@ body {
 .advanced-checkbox input[type="checkbox"] {
   width: 1rem;
   height: 1rem;
+}
+
+/*
+  The editor flow needs a denser checklist and scope summary than the PDF
+  cards, so these helpers keep the rule selector readable on smaller screens.
+*/
+.rule-checkboxes {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.rule-checkbox {
+  display: grid;
+  gap: 0.18rem;
+  align-items: start;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.8rem;
+  background: #f8fbff;
+}
+
+.rule-checkbox__header {
+  display: flex;
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.rule-checkbox__header input[type="checkbox"] {
+  margin-top: 0.18rem;
+  width: 1rem;
+  height: 1rem;
+}
+
+.rule-checkbox__title {
+  display: block;
+  font-weight: 700;
+}
+
+.rule-checkbox__description {
+  margin: 0.1rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.93rem;
+  line-height: 1.45;
+}
+
+.selection-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid rgba(13, 148, 136, 0.24);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  background: rgba(13, 148, 136, 0.08);
+  font-size: 0.9rem;
+  color: var(--brand-strong);
 }
 
 .chip-row {

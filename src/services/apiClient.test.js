@@ -117,6 +117,30 @@ describe("apiClient", () => {
     expect(unwrapFileName(headers, "fallback.pdf")).toBe("result.pdf");
   });
 
+  it("unwrapFileName decodes UTF-8 filename* values", () => {
+    const headers = {
+      get: vi.fn(
+        () =>
+          "attachment; filename=\"manuscript-edited.docx\"; filename*=UTF-8''%CE%BA%CE%B5%CE%AF%CE%BC%CE%B5%CE%BD%CE%BF-edited.docx"
+      ),
+    };
+
+    expect(unwrapFileName(headers, "fallback.docx")).toBe("κείμενο-edited.docx");
+  });
+
+  it("unwrapFileName repairs mojibake plain filename values", () => {
+    const headers = {
+      get: vi.fn(
+        () =>
+          'attachment; filename="Î¤Î Î ÎÎ Î¡Î©ÎÎÎÎ Î¤ÎÎ¥ Î¡ÎÎ - ÎÎ»Î¿ÎºÎ»Î·ÏÏÎ¼ÎµÌÎ½Î¿-edited.docx"'
+      ),
+    };
+
+    expect(unwrapFileName(headers, "fallback.docx")).toBe(
+      "ΤΟ ΠΕΠΡΩΜΕΝΟ ΤΟΥ ΡΑΘ - Ολοκληρωμένο-edited.docx"
+    );
+  });
+
   it("reads operation and request headers", () => {
     const headers = {
       get: vi.fn((key) => {

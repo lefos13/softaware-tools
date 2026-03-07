@@ -49,10 +49,43 @@ const parseApiErrorFromText = (status, rawText) => {
   }
 };
 
+const repairMojibakeFileName = (value) => {
+  if (!/[ÎÏÃÐÑ]/.test(value)) {
+    return value;
+  }
+
+  try {
+    const bytes = Uint8Array.from(Array.from(value, (char) => char.charCodeAt(0) & 0xff));
+    const repaired = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return repaired || value;
+  } catch {
+    return value;
+  }
+};
+
+const normalizeHeaderFileName = (value) => {
+  const cleaned = String(value || "").replace(/^"(.*)"$/, "$1");
+
+  if (/%[0-9a-f]{2}/i.test(cleaned)) {
+    try {
+      return decodeURIComponent(cleaned);
+    } catch {
+      return repairMojibakeFileName(cleaned);
+    }
+  }
+
+  return repairMojibakeFileName(cleaned);
+};
+
 export const unwrapFileName = (headers, fallback = "download.bin") => {
   const contentDisposition = headers.get("content-disposition") || "";
-  const fileNameMatch = contentDisposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
-  return fileNameMatch?.[1]?.replace(/"/g, "") || fallback;
+  const encodedMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (encodedMatch?.[1]) {
+    return normalizeHeaderFileName(encodedMatch[1]);
+  }
+
+  const fileNameMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+  return (fileNameMatch?.[1] && normalizeHeaderFileName(fileNameMatch[1])) || fallback;
 };
 
 export const readOperationMessage = (headers, fallback) => {

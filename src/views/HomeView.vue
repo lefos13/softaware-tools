@@ -10,6 +10,7 @@ import { usePortalI18n } from "../i18n";
 const router = inject("portalRouter");
 const { t } = usePortalI18n();
 const jsonServicesEnabled = import.meta.env.VITE_ENABLE_JSON_SERVICES === "true";
+const booksServicesEnabled = import.meta.env.VITE_ENABLE_BOOKS_SERVICES === "true";
 
 const goTo = (path) => {
   router.navigate(path);
@@ -31,6 +32,15 @@ const goTo = (path) => {
         variant="pdf"
         :description="t('pages.home.pdfServicesDescription')"
         @action="goTo('/flows/pdf-services')"
+      />
+      <ToolCard
+        v-if="booksServicesEnabled"
+        :title="t('pages.home.booksServicesTitle')"
+        :tag="t('routes.books-services')"
+        graphic="books-editor"
+        variant="books"
+        :description="t('pages.home.booksServicesDescription')"
+        @action="goTo('/flows/books-services')"
       />
       <ToolCard
         :title="t('pages.home.imageServicesTitle')"
