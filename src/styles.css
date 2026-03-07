@@ -2,6 +2,7 @@
 :root {
   --bg: #f7f5f0;
   --surface: #ffffff;
+  --background-new: #0f766e;
   --surface-soft: #f6f9ff;
   --ink: #18212f;
   --ink-soft: #475569;
@@ -326,7 +327,7 @@ body {
   padding: 1.2rem;
   border: 1px solid var(--border);
   border-radius: 20px;
-  background: var(--surface);
+  background: var(--background-new);
   box-shadow: 0 14px 28px rgba(24, 33, 47, 0.06);
 }
 
@@ -338,6 +339,7 @@ body {
   justify-content: flex-start;
   gap: 0.45rem;
   padding: 1rem;
+  background: var(--surface) !important;
 }
 
 .tool-card--launcher-click {
@@ -495,8 +497,12 @@ body {
 
 .tool-card__description {
   margin: 0.35rem 0 0;
-  color: var(--ink-soft);
+  color: var(--surface);
   line-height: 1.45;
+}
+
+.tool-card--launcher .tool-card__description {
+  color: var(--ink-soft);
 }
 
 .tool-card__description--error {
@@ -774,7 +780,7 @@ body {
 }
 
 .tool-card label {
-  color: var(--ink-soft);
+  color: var(--surface-soft);
   font-size: 0.93rem;
   font-weight: 600;
 }
