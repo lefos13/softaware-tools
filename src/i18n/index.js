@@ -4,6 +4,7 @@
   without duplicating page logic across the app.
 */
 import { inject, ref, watch } from "vue";
+import { booksGreekEditorMessages } from "./booksGreekEditorMessages";
 
 export const PORTAL_I18N_KEY = "portalI18n";
 
@@ -196,7 +197,7 @@ const messages = {
           "Open PDF tools for merging, splitting, Word export, text export, and more.",
         booksServicesTitle: "Books Services",
         booksServicesDescription:
-          "Open editing tools for Greek manuscripts and literature-focused corrections.",
+          "Open editing tools for Greek manuscripts or pasted text with literature-focused corrections.",
         imageServicesTitle: "Image Services",
         imageServicesDescription:
           "Open image tools for compression, conversion, and background cleanup.",
@@ -258,7 +259,7 @@ const messages = {
       booksGreekEditor: {
         title: "Greek Literature Editor",
         description:
-          "Upload one Word manuscript and apply classic Greek literature corrections with rule checkboxes.",
+          "Edit one Word manuscript or pasted text with grouped Greek literature and spelling rules.",
       },
       imageCompression: {
         title: "Compress Images",
@@ -419,46 +420,7 @@ const messages = {
         generate: "Create PDF",
         generating: "Creating...",
       },
-      booksGreekEditor: {
-        title: "Greek Literature Editor",
-        subtitle: "Apply selected Greek book-editing rules to one Word manuscript.",
-        step1: "Step 1: Select one DOCX manuscript",
-        step2: "Step 2: Choose the corrections to apply",
-        step3: "Step 3: Create the corrected manuscript",
-        scopeNote:
-          "V1 edits only the main manuscript body. Headers, footers, notes, comments, and text boxes stay unchanged.",
-        selectedRules: "Selected rules: {count}",
-        apply: "Create corrected manuscript",
-        applying: "Applying...",
-        ready: "Your corrected manuscript is ready.",
-        modalTitle: "Corrected manuscript is ready",
-        modalDescription: "Download your corrected Word file below.",
-        rules: {
-          kai_before_vowel: {
-            title: 'Change "και" to "κι" before vowels',
-            description:
-              'Turns standalone "και" into "κι" when the next Greek word starts with a vowel, accented or not.',
-          },
-          stin_article_trim: {
-            title: 'Shorten "(σ)την" before specific consonants',
-            description:
-              'Turns "στην" into "στη" and "την" into "τη" before β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ, with the listed digraph exceptions.',
-          },
-          min_negation_trim: {
-            title: 'Shorten "μην" before specific consonants',
-            description:
-              'Turns "μην" into "μη" before β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ, while skipping γγ, γκ, μπ, and ντ.',
-          },
-          sa_to_san: {
-            title: 'Change standalone "σα" to "σαν"',
-            description: 'Turns the standalone word "σα" into "σαν" everywhere it appears.',
-          },
-          ellipsis_normalize: {
-            title: "Normalize long dot runs to ellipsis",
-            description: "Replaces any sequence of four or more periods with exactly three dots.",
-          },
-        },
-      },
+      booksGreekEditor: booksGreekEditorMessages.en,
       imageCompression: {
         title: "Compress Images",
         subtitle: "Reduce image size while keeping them clear and useful.",
@@ -743,7 +705,7 @@ const messages = {
           "Άνοιγμα εργαλείων PDF για ένωση, χωρισμό, εξαγωγή σε Word, εξαγωγή κειμένου και άλλα.",
         booksServicesTitle: "Υπηρεσίες βιβλίων",
         booksServicesDescription:
-          "Άνοιγμα εργαλείων επιμέλειας για ελληνικά χειρόγραφα και λογοτεχνικές διορθώσεις.",
+          "Άνοιγμα εργαλείων επιμέλειας για ελληνικά χειρόγραφα Word ή επικολλημένο κείμενο.",
         imageServicesTitle: "Υπηρεσίες εικόνας",
         imageServicesDescription:
           "Άνοιγμα εργαλείων εικόνας για συμπίεση, μετατροπή και καθάρισμα φόντου.",
@@ -811,7 +773,7 @@ const messages = {
       booksGreekEditor: {
         title: "Λογοτεχνική επιμέλεια ελληνικών βιβλίων",
         description:
-          "Ανεβάστε ένα χειρόγραφο Word και εφαρμόστε λογοτεχνικές διορθώσεις με επιλογή κανόνων.",
+          "Επιμεληθείτε χειρόγραφο Word ή επικολλημένο κείμενο με ομαδοποιημένους λογοτεχνικούς και ορθογραφικούς κανόνες.",
       },
       imageCompression: {
         title: "Συμπίεση εικόνων",
@@ -972,47 +934,7 @@ const messages = {
         generate: "Δημιουργία PDF",
         generating: "Δημιουργία...",
       },
-      booksGreekEditor: {
-        title: "Λογοτεχνική επιμέλεια ελληνικών βιβλίων",
-        subtitle: "Εφαρμόστε επιλεγμένους κανόνες επιμέλειας σε ένα χειρόγραφο Word.",
-        step1: "Βήμα 1: Επιλέξτε ένα χειρόγραφο DOCX",
-        step2: "Βήμα 2: Διαλέξτε τις διορθώσεις που θα εφαρμοστούν",
-        step3: "Βήμα 3: Δημιουργία διορθωμένου χειρογράφου",
-        scopeNote:
-          "Η πρώτη έκδοση επεξεργάζεται μόνο το κύριο σώμα του χειρογράφου. Κεφαλίδες, υποσέλιδα, σημειώσεις, σχόλια και πλαίσια κειμένου μένουν όπως είναι.",
-        selectedRules: "Επιλεγμένοι κανόνες: {count}",
-        apply: "Δημιουργία διορθωμένου χειρογράφου",
-        applying: "Γίνεται εφαρμογή...",
-        ready: "Το διορθωμένο χειρόγραφό σας είναι έτοιμο.",
-        modalTitle: "Το διορθωμένο χειρόγραφο είναι έτοιμο",
-        modalDescription: "Κατεβάστε το διορθωμένο αρχείο Word παρακάτω.",
-        rules: {
-          kai_before_vowel: {
-            title: 'Αλλαγή του "και" σε "κι" πριν από φωνήεν',
-            description:
-              'Μετατρέπει το αυτόνομο "και" σε "κι" όταν η επόμενη ελληνική λέξη αρχίζει από φωνήεν, τονισμένο ή άτονο.',
-          },
-          stin_article_trim: {
-            title: 'Σύντμηση του "(σ)την" πριν από συγκεκριμένα σύμφωνα',
-            description:
-              'Μετατρέπει το "στην" σε "στη" και το "την" σε "τη" πριν από β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ, με τις εξαιρέσεις των διγράφων.',
-          },
-          min_negation_trim: {
-            title: 'Σύντμηση του "μην" πριν από συγκεκριμένα σύμφωνα',
-            description:
-              'Μετατρέπει το "μην" σε "μη" πριν από β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ, παραλείποντας τις περιπτώσεις γγ, γκ, μπ και ντ.',
-          },
-          sa_to_san: {
-            title: 'Αλλαγή του αυτόνομου "σα" σε "σαν"',
-            description: 'Μετατρέπει την αυτόνομη λέξη "σα" σε "σαν" σε κάθε περίπτωση.',
-          },
-          ellipsis_normalize: {
-            title: "Κανονικοποίηση πολλών τελειών σε αποσιωπητικά",
-            description:
-              "Αντικαθιστά κάθε ακολουθία τεσσάρων ή περισσότερων τελειών με ακριβώς τρεις τελείες.",
-          },
-        },
-      },
+      booksGreekEditor: booksGreekEditorMessages.el,
       imageCompression: {
         title: "Συμπίεση εικόνων",
         subtitle: "Μειώστε το μέγεθος εικόνων χωρίς να χαλάει υπερβολικά η ποιότητα.",
