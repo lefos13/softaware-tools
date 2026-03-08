@@ -274,9 +274,9 @@ export const booksGreekEditorMessages = {
         title: "Insert comma before common subordinators",
         description:
           "Adds a comma before common lowercase subordinators when they introduce a continuation inside the same sentence.",
-        example: "έφυγα όταν νύχτωσε -> έφυγα, όταν νύχτωσε",
+        example: "μίλησα γιατί το ήθελα -> μίλησα, γιατί το ήθελα",
         cases:
-          "για να, όταν, μέχρι, γιατί, επειδή, διότι, αν, εάν in lowercase and not at sentence start",
+          "για να, μέχρι, γιατί, επειδή, διότι, αν, εάν in lowercase and not at sentence start",
       },
       anamesa_article_contract: {
         title: 'Adjust article after "ανάμεσα ... και ..."',
@@ -997,9 +997,8 @@ export const booksGreekEditorMessages = {
         title: "Προσθήκη κόμματος πριν από συχνούς υποτακτικούς συνδέσμους",
         description:
           "Προσθέτει κόμμα πριν από συχνούς πεζούς υποτακτικούς συνδέσμους όταν συνεχίζουν την ίδια πρόταση.",
-        example: "έφυγα όταν νύχτωσε -> έφυγα, όταν νύχτωσε",
-        cases:
-          "για να, όταν, μέχρι, γιατί, επειδή, διότι, αν, εάν με πεζά και όχι στην αρχή πρότασης",
+        example: "μίλησα γιατί το ήθελα -> μίλησα, γιατί το ήθελα",
+        cases: "για να, μέχρι, γιατί, επειδή, διότι, αν, εάν με πεζά και όχι στην αρχή πρότασης",
       },
       anamesa_article_contract: {
         title: 'Προσαρμογή άρθρου μετά από το σχήμα "ανάμεσα ... και ..."',
