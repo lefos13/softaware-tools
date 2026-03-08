@@ -804,11 +804,17 @@ const closeSuccessModal = () => {
 
 .books-panel__head,
 .books-result-panel__header,
-.report-group__header,
-.report-example__tokens {
+.report-group__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.report-example__tokens {
+  display: flex;
+  align-items: center;
   gap: 0.8rem;
   flex-wrap: wrap;
 }
