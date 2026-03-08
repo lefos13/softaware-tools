@@ -113,7 +113,13 @@ const reportGroups = computed(() => {
     entry.changes.push(change);
   });
 
-  return Array.from(grouped.values());
+  return Array.from(grouped.values()).sort((left, right) => {
+    if (right.count !== left.count) {
+      return right.count - left.count;
+    }
+
+    return left.title.localeCompare(right.title, "el");
+  });
 });
 
 watch(resultUrl, (nextUrl, prevUrl) => {

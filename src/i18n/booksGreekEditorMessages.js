@@ -84,6 +84,27 @@ export const booksGreekEditorMessages = {
           avgoBeta: 'Prefer "αβγό"',
         },
       },
+      eptaStyle: {
+        label: 'Preferred form for "επτά / εφτά"',
+        options: {
+          epta: 'Prefer "επτά"',
+          efta: 'Prefer "εφτά"',
+        },
+      },
+      oktoStyle: {
+        label: 'Preferred form for "οκτώ / οχτώ"',
+        options: {
+          okto: 'Prefer "οκτώ"',
+          oxto: 'Prefer "οχτώ"',
+        },
+      },
+      enniaStyle: {
+        label: 'Preferred form for "εννιά / εννέα"',
+        options: {
+          ennia: 'Prefer "εννιά"',
+          ennea: 'Prefer "εννέα"',
+        },
+      },
       quotePeriodStyle: {
         label: "Preferred placement for period and closing quote",
         options: {
@@ -103,16 +124,18 @@ export const booksGreekEditorMessages = {
       stin_article_trim: {
         title: 'Shorten "(σ)την" before specific consonants',
         description:
-          'Turns "στην" into "στη" and "την" into "τη" before β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ, excluding γγ, γκ, μπ, ντ.',
-        example: "στην βροχή -> στη βροχή, την λάμψη -> τη λάμψη",
-        cases: "β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ except γγ, γκ, μπ, ντ",
+          'Turns "στην" into "στη" and "την" into "τη" before β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ, excluding γγ, γκ, μπ, ντ, and also adjusts "αυτή/αυτήν την/τη" depending on the next word.',
+        example:
+          "στην βροχή -> στη βροχή, αυτή τη μπάλα -> αυτή την μπάλα, αυτή την καρέκλα -> αυτήν τη καρέκλα",
+        cases:
+          'β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ except γγ, γκ, μπ, ντ, plus "αυτή/αυτήν + την/τη" before γκ, μπ, ντ, ξ, ψ, vowels, or any other letter.',
       },
       min_negation_trim: {
-        title: 'Shorten "μην" before specific consonants',
+        title: 'Normalize "μη / μην" by the following sound',
         description:
-          'Turns "μην" into "μη" before β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ, excluding γγ, γκ, μπ, ντ.',
-        example: "μην βγεις -> μη βγεις",
-        cases: "β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ except γγ, γκ, μπ, ντ",
+          'Keeps or turns the negation into "μην" before γκ, γγ, ντ, μπ, κ, π, τ, ξ, ψ, and vowels, and uses bare "μη" in other cases.',
+        example: "μη γκρινιάζεις -> μην γκρινιάζεις, μην βγεις -> μη βγεις",
+        cases: "μην before γκ, γγ, ντ, μπ, κ, π, τ, ξ, ψ and vowels; μη in other cases.",
       },
       sa_to_san: {
         title: 'Change standalone "σα" to "σαν"',
@@ -131,6 +154,21 @@ export const booksGreekEditorMessages = {
         description: "Turns two or more consecutive spaces into one space.",
         example: "λέξη  λέξη -> λέξη λέξη",
         cases: "Any horizontal space run inside the text body.",
+      },
+      comma_space_normalize: {
+        title: "Insert a space after commas",
+        description:
+          "Adds a missing space after each comma when the next character starts immediately after it.",
+        example: "λέξη,λέξη -> λέξη, λέξη",
+        cases: "Any comma not already followed by whitespace.",
+      },
+      period_space_normalize: {
+        title: "Insert a space after sentence-ending periods",
+        description:
+          'Adds a missing space after a full stop, except when the next character is the closing guillemet "»". Decimal numbers stay unchanged.',
+        example: "Τέλος.Ύστερα -> Τέλος. Ύστερα",
+        cases:
+          'Any full stop not already followed by whitespace, end of text, "»", or the next digit in a decimal number.',
       },
       guillemets_normalize: {
         title: "Replace << >> with Greek guillemets",
@@ -151,12 +189,6 @@ export const booksGreekEditorMessages = {
         description: 'Turns "ακόμη" into "ακόμα" only when it is followed by "και" or "κι".',
         example: "ακόμη και -> ακόμα και",
         cases: "ακόμη και, ακόμη κι",
-      },
-      prin_na_to_protou: {
-        title: 'Change "πριν να" to "προτού"',
-        description: 'Turns the phrase "πριν να" into "προτού".',
-        example: "πριν να φύγεις -> προτού φύγεις",
-        cases: "The full phrase before a verb or clause.",
       },
       me_se_mena_sena_contract: {
         title: 'Contract "με/σε" before "μένα/σένα"',
@@ -183,9 +215,25 @@ export const booksGreekEditorMessages = {
       },
       quote_comma_trim: {
         title: "Remove comma after closing guillemet",
-        description: 'Removes the comma in the sequence "»,".',
-        example: "«Γύρισα», -> «Γύρισα»",
-        cases: 'Only the exact sequence "»,".',
+        description:
+          "Removes the comma when it appears immediately before or after a closing guillemet.",
+        example: "«Γύρισα», -> «Γύρισα», «γύρνα,» -> «γύρνα»",
+        cases: 'The exact sequences "»," and ",»".',
+      },
+      kyriarx_no_hyphen: {
+        title: 'Remove the hyphen from "κυρ-", "πάτερ-", and "καπετάν-"',
+        description:
+          'Turns hyphenated forms such as "κυρ-Αλέξης" into the spaced forms "κυρ Αλέξης".',
+        example: "κυρ-Αλέξης -> κυρ Αλέξης",
+        cases: "κυρ-..., πάτερ-..., καπετάν-... before a following Greek word",
+      },
+      nobility_titles_lowercase: {
+        title: "Lowercase nobility titles away from sentence start",
+        description:
+          "Keeps nobility titles capitalized only at the beginning of a sentence and lowercases them elsewhere.",
+        example: "Ο Λόρδος μίλησε με τη Βασίλισσα. -> Ο λόρδος μίλησε με τη βασίλισσα.",
+        cases:
+          "λόρδος, λαίδη, πρίγκιπας, πριγκίπισσα, βασιλιάς, βασίλισσα, δούκας, δούκισσα, βαρόνος, βαρόνη, υποκόμης, υποκόμισσα, μαρκήσιος, μαρκησία",
       },
       mesa_sto_contract: {
         title: 'Contract "μέσα στο/στην/στον" to "μες ..."',
@@ -226,9 +274,11 @@ export const booksGreekEditorMessages = {
       anamesa_article_contract: {
         title: 'Adjust article after "ανάμεσα ... και ..."',
         description:
-          'Turns "και το/τον/τη/την ..." into "και στο/στον/στη/στην ..." after the pattern "ανάμεσα ... και ...".',
-        example: "ανάμεσα στην πόλη και την θάλασσα -> ανάμεσα στην πόλη και στην θάλασσα",
-        cases: "ανάμεσα σε/στο/στον/στη/στην ... και το/τον/τη/την ...",
+          'Turns the second article into the matching "στ-" form after compact patterns such as "ανάμεσα στην πόλη και την θάλασσα" or "ανάμεσα σε φίλους και τους γείτονες".',
+        example:
+          "ανάμεσα στην πόλη και την θάλασσα -> ανάμεσα στην πόλη και στην θάλασσα, ανάμεσα σε φίλους και τους γείτονες -> ανάμεσα σε φίλους και στους γείτονες",
+        cases:
+          "ανάμεσα στο/στον/στη/στην <μία λέξη> και το/τον/τη/την/τους/τα/τις <λέξη>, ή ανάμεσα σε <μία λέξη με ή χωρίς άρθρο> και το/τον/τη/την/τους/τα/τις <λέξη>",
       },
       sto_to_contract: {
         title: 'Change specific "στο ..." phrases to "σ\' το ..."',
@@ -266,12 +316,142 @@ export const booksGreekEditorMessages = {
         example: "σκεφτηκός -> σκεπτικός",
         cases: "σκεφτηκός, σκεφτική, σκεφτικοί and related forms",
       },
+      tromaktikos_family_normalize: {
+        title: 'Normalize the "τρομακτικός" family',
+        description: 'Normalizes forms written as "τρομαχτ-" into the preferred "τρομακτ-" family.',
+        example: "τρομαχτικό -> τρομακτικό",
+        cases: "τρομαχτικό, τρομαχτική and related forms",
+      },
+      dachtyla_family_normalize: {
+        title: 'Normalize the "δάχτυλα" family',
+        description:
+          'Normalizes only the inflections of "δάχτυλο" and "δαχτυλίδι" when they are written with "δακτυλ-".',
+        example: "δάκτυλα -> δάχτυλα, δακτυλίδι -> δαχτυλίδι",
+        cases: "δάκτυλο/δάχτυλο, δάκτυλα/δάχτυλα, δακτυλίδι/δαχτυλίδι and their inflections only.",
+      },
+      nychta_family_normalize: {
+        title: 'Normalize the "νύχτα" family',
+        description:
+          'Normalizes forms written with "νύκτ-/νυκτ-" into the preferred "νύχτ-/νυχτ-" family.',
+        example: "νύκτα -> νύχτα",
+        cases: "νύκτα, νυκτερινός and related forms",
+      },
+      niotho_family_normalize: {
+        title: 'Normalize the "νοιώθω" family',
+        description:
+          'Normalizes forms written as "νιώθ-" or "νιώσ-" into the preferred "νοιώθ-/νοιώσ-" family.',
+        example: "Νιώθω -> Νοιώθω",
+        cases: "Νιώθω, νιώσαμε and related forms",
+      },
+      dechtika_family_normalize: {
+        title: 'Normalize the "δέχτηκα" family',
+        description:
+          'Normalizes "δέχθηκα", "παραδέχθηκα", and "αποδέχθηκα" families into their "δέχτηκα / παραδέχτηκα / απόδεχτηκα" forms.',
+        example: "δέχθηκα -> δέχτηκα, αποδέχθηκαν -> απόδεχτηκαν",
+        cases: "δέχθηκα..., παραδέχθηκα..., αποδέχθηκα... and related forms",
+      },
+      fos_normalize: {
+        title: 'Normalize "φώς" to "φως"',
+        description: 'Removes the incorrect accent from the standalone word "φώς".',
+        example: "φώς -> φως",
+        cases: 'The standalone word "φώς".',
+      },
+      apo_tonos_normalize: {
+        title: 'Normalize "απο" to "από"',
+        description: 'Adds the expected accent to the standalone preposition "απο".',
+        example: "απο μένα -> από μένα",
+        cases: 'The standalone word "απο".',
+      },
+      poios_family_tonos_normalize: {
+        title: 'Remove the accent from selected "ποιο-" forms',
+        description:
+          'Normalizes accented forms such as "ποιό" and "ποιός" to the monotonic spellings without accent.',
+        example: "ποιός -> ποιος",
+        cases: "ποιό, ποιός, ποιά, ποιού, ποιάς",
+      },
+      mia_tonos_normalize: {
+        title: 'Normalize "μιά" to "μια"',
+        description: 'Removes the accent from the standalone word "μιά".',
+        example: "μιά φορά -> μια φορά",
+        cases: 'The standalone word "μιά".',
+      },
+      dyo_tonos_normalize: {
+        title: 'Normalize "δυό" to "δυο"',
+        description: 'Removes the accent from the standalone word "δυό".',
+        example: "δυό μέρες -> δυο μέρες",
+        cases: 'The standalone word "δυό".',
+      },
+      ti_tonos_normalize: {
+        title: 'Normalize "τί" to "τι"',
+        description: 'Removes the accent from the standalone word "τί".',
+        example: "τί λες -> τι λες",
+        cases: 'The standalone word "τί".',
+      },
+      pio_family_tonos_normalize: {
+        title: 'Remove the accent from selected "πιω" forms',
+        description:
+          'Normalizes accented forms of "πιω" and selected inflections to the spellings without accent.',
+        example: "πιώ -> πιω, πιούν -> πιουν",
+        cases: "πιώ, πιείς, πιεί, πιούν",
+      },
+      mpas_normalize: {
+        title: 'Normalize "μπάς" to "μπας"',
+        description: 'Removes the accent from the standalone word "μπάς".',
+        example: "μπάς και -> μπας και",
+        cases: 'The standalone word "μπάς".',
+      },
+      gios_family_tonos_normalize: {
+        title: 'Remove the accent from selected "γιος" forms',
+        description:
+          'Normalizes accented forms of "γιος" and selected inflections to the spellings without accent.',
+        example: "γιός -> γιος, γιών -> γιων",
+        cases: "γιός, γιό, γιοί, γιών",
+      },
+      nai_tonos_normalize: {
+        title: 'Normalize "ναί" to "ναι"',
+        description: 'Removes the accent from the standalone word "ναί".',
+        example: "ναί -> ναι",
+        cases: 'The standalone word "ναί".',
+      },
+      thes_tonos_normalize: {
+        title: 'Normalize "θές" to "θες"',
+        description: 'Removes the accent from the standalone word "θές".',
+        example: "θές να δεις -> θες να δεις",
+        cases: 'The standalone word "θές".',
+      },
+      op_interjection_normalize: {
+        title: 'Normalize "ωπ" to "οπ"',
+        description: 'Turns the interjection "ωπ" into the preferred form "οπ".',
+        example: "ωπ -> οπ",
+        cases: 'The standalone interjection "ωπ".',
+      },
       andras_preference: {
         title: 'Choose the preferred form for "άντρας / άνδρας"',
         description:
           "Applies the preferred form you select to common singular and plural inflections of the word.",
         example: "άνδρας -> άντρας or άντρας -> άνδρας",
         cases: "άντρας, άντρα, άντρες, αντρών and άνδρας, άνδρα, άνδρες, ανδρών",
+      },
+      epta_preference: {
+        title: 'Choose the preferred form for "επτά / εφτά"',
+        description:
+          "Applies the number form you prefer wherever these variants appear as standalone words.",
+        example: "εφτά -> επτά or επτά -> εφτά",
+        cases: 'The standalone words "επτά" and "εφτά".',
+      },
+      okto_preference: {
+        title: 'Choose the preferred form for "οκτώ / οχτώ"',
+        description:
+          "Applies the number form you prefer wherever these variants appear as standalone words.",
+        example: "οχτώ -> οκτώ or οκτώ -> οχτώ",
+        cases: 'The standalone words "οκτώ" and "οχτώ".',
+      },
+      ennia_preference: {
+        title: 'Choose the preferred form for "εννιά / εννέα"',
+        description:
+          "Applies the number form you prefer wherever these variants appear as standalone words.",
+        example: "εννέα -> εννιά or εννιά -> εννέα",
+        cases: 'The standalone words "εννιά" and "εννέα".',
       },
       och_interjection_normalize: {
         title: 'Change "ωχ" to "οχ"',
@@ -296,6 +476,120 @@ export const booksGreekEditorMessages = {
         description: 'Turns the word "εταιρία" into "εταιρεία".',
         example: "εταιρία -> εταιρεία",
         cases: 'The standalone word "εταιρία".',
+      },
+      oson_afora_normalize: {
+        title: 'Change "όσο αναφορά" to "όσον αφορά"',
+        description: 'Turns the phrase "όσο αναφορά" into "όσον αφορά".',
+        example: "όσο αναφορά το θέμα -> όσον αφορά το θέμα",
+        cases: 'The full phrase "όσο αναφορά".',
+      },
+      ap_oti_normalize: {
+        title: 'Change "απ\' ότι" to "απ\' ό,τι"',
+        description: 'Turns the phrase "απ\' ότι" into "απ\' ό,τι".',
+        example: "απ' ότι ξέρω -> απ' ό,τι ξέρω",
+        cases: 'The full phrase "απ\' ότι".',
+      },
+      ypopsi_normalize: {
+        title: 'Normalize "υπόψιν / υπ\' όψιν" to "υπόψη"',
+        description: 'Turns "υπόψιν" and "υπ\' όψιν" into "υπόψη".',
+        example: "υπ' όψιν -> υπόψη",
+        cases: "υπόψιν, υπ' όψιν",
+      },
+      sintrivani_normalize: {
+        title: 'Change "συντριβάνι" to "σιντριβάνι"',
+        description: 'Turns the word "συντριβάνι" into "σιντριβάνι".',
+        example: "συντριβάνι -> σιντριβάνι",
+        cases: 'The standalone word "συντριβάνι".',
+      },
+      en_telei_normalize: {
+        title: 'Change "εν τέλη" to "εντέλει"',
+        description: 'Turns the phrase "εν τέλη" into "εντέλει".',
+        example: "εν τέλη -> εντέλει",
+        cases: 'The full phrase "εν τέλη".',
+      },
+      en_merei_normalize: {
+        title: 'Change "εν μέρη" to "εν μέρει"',
+        description: 'Turns the phrase "εν μέρη" into "εν μέρει".',
+        example: "εν μέρη -> εν μέρει",
+        cases: 'The full phrase "εν μέρη".',
+      },
+      haha_spacing_normalize: {
+        title: 'Normalize "χαχα" to "χα, χα"',
+        description: 'Turns the compact laughter form "χαχα" into the punctuated form "χα, χα".',
+        example: "χαχα -> χα, χα",
+        cases: 'The standalone word "χαχα".',
+      },
+      popo_normalize: {
+        title: 'Normalize "πω πω / πωπω" to "ποπό"',
+        description: 'Turns the interjection forms "πω πω", "πωπω", and "πωπωω" into "ποπό".',
+        example: "πω πω -> ποπό",
+        cases: "πω πω, πωπω, πωπωω and close variants of the same interjection",
+      },
+      dei_family_tonos_normalize: {
+        title: 'Remove the accent from selected "δει" forms',
+        description:
+          'Normalizes forms such as "δεί", "δείς", and "δούν" to the spellings without accent.',
+        example: "δείς -> δεις, δούν -> δουν",
+        cases: "δεί, δείς, δούν",
+      },
+      chairetisa_family_normalize: {
+        title: 'Normalize the "χαιρέτησα" family',
+        description:
+          'Turns selected past-tense forms written with "-τισ-" into the preferred family with "-τησ-".',
+        example: "χαιρέτισα -> χαιρέτησα",
+        cases: "χαιρέτισα, χαιρέτισες, χαιρέτισε, χαιρετίσαμε, χαιρετίσατε, χαιρέτισαν",
+      },
+      xtes_family_normalize: {
+        title: 'Normalize "(προ)χθές / χτές" to "(προ)χτες"',
+        description:
+          'Turns the selected variants with theta or accented tau into the preferred forms with plain "χτες".',
+        example: "χθές -> χτες, προχθές -> προχτές",
+        cases: "χθές, χτές, προχθές",
+      },
+      geia_tonos_normalize: {
+        title: 'Normalize "γειά" to "γεια"',
+        description: 'Removes the accent from the standalone word "γειά".',
+        example: "γειά σου -> γεια σου",
+        cases: 'The standalone word "γειά".',
+      },
+      mov_normalize: {
+        title: 'Normalize "μωβ / μώβ" to "μοβ"',
+        description: 'Turns "μωβ" and its accented variant into the preferred form "μοβ".',
+        example: "μώβ -> μοβ",
+        cases: "μωβ, μώβ",
+      },
+      antepexerxomai_normalize: {
+        title: 'Normalize the "αντεπεξέρχομαι" family',
+        description:
+          'Normalizes derivatives written as "ανταπεξ-" into the standard "αντεπεξ-" family.',
+        example: "ανταπεξέρχομαι -> αντεπεξέρχομαι",
+        cases: "ανταπεξέρχομαι, ανταπεξήλθα and related forms",
+      },
+      apathanatizo_normalize: {
+        title: 'Normalize the "απαθανατίζω" family',
+        description:
+          'Normalizes derivatives written as "αποθανατ-" into the standard "απαθανατ-" family.',
+        example: "αποθανατίζω -> απαθανατίζω",
+        cases: "αποθανατίζω, αποθανατίστηκε and related forms",
+      },
+      zaploutos_normalize: {
+        title: 'Change "ζάμπλουτος" to "ζάπλουτος"',
+        description: 'Turns the word "ζάμπλουτος" into "ζάπλουτος".',
+        example: "ζάμπλουτος -> ζάπλουτος",
+        cases: 'The standalone word "ζάμπλουτος".',
+      },
+      synonthylevma_normalize: {
+        title: 'Change "συνοθύλευμα" to "συνονθύλευμα"',
+        description: 'Turns the word "συνοθύλευμα" into "συνονθύλευμα".',
+        example: "συνοθύλευμα -> συνονθύλευμα",
+        cases: 'The standalone word "συνοθύλευμα".',
+      },
+      myes_normalize: {
+        title: 'Normalize "μύες / μυς" in the requested article patterns',
+        description:
+          'Turns "τους μύες" into "τους μυς", "οι μυς" into "οι μύες", and also rewrites "τους <λέξη> μύες" to "τους <λέξη> μυς".',
+        example: "τους μεγάλους μύες -> τους μεγάλους μυς",
+        cases: "τους μύες, οι μυς, τους <λέξη> μύες",
       },
       parolo_pou_normalize: {
         title: 'Change "παρ\' όλο που" to "παρόλο που"',
@@ -382,6 +676,13 @@ export const booksGreekEditorMessages = {
         description: 'Turns the phrase "εξ αρχής" into "εξαρχής".',
         example: "εξ αρχής -> εξαρχής",
         cases: 'The full phrase "εξ αρχής".',
+      },
+      fixed_hyphenated_phrases_normalize: {
+        title: "Hyphenate fixed paired expressions",
+        description:
+          'Turns common paired expressions into their hyphenated forms, such as "πρωί-βράδυ" and "άψε-σβήσε".',
+        example: "πρωί βράδυ -> πρωί-βράδυ",
+        cases: "πρωί βράδυ, μέρα νύχτα, άψε σβήσε, πέρα δώθε",
       },
       pou_kai_pou_toning: {
         title: 'Accent the fixed phrases "που και που" and "πως και πως"',
@@ -497,6 +798,27 @@ export const booksGreekEditorMessages = {
           avgoBeta: 'Προτίμηση στο "αβγό"',
         },
       },
+      eptaStyle: {
+        label: 'Προτιμώμενη γραφή για "επτά / εφτά"',
+        options: {
+          epta: 'Προτίμηση στο "επτά"',
+          efta: 'Προτίμηση στο "εφτά"',
+        },
+      },
+      oktoStyle: {
+        label: 'Προτιμώμενη γραφή για "οκτώ / οχτώ"',
+        options: {
+          okto: 'Προτίμηση στο "οκτώ"',
+          oxto: 'Προτίμηση στο "οχτώ"',
+        },
+      },
+      enniaStyle: {
+        label: 'Προτιμώμενη γραφή για "εννιά / εννέα"',
+        options: {
+          ennia: 'Προτίμηση στο "εννιά"',
+          ennea: 'Προτίμηση στο "εννέα"',
+        },
+      },
       quotePeriodStyle: {
         label: "Προτιμώμενη θέση της τελείας σε σχέση με τα εισαγωγικά",
         options: {
@@ -516,16 +838,19 @@ export const booksGreekEditorMessages = {
       stin_article_trim: {
         title: 'Σύντμηση του "(σ)την" πριν από συγκεκριμένα σύμφωνα',
         description:
-          'Μετατρέπει το "στην" σε "στη" και το "την" σε "τη" πριν από β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ, με εξαιρέσεις τα γγ, γκ, μπ και ντ.',
-        example: "στην βροχή -> στη βροχή, την λάμψη -> τη λάμψη",
-        cases: "β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ εκτός από γγ, γκ, μπ, ντ",
+          'Μετατρέπει το "στην" σε "στη" και το "την" σε "τη" πριν από β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ, με εξαιρέσεις τα γγ, γκ, μπ και ντ, και παράλληλα ρυθμίζει και το "αυτή/αυτήν την/τη" ανάλογα με την επόμενη λέξη.',
+        example:
+          "στην βροχή -> στη βροχή, αυτή τη μπάλα -> αυτή την μπάλα, αυτή την καρέκλα -> αυτήν τη καρέκλα",
+        cases:
+          'β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ εκτός από γγ, γκ, μπ, ντ, καθώς και "αυτή/αυτήν + την/τη" πριν από γκ, μπ, ντ, ξ, ψ, φωνήεν ή οποιοδήποτε άλλο γράμμα.',
       },
       min_negation_trim: {
-        title: 'Σύντμηση του "μην" πριν από συγκεκριμένα σύμφωνα',
+        title: 'Κανονικοποίηση του "μη / μην" ανάλογα με τον επόμενο φθόγγο',
         description:
-          'Μετατρέπει το "μην" σε "μη" πριν από β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ, με εξαιρέσεις τα γγ, γκ, μπ και ντ.',
-        example: "μην βγεις -> μη βγεις",
-        cases: "β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ εκτός από γγ, γκ, μπ, ντ",
+          'Κρατά ή μετατρέπει την άρνηση σε "μην" πριν από γκ, γγ, ντ, μπ, κ, π, τ, ξ, ψ και φωνήεντα, και χρησιμοποιεί σκέτο "μη" σε κάθε άλλη περίπτωση.',
+        example: "μη γκρινιάζεις -> μην γκρινιάζεις, μην βγεις -> μη βγεις",
+        cases:
+          "μην πριν από γκ, γγ, ντ, μπ, κ, π, τ, ξ, ψ και φωνήεντα· μη σε όλες τις άλλες περιπτώσεις.",
       },
       sa_to_san: {
         title: 'Αλλαγή του αυτόνομου "σα" σε "σαν"',
@@ -546,6 +871,21 @@ export const booksGreekEditorMessages = {
         example: "λέξη  λέξη -> λέξη λέξη",
         cases: "Κάθε ακολουθία από πολλά οριζόντια κενά μέσα στο κείμενο.",
       },
+      comma_space_normalize: {
+        title: "Προσθήκη κενού μετά από κόμμα",
+        description:
+          "Προσθέτει το κενό που λείπει μετά από κάθε κόμμα όταν η επόμενη λέξη ξεκινά αμέσως μετά.",
+        example: "λέξη,λέξη -> λέξη, λέξη",
+        cases: "Κάθε κόμμα που δεν ακολουθείται ήδη από κενό.",
+      },
+      period_space_normalize: {
+        title: "Προσθήκη κενού μετά από τελεία στο τέλος πρότασης",
+        description:
+          'Προσθέτει το κενό που λείπει μετά από τελεία, εκτός αν ακολουθεί το κλείσιμο εισαγωγικών "»". Οι δεκαδικοί αριθμοί μένουν ανέπαφοι.',
+        example: "Τέλος.Ύστερα -> Τέλος. Ύστερα",
+        cases:
+          'Κάθε τελεία που δεν ακολουθείται ήδη από κενό, τέλος κειμένου, "»" ή το επόμενο ψηφίο δεκαδικού αριθμού.',
+      },
       guillemets_normalize: {
         title: "Αλλαγή των << >> σε ελληνικά εισαγωγικά",
         description: 'Μετατρέπει το "<<" σε "«" και το ">>" σε "»".',
@@ -565,12 +905,6 @@ export const booksGreekEditorMessages = {
         description: 'Μετατρέπει το "ακόμη" σε "ακόμα" μόνο όταν ακολουθεί η λέξη "και" ή "κι".',
         example: "ακόμη και -> ακόμα και",
         cases: "ακόμη και, ακόμη κι",
-      },
-      prin_na_to_protou: {
-        title: 'Αλλαγή της φράσης "πριν να" σε "προτού"',
-        description: 'Μετατρέπει τη φράση "πριν να" σε "προτού".',
-        example: "πριν να φύγεις -> προτού φύγεις",
-        cases: 'Η πλήρης φράση "πριν να".',
       },
       me_se_mena_sena_contract: {
         title: 'Σύντμηση του "με/σε" πριν από "μένα/σένα"',
@@ -597,9 +931,25 @@ export const booksGreekEditorMessages = {
       },
       quote_comma_trim: {
         title: "Αφαίρεση κόμματος μετά από κλείσιμο εισαγωγικών",
-        description: 'Αφαιρεί το κόμμα στη μορφή "»,".',
-        example: "«Γύρισα», -> «Γύρισα»",
-        cases: 'Μόνο η ακριβής ακολουθία "»,".',
+        description:
+          "Αφαιρεί το κόμμα όταν βρίσκεται αμέσως πριν ή αμέσως μετά από κλείσιμο εισαγωγικών.",
+        example: "«Γύρισα», -> «Γύρισα», «γύρνα,» -> «γύρνα»",
+        cases: 'Οι ακριβείς ακολουθίες "»," και ",»".',
+      },
+      kyriarx_no_hyphen: {
+        title: 'Αφαίρεση της ενωτικής παύλας από τα "κυρ-", "πάτερ-", "καπετάν-"',
+        description:
+          'Μετατρέπει υβριδικές μορφές όπως "κυρ-Αλέξης" στις μορφές με κενό, όπως "κυρ Αλέξης".',
+        example: "κυρ-Αλέξης -> κυρ Αλέξης",
+        cases: "κυρ-..., πάτερ-..., καπετάν-... πριν από επόμενη ελληνική λέξη",
+      },
+      nobility_titles_lowercase: {
+        title: "Πεζοποίηση των τίτλων ευγενείας εκτός αρχής πρότασης",
+        description:
+          "Κρατά τους τίτλους ευγενείας με κεφαλαίο μόνο στην αρχή πρότασης και τους κάνει πεζούς σε κάθε άλλη θέση.",
+        example: "Ο Λόρδος μίλησε με τη Βασίλισσα. -> Ο λόρδος μίλησε με τη βασίλισσα.",
+        cases:
+          "λόρδος, λαίδη, πρίγκιπας, πριγκίπισσα, βασιλιάς, βασίλισσα, δούκας, δούκισσα, βαρόνος, βαρόνη, υποκόμης, υποκόμισσα, μαρκήσιος, μαρκησία",
       },
       mesa_sto_contract: {
         title: 'Σύντμηση του "μέσα στο/στην/στον" σε "μες ..."',
@@ -640,9 +990,11 @@ export const booksGreekEditorMessages = {
       anamesa_article_contract: {
         title: 'Προσαρμογή άρθρου μετά από το σχήμα "ανάμεσα ... και ..."',
         description:
-          'Μετατρέπει το "και το/τον/τη/την ..." σε "και στο/στον/στη/στην ..." όταν προηγείται το μοτίβο "ανάμεσα ... και ...".',
-        example: "ανάμεσα στην πόλη και την θάλασσα -> ανάμεσα στην πόλη και στην θάλασσα",
-        cases: "ανάμεσα σε/στο/στον/στη/στην ... και το/τον/τη/την ...",
+          'Μετατρέπει το δεύτερο άρθρο στην αντίστοιχη μορφή με "στ-" όταν προηγούνται σύντομα σχήματα όπως "ανάμεσα στην πόλη και την θάλασσα" ή "ανάμεσα σε φίλους και τους γείτονες".',
+        example:
+          "ανάμεσα στην πόλη και την θάλασσα -> ανάμεσα στην πόλη και στην θάλασσα, ανάμεσα σε φίλους και τους γείτονες -> ανάμεσα σε φίλους και στους γείτονες",
+        cases:
+          "ανάμεσα στο/στον/στη/στην <μία λέξη> και το/τον/τη/την/τους/τα/τις <λέξη>, ή ανάμεσα σε <μία λέξη με ή χωρίς άρθρο> και το/τον/τη/την/τους/τα/τις <λέξη>",
       },
       sto_to_contract: {
         title: 'Αλλαγή συγκεκριμένων φράσεων "στο ..." σε "σ\' το ..."',
@@ -680,11 +1032,142 @@ export const booksGreekEditorMessages = {
         example: "σκεφτηκός -> σκεπτικός",
         cases: "σκεφτηκός, σκεφτική, σκεφτικοί και συγγενικές μορφές",
       },
+      tromaktikos_family_normalize: {
+        title: 'Κανονικοποίηση της οικογένειας "τρομακτικός"',
+        description:
+          'Κανονικοποιεί μορφές που γράφονται ως "τρομαχτ-" στην προτιμώμενη οικογένεια "τρομακτ-".',
+        example: "τρομαχτικό -> τρομακτικό",
+        cases: "τρομαχτικό, τρομαχτική και συγγενικές μορφές",
+      },
+      dachtyla_family_normalize: {
+        title: 'Κανονικοποίηση της οικογένειας "δάχτυλα"',
+        description:
+          'Κανονικοποιεί μόνο τις πτώσεις του "δάχτυλο" και του "δαχτυλίδι" όταν γράφονται με "δακτυλ-".',
+        example: "δάκτυλα -> δάχτυλα, δακτυλίδι -> δαχτυλίδι",
+        cases: "δάκτυλο/δάχτυλο, δάκτυλα/δάχτυλα, δακτυλίδι/δαχτυλίδι και μόνο οι πτώσεις τους.",
+      },
+      nychta_family_normalize: {
+        title: 'Κανονικοποίηση της οικογένειας "νύχτα"',
+        description:
+          'Κανονικοποιεί μορφές που γράφονται με "νύκτ-/νυκτ-" στην προτιμώμενη οικογένεια "νύχτ-/νυχτ-", με εξαίρεση τη σταθερή φράση "κρέμα νυκτός".',
+        example: "νύκτα -> νύχτα",
+        cases: "νύκτα, νυκτερινός και συγγενικές μορφές, εκτός από τη φράση «κρέμα νυκτός»",
+      },
+      niotho_family_normalize: {
+        title: 'Κανονικοποίηση της οικογένειας "νοιώθω"',
+        description:
+          'Κανονικοποιεί μορφές που γράφονται ως "νιώθ-" ή "νιώσ-" στην προτιμώμενη οικογένεια "νοιώθ-/νοιώσ-".',
+        example: "Νιώθω -> Νοιώθω",
+        cases: "Νιώθω, νιώσαμε και συγγενικές μορφές",
+      },
+      dechtika_family_normalize: {
+        title: 'Κανονικοποίηση της οικογένειας "δέχτηκα"',
+        description:
+          'Κανονικοποιεί τις οικογένειες "δέχθηκα", "παραδέχθηκα" και "αποδέχθηκα" στις μορφές "δέχτηκα / παραδέχτηκα / απόδεχτηκα".',
+        example: "δέχθηκα -> δέχτηκα, αποδέχθηκαν -> απόδεχτηκαν",
+        cases: "δέχθηκα..., παραδέχθηκα..., αποδέχθηκα... και συγγενικές μορφές",
+      },
+      fos_normalize: {
+        title: 'Κανονικοποίηση του "φώς" σε "φως"',
+        description: 'Αφαιρεί τον λανθασμένο τόνο από την αυτόνομη λέξη "φώς".',
+        example: "φώς -> φως",
+        cases: 'Το αυτόνομο "φώς".',
+      },
+      apo_tonos_normalize: {
+        title: 'Κανονικοποίηση του "απο" σε "από"',
+        description: 'Προσθέτει τον αναμενόμενο τόνο στην αυτόνομη πρόθεση "απο".',
+        example: "απο μένα -> από μένα",
+        cases: 'Το αυτόνομο "απο".',
+      },
+      poios_family_tonos_normalize: {
+        title: 'Αφαίρεση του τόνου από επιλεγμένες μορφές του "ποιο-"',
+        description:
+          'Κανονικοποιεί τονισμένες μορφές όπως "ποιό" και "ποιός" στις μονοτονικές γραφές χωρίς τόνο.',
+        example: "ποιός -> ποιος",
+        cases: "ποιό, ποιός, ποιά, ποιού, ποιάς",
+      },
+      mia_tonos_normalize: {
+        title: 'Κανονικοποίηση του "μιά" σε "μια"',
+        description: 'Αφαιρεί τον τόνο από την αυτόνομη λέξη "μιά".',
+        example: "μιά φορά -> μια φορά",
+        cases: 'Το αυτόνομο "μιά".',
+      },
+      dyo_tonos_normalize: {
+        title: 'Κανονικοποίηση του "δυό" σε "δυο"',
+        description: 'Αφαιρεί τον τόνο από την αυτόνομη λέξη "δυό".',
+        example: "δυό μέρες -> δυο μέρες",
+        cases: 'Το αυτόνομο "δυό".',
+      },
+      ti_tonos_normalize: {
+        title: 'Κανονικοποίηση του "τί" σε "τι"',
+        description: 'Αφαιρεί τον τόνο από την αυτόνομη λέξη "τί".',
+        example: "τί λες -> τι λες",
+        cases: 'Το αυτόνομο "τί".',
+      },
+      pio_family_tonos_normalize: {
+        title: 'Αφαίρεση του τόνου από επιλεγμένες μορφές του "πιω"',
+        description:
+          'Κανονικοποιεί τονισμένες μορφές του "πιω" και επιλεγμένων κλίσεών του στις γραφές χωρίς τόνο.',
+        example: "πιώ -> πιω, πιούν -> πιουν",
+        cases: "πιώ, πιείς, πιεί, πιούν",
+      },
+      mpas_normalize: {
+        title: 'Κανονικοποίηση του "μπάς" σε "μπας"',
+        description: 'Αφαιρεί τον τόνο από την αυτόνομη λέξη "μπάς".',
+        example: "μπάς και -> μπας και",
+        cases: 'Το αυτόνομο "μπάς".',
+      },
+      gios_family_tonos_normalize: {
+        title: 'Αφαίρεση του τόνου από επιλεγμένες μορφές του "γιος"',
+        description:
+          'Κανονικοποιεί τονισμένες μορφές του "γιος" και επιλεγμένων κλίσεών του στις γραφές χωρίς τόνο.',
+        example: "γιός -> γιος, γιών -> γιων",
+        cases: "γιός, γιό, γιοί, γιών",
+      },
+      nai_tonos_normalize: {
+        title: 'Κανονικοποίηση του "ναί" σε "ναι"',
+        description: 'Αφαιρεί τον τόνο από την αυτόνομη λέξη "ναί".',
+        example: "ναί -> ναι",
+        cases: 'Το αυτόνομο "ναί".',
+      },
+      thes_tonos_normalize: {
+        title: 'Κανονικοποίηση του "θές" σε "θες"',
+        description: 'Αφαιρεί τον τόνο από την αυτόνομη λέξη "θές".',
+        example: "θές να δεις -> θες να δεις",
+        cases: 'Το αυτόνομο "θές".',
+      },
+      op_interjection_normalize: {
+        title: 'Κανονικοποίηση του "ωπ" σε "οπ"',
+        description: 'Μετατρέπει το επιφώνημα "ωπ" στην προτιμώμενη μορφή "οπ".',
+        example: "ωπ -> οπ",
+        cases: 'Το αυτόνομο "ωπ".',
+      },
       andras_preference: {
         title: 'Επιλογή προτιμώμενης γραφής για "άντρας / άνδρας"',
         description: "Εφαρμόζει τη μορφή που επιλέγετε στις συνηθέστερες κλιτές μορφές της λέξης.",
         example: "άνδρας -> άντρας ή άντρας -> άνδρας",
         cases: "άντρας, άντρα, άντρες, αντρών και άνδρας, άνδρα, άνδρες, ανδρών",
+      },
+      epta_preference: {
+        title: 'Επιλογή προτιμώμενης γραφής για "επτά / εφτά"',
+        description:
+          "Εφαρμόζει τη μορφή του αριθμού που προτιμάτε όπου εμφανίζονται αυτές οι παραλλαγές ως αυτόνομες λέξεις.",
+        example: "εφτά -> επτά ή επτά -> εφτά",
+        cases: 'Τα αυτόνομα "επτά" και "εφτά".',
+      },
+      okto_preference: {
+        title: 'Επιλογή προτιμώμενης γραφής για "οκτώ / οχτώ"',
+        description:
+          "Εφαρμόζει τη μορφή του αριθμού που προτιμάτε όπου εμφανίζονται αυτές οι παραλλαγές ως αυτόνομες λέξεις.",
+        example: "οχτώ -> οκτώ ή οκτώ -> οχτώ",
+        cases: 'Τα αυτόνομα "οκτώ" και "οχτώ".',
+      },
+      ennia_preference: {
+        title: 'Επιλογή προτιμώμενης γραφής για "εννιά / εννέα"',
+        description:
+          "Εφαρμόζει τη μορφή του αριθμού που προτιμάτε όπου εμφανίζονται αυτές οι παραλλαγές ως αυτόνομες λέξεις.",
+        example: "εννέα -> εννιά ή εννιά -> εννέα",
+        cases: 'Τα αυτόνομα "εννιά" και "εννέα".',
       },
       och_interjection_normalize: {
         title: 'Αλλαγή του "ωχ" σε "οχ"',
@@ -709,6 +1192,122 @@ export const booksGreekEditorMessages = {
         description: 'Μετατρέπει τη λέξη "εταιρία" σε "εταιρεία".',
         example: "εταιρία -> εταιρεία",
         cases: 'Η αυτόνομη λέξη "εταιρία".',
+      },
+      oson_afora_normalize: {
+        title: 'Αλλαγή του "όσο αναφορά" σε "όσον αφορά"',
+        description: 'Μετατρέπει τη φράση "όσο αναφορά" σε "όσον αφορά".',
+        example: "όσο αναφορά το θέμα -> όσον αφορά το θέμα",
+        cases: 'Η πλήρης φράση "όσο αναφορά".',
+      },
+      ap_oti_normalize: {
+        title: 'Αλλαγή του "απ\' ότι" σε "απ\' ό,τι"',
+        description: 'Μετατρέπει τη φράση "απ\' ότι" σε "απ\' ό,τι".',
+        example: "απ' ότι ξέρω -> απ' ό,τι ξέρω",
+        cases: 'Η πλήρης φράση "απ\' ότι".',
+      },
+      ypopsi_normalize: {
+        title: 'Κανονικοποίηση των "υπόψιν / υπ\' όψιν" σε "υπόψη"',
+        description: 'Μετατρέπει τα "υπόψιν" και "υπ\' όψιν" σε "υπόψη".',
+        example: "υπ' όψιν -> υπόψη",
+        cases: "υπόψιν, υπ' όψιν",
+      },
+      sintrivani_normalize: {
+        title: 'Αλλαγή του "συντριβάνι" σε "σιντριβάνι"',
+        description: 'Μετατρέπει τη λέξη "συντριβάνι" σε "σιντριβάνι".',
+        example: "συντριβάνι -> σιντριβάνι",
+        cases: 'Η αυτόνομη λέξη "συντριβάνι".',
+      },
+      en_telei_normalize: {
+        title: 'Αλλαγή του "εν τέλη" σε "εντέλει"',
+        description: 'Μετατρέπει τη φράση "εν τέλη" σε "εντέλει".',
+        example: "εν τέλη -> εντέλει",
+        cases: 'Η πλήρης φράση "εν τέλη".',
+      },
+      en_merei_normalize: {
+        title: 'Αλλαγή του "εν μέρη" σε "εν μέρει"',
+        description: 'Μετατρέπει τη φράση "εν μέρη" σε "εν μέρει".',
+        example: "εν μέρη -> εν μέρει",
+        cases: 'Η πλήρης φράση "εν μέρη".',
+      },
+      haha_spacing_normalize: {
+        title: 'Κανονικοποίηση του "χαχα" σε "χα, χα"',
+        description:
+          'Μετατρέπει τη συμπτυγμένη γραφή γέλιου "χαχα" στην πιο ευανάγνωστη μορφή "χα, χα".',
+        example: "χαχα -> χα, χα",
+        cases: 'Το αυτόνομο "χαχα".',
+      },
+      popo_normalize: {
+        title: 'Κανονικοποίηση του "πω πω / πωπω" σε "ποπό"',
+        description:
+          'Μετατρέπει τις επιφωνηματικές μορφές "πω πω", "πωπω" και "πωπωω" στη μορφή "ποπό".',
+        example: "πω πω -> ποπό",
+        cases: "πω πω, πωπω, πωπωω και κοντινές παραλλαγές του ίδιου επιφωνήματος",
+      },
+      dei_family_tonos_normalize: {
+        title: 'Αφαίρεση του τόνου από επιλεγμένες μορφές του "δει"',
+        description: 'Κανονικοποιεί μορφές όπως "δεί", "δείς" και "δούν" στις γραφές χωρίς τόνο.',
+        example: "δείς -> δεις, δούν -> δουν",
+        cases: "δεί, δείς, δούν",
+      },
+      chairetisa_family_normalize: {
+        title: 'Κανονικοποίηση της οικογένειας "χαιρέτησα"',
+        description:
+          'Μετατρέπει επιλεγμένες παρελθοντικές μορφές που γράφονται με "-τισ-" στην προτιμώμενη οικογένεια με "-τησ-".',
+        example: "χαιρέτισα -> χαιρέτησα",
+        cases: "χαιρέτισα, χαιρέτισες, χαιρέτισε, χαιρετίσαμε, χαιρετίσατε, χαιρέτισαν",
+      },
+      xtes_family_normalize: {
+        title: 'Κανονικοποίηση του "(προ)χθές / χτές" σε "(προ)χτες"',
+        description:
+          'Μετατρέπει τις επιλεγμένες παραλλαγές με θήτα ή τονισμένο ταυ στις προτιμώμενες μορφές με σκέτο "χτες".',
+        example: "χθές -> χτες, προχθές -> προχτές",
+        cases: "χθές, χτές, προχθές",
+      },
+      geia_tonos_normalize: {
+        title: 'Κανονικοποίηση του "γειά" σε "γεια"',
+        description: 'Αφαιρεί τον τόνο από την αυτόνομη λέξη "γειά".',
+        example: "γειά σου -> γεια σου",
+        cases: 'Το αυτόνομο "γειά".',
+      },
+      mov_normalize: {
+        title: 'Κανονικοποίηση του "μωβ / μώβ" σε "μοβ"',
+        description:
+          'Μετατρέπει τη λέξη του χρώματος "μωβ" και την τονισμένη παραλλαγή της στην προτιμώμενη μορφή "μοβ".',
+        example: "μώβ -> μοβ",
+        cases: "μωβ, μώβ",
+      },
+      antepexerxomai_normalize: {
+        title: 'Κανονικοποίηση της οικογένειας "αντεπεξέρχομαι"',
+        description:
+          'Κανονικοποιεί παράγωγες μορφές που γράφονται ως "ανταπεξ-" στη σωστή οικογένεια "αντεπεξ-".',
+        example: "ανταπεξέρχομαι -> αντεπεξέρχομαι",
+        cases: "ανταπεξέρχομαι, ανταπεξήλθα και συγγενικές μορφές",
+      },
+      apathanatizo_normalize: {
+        title: 'Κανονικοποίηση της οικογένειας "απαθανατίζω"',
+        description:
+          'Κανονικοποιεί παράγωγες μορφές που γράφονται ως "αποθανατ-" στη σωστή οικογένεια "απαθανατ-".',
+        example: "αποθανατίζω -> απαθανατίζω",
+        cases: "αποθανατίζω, αποθανατίστηκε και συγγενικές μορφές",
+      },
+      zaploutos_normalize: {
+        title: 'Αλλαγή του "ζάμπλουτος" σε "ζάπλουτος"',
+        description: 'Μετατρέπει τη λέξη "ζάμπλουτος" σε "ζάπλουτος".',
+        example: "ζάμπλουτος -> ζάπλουτος",
+        cases: 'Η αυτόνομη λέξη "ζάμπλουτος".',
+      },
+      synonthylevma_normalize: {
+        title: 'Αλλαγή του "συνοθύλευμα" σε "συνονθύλευμα"',
+        description: 'Μετατρέπει τη λέξη "συνοθύλευμα" σε "συνονθύλευμα".',
+        example: "συνοθύλευμα -> συνονθύλευμα",
+        cases: 'Η αυτόνομη λέξη "συνοθύλευμα".',
+      },
+      myes_normalize: {
+        title: 'Κανονικοποίηση των "μύες / μυς" στα ζητούμενα σχήματα',
+        description:
+          'Μετατρέπει το "τους μύες" σε "τους μυς", το "οι μυς" σε "οι μύες" και επίσης το "τους <λέξη> μύες" σε "τους <λέξη> μυς".',
+        example: "τους μεγάλους μύες -> τους μεγάλους μυς",
+        cases: "τους μύες, οι μυς, τους <λέξη> μύες",
       },
       parolo_pou_normalize: {
         title: 'Αλλαγή του "παρ\' όλο που" σε "παρόλο που"',
@@ -794,6 +1393,13 @@ export const booksGreekEditorMessages = {
         description: 'Μετατρέπει τη φράση "εξ αρχής" σε "εξαρχής".',
         example: "εξ αρχής -> εξαρχής",
         cases: 'Η πλήρης φράση "εξ αρχής".',
+      },
+      fixed_hyphenated_phrases_normalize: {
+        title: "Ενωτική παύλα σε σταθερές ζευγαρωτές εκφράσεις",
+        description:
+          'Μετατρέπει συχνές ζευγαρωτές εκφράσεις στις μορφές με ενωτική παύλα, όπως "πρωί-βράδυ" και "άψε-σβήσε".',
+        example: "πρωί βράδυ -> πρωί-βράδυ",
+        cases: "πρωί βράδυ, μέρα νύχτα, άψε σβήσε, πέρα δώθε",
       },
       pou_kai_pou_toning: {
         title: 'Τονισμός των φράσεων "που και που" και "πως και πως"',
