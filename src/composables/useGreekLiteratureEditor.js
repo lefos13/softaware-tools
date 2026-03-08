@@ -1,6 +1,6 @@
 /*
-  This composable keeps one editor state machine for both DOCX uploads and
-  pasted text, while reusing the portal's task polling and download handling.
+  This composable now keeps only the editor request state so the component can
+  own token validation, persistence, logout, and environment-specific gating.
 */
 import { computed, onBeforeUnmount, ref } from "vue";
 import {
@@ -39,6 +39,7 @@ const buildDefaultPreferences = () =>
 
 export const useGreekLiteratureEditor = () => {
   const inputMode = ref("docx");
+  const serviceToken = ref("");
   const file = ref(null);
   const inputText = ref("");
   const selectedRuleIds = ref([]);
@@ -229,6 +230,16 @@ export const useGreekLiteratureEditor = () => {
     error.value = "";
   };
 
+  const setServiceToken = (value) => {
+    serviceToken.value = String(value || "").trim();
+    error.value = "";
+  };
+
+  const clearServiceToken = () => {
+    serviceToken.value = "";
+    error.value = "";
+  };
+
   const toggleRule = (ruleId) => {
     if (loading.value) {
       return;
@@ -302,6 +313,7 @@ export const useGreekLiteratureEditor = () => {
         const result = await applyGreekLiteratureEditor(baseUrl, file.value, buildEditorOptions(), {
           taskId,
           onUploadProgress,
+          serviceToken: serviceToken.value,
         });
 
         resultUrl.value = URL.createObjectURL(result.blob);
@@ -314,7 +326,8 @@ export const useGreekLiteratureEditor = () => {
             const preview = await previewGreekLiteratureEditorReport(
               baseUrl,
               file.value,
-              buildEditorOptions()
+              buildEditorOptions(),
+              { serviceToken: serviceToken.value }
             );
             revokeIfPresent(reportUrl.value);
             reportData.value = preview.report;
@@ -336,7 +349,7 @@ export const useGreekLiteratureEditor = () => {
           baseUrl,
           inputText.value,
           buildEditorOptions(),
-          { taskId }
+          { taskId, serviceToken: serviceToken.value }
         );
 
         writeTextOutputs(result.correctedText, result.reportText, result.report);
@@ -382,6 +395,7 @@ export const useGreekLiteratureEditor = () => {
 
   return {
     inputMode,
+    serviceToken,
     file,
     inputText,
     selectedRuleIds,
@@ -411,6 +425,8 @@ export const useGreekLiteratureEditor = () => {
     hasBinaryResult,
     hasTextResult,
     setInputMode,
+    setServiceToken,
+    clearServiceToken,
     selectFiles,
     setInputText,
     toggleRule,

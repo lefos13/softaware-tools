@@ -1,27 +1,27 @@
 <script setup>
 /*
-  The Books editor card exposes both manuscript uploads and pasted text while
-  keeping grouped rules, examples, preferences, and result handling in one flow.
+  The books editor now unlocks in two steps: validate a persisted editor token,
+  then expose the workspace only for an active session. Development builds can
+  bypass the gate, while production always keeps validation enabled.
 */
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import SuccessThankYouModal from "../SuccessThankYouModal.vue";
-import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { BOOKS_GREEK_EDITOR_PREFERENCES } from "../../config/booksGreekEditorRules";
 import { useGreekLiteratureEditor } from "../../composables/useGreekLiteratureEditor";
 import { usePortalI18n } from "../../i18n";
+import { validateGreekLiteratureEditorAccess } from "../../services/booksService";
+
+const TOKEN_STORAGE_KEY = "books_greek_editor_session_token";
+const DEV_AUTH_DISABLED =
+  !import.meta.env.PROD && import.meta.env.VITE_BOOKS_EDITOR_TOKEN_AUTH_ENABLED === "false";
 
 const props = defineProps({
-  apiBaseUrl: {
-    type: String,
-    required: true,
-  },
-  apiHealthy: {
-    type: Boolean,
-    required: true,
-  },
+  apiBaseUrl: { type: String, required: true },
+  apiHealthy: { type: Boolean, required: true },
 });
 
-const { t } = usePortalI18n();
+const { t, locale } = usePortalI18n();
+const tr = (en, el) => (locale.value === "el" ? el : en);
 const {
   inputMode,
   file,
@@ -32,8 +32,6 @@ const {
   includeReport,
   loading,
   error,
-  message,
-  requestId,
   resultUrl,
   resultName,
   resultText,
@@ -48,9 +46,10 @@ const {
   rulesBySection,
   hasInput,
   hasSelectedRules,
-  hasBinaryResult,
   hasTextResult,
   setInputMode,
+  setServiceToken,
+  clearServiceToken,
   selectFiles,
   setInputText,
   toggleRule,
@@ -60,10 +59,74 @@ const {
   applyEditor,
 } = useGreekLiteratureEditor();
 
-const canApply = computed(
-  () => props.apiHealthy && hasInput.value && hasSelectedRules.value && !loading.value
-);
+const tokenInput = ref("");
+const accessLoading = ref(false);
+const accessError = ref("");
+const accessMessage = ref("");
+const accessRequestId = ref("");
+const restoringSession = ref(!DEV_AUTH_DISABLED);
+const accessSession = ref(null);
 const showSuccessModal = ref(false);
+
+const readStoredToken = () =>
+  typeof window !== "undefined" ? window.localStorage.getItem(TOKEN_STORAGE_KEY) || "" : "";
+const persistStoredToken = (value) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (value) {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, value);
+    return;
+  }
+
+  window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+};
+
+const hasValidatedAccess = computed(() => DEV_AUTH_DISABLED || Boolean(accessSession.value));
+const canApply = computed(
+  () =>
+    props.apiHealthy &&
+    hasValidatedAccess.value &&
+    hasInput.value &&
+    hasSelectedRules.value &&
+    !loading.value
+);
+
+/*
+  The validated-token panel formats the expiry timestamp and surfaces it as a
+  compact status tile, which is easier to scan than inline metadata text.
+*/
+const expiryDate = computed(() => {
+  const rawValue = accessSession.value?.expiresAt;
+  if (!rawValue) {
+    return null;
+  }
+
+  const parsed = new Date(rawValue);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+});
+
+const expiryLabel = computed(() => {
+  if (!accessSession.value?.expiresAt) {
+    return t("app.none");
+  }
+
+  if (!expiryDate.value) {
+    return accessSession.value.expiresAt;
+  }
+
+  return new Intl.DateTimeFormat(locale.value === "el" ? "el-GR" : "en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(expiryDate.value);
+});
+
+const expiryStatus = computed(() =>
+  expiryDate.value
+    ? tr("Session active", "Ενεργή συνεδρία")
+    : tr("No expiry data", "Χωρίς στοιχεία λήξης")
+);
 
 const sectionItems = computed(() =>
   ["literary", "orthography", "preferences"].map((sectionId) => ({
@@ -97,7 +160,6 @@ const reportGroups = computed(() => {
   }
 
   const grouped = new Map();
-
   report.changes.forEach((change) => {
     if (!grouped.has(change.ruleId)) {
       grouped.set(change.ruleId, {
@@ -123,31 +185,116 @@ const reportGroups = computed(() => {
 });
 
 watch(resultUrl, (nextUrl, prevUrl) => {
-  if (nextUrl && nextUrl !== prevUrl) {
-    showSuccessModal.value = true;
+  showSuccessModal.value = Boolean(nextUrl && nextUrl !== prevUrl);
+});
+
+/*
+  Revalidating the stored token on load prevents refreshes from restoring a
+  revoked or expired editor session purely from browser storage.
+*/
+const validateAccess = async (candidateToken, { persist = true, silent = false } = {}) => {
+  const normalizedToken = String(candidateToken || "").trim();
+
+  if (!normalizedToken) {
+    accessError.value = tr(
+      "Enter an editor token to continue.",
+      "Συμπληρώστε editor token για να συνεχίσετε."
+    );
+    return false;
+  }
+
+  accessLoading.value = true;
+  if (!silent) {
+    accessError.value = "";
+    accessMessage.value = "";
+  }
+
+  try {
+    const result = await validateGreekLiteratureEditorAccess(props.apiBaseUrl, normalizedToken);
+    accessSession.value = result.token || {
+      tokenId: "validated-session",
+      alias: tr("Validated editor session", "Επικυρωμένη συνεδρία editor"),
+      serviceFlags: ["books_greek_editor"],
+      expiresAt: "",
+    };
+    accessMessage.value = result.message;
+    accessRequestId.value = result.requestId;
+    tokenInput.value = "";
+    setServiceToken(normalizedToken);
+    if (persist) {
+      persistStoredToken(normalizedToken);
+    }
+    return true;
+  } catch (caughtError) {
+    accessSession.value = null;
+    accessRequestId.value = "";
+    clearServiceToken();
+    persistStoredToken("");
+    accessError.value =
+      caughtError instanceof Error
+        ? caughtError.message
+        : tr("Token validation failed.", "Η επικύρωση token απέτυχε.");
+    return false;
+  } finally {
+    accessLoading.value = false;
+  }
+};
+
+const restoreAccessSession = async () => {
+  if (DEV_AUTH_DISABLED) {
+    restoringSession.value = false;
+    accessMessage.value = tr(
+      "Development mode: token validation is disabled for this build.",
+      "Λειτουργία ανάπτυξης: η επικύρωση token είναι απενεργοποιημένη για αυτό το build."
+    );
+    clearServiceToken();
     return;
   }
 
-  if (!nextUrl) {
-    showSuccessModal.value = false;
+  const storedToken = readStoredToken();
+  if (storedToken) {
+    await validateAccess(storedToken, { persist: false, silent: true });
   }
+  restoringSession.value = false;
+};
+
+onMounted(() => {
+  void restoreAccessSession();
 });
 
 const onFilesSelected = (event) => {
   selectFiles(Array.from(event.target.files || []));
 };
-
 const onInputModeChange = (event) => {
   setInputMode(event.target.value);
 };
-
 const onTextInput = (event) => {
   setInputText(event.target.value);
 };
-
+const submitToken = async () => {
+  await validateAccess(tokenInput.value);
+};
+const logoutAccess = () => {
+  persistStoredToken("");
+  accessSession.value = null;
+  accessMessage.value = "";
+  accessRequestId.value = "";
+  accessError.value = "";
+  tokenInput.value = "";
+  clearServiceToken();
+};
 const closeSuccessModal = () => {
   showSuccessModal.value = false;
 };
+
+/*
+  The editor flow keeps the file picker visible, but omits the shared upload
+  limits copy because this tool only accepts one DOCX document at a time.
+*/
+/*
+  The result modal already confirms completion and exposes downloads, so this
+  view no longer renders duplicate completion/status text or request metadata.
+*/
 </script>
 
 <template>
@@ -160,221 +307,327 @@ const closeSuccessModal = () => {
     </div>
 
     <div class="tool-card books-editor-card">
-      <div class="merge-step">
-        <p class="merge-step__title">{{ t("tools.booksGreekEditor.step1") }}</p>
-        <div
-          class="mode-toggle"
-          role="radiogroup"
-          :aria-label="t('tools.booksGreekEditor.inputMode')"
-        >
-          <label class="mode-toggle__option" for="books-input-docx">
-            <input
-              id="books-input-docx"
-              type="radio"
-              name="books-input-mode"
-              value="docx"
-              :checked="inputMode === 'docx'"
-              :disabled="loading"
-              @change="onInputModeChange"
-            />
-            <span>{{ t("tools.booksGreekEditor.modes.docx") }}</span>
-          </label>
-          <label class="mode-toggle__option" for="books-input-text">
-            <input
-              id="books-input-text"
-              type="radio"
-              name="books-input-mode"
-              value="text"
-              :checked="inputMode === 'text'"
-              :disabled="loading"
-              @change="onInputModeChange"
-            />
-            <span>{{ t("tools.booksGreekEditor.modes.text") }}</span>
-          </label>
+      <div class="books-panel">
+        <div class="books-panel__head">
+          <p class="merge-step__title">
+            {{ tr("Step 1 · Validate token", "Βήμα 1 · Επικύρωση token") }}
+          </p>
+          <button
+            v-if="hasValidatedAccess && !DEV_AUTH_DISABLED"
+            type="button"
+            class="button button--secondary"
+            :disabled="loading || accessLoading"
+            @click="logoutAccess"
+          >
+            {{ tr("Logout token", "Αποσύνδεση token") }}
+          </button>
         </div>
 
-        <template v-if="inputMode === 'docx'">
-          <input
-            type="file"
-            accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            @change="onFilesSelected"
-          />
-          <p class="tool-card__description">
-            {{ t("tools.common.selected", { value: file ? file.name : t("app.none") }) }}
-          </p>
+        <div v-if="DEV_AUTH_DISABLED" class="access-card access-card--dev">
+          <strong>{{
+            tr("Development bypass enabled", "Το development bypass είναι ενεργό")
+          }}</strong>
           <p class="tool-card__description">
             {{
-              t("app.singleFileUploadLimits", {
-                files: MAX_UPLOAD_FILES,
-                fileSize: MAX_FILE_SIZE_MB,
-                totalSize: MAX_TOTAL_UPLOAD_MB,
-              })
+              tr(
+                "This build skips editor token validation. Production builds always enforce token access.",
+                "Αυτό το build παρακάμπτει την επικύρωση editor token. Τα production builds επιβάλλουν πάντα token πρόσβασης."
+              )
             }}
           </p>
-          <p class="tool-card__description">{{ t("tools.booksGreekEditor.scopeNote") }}</p>
-        </template>
+        </div>
 
-        <template v-else>
-          <textarea
-            class="books-editor-card__textarea"
-            :value="inputText"
-            :placeholder="t('tools.booksGreekEditor.textPlaceholder')"
-            :disabled="loading"
-            rows="10"
-            @input="onTextInput"
-          />
-          <p class="tool-card__description">{{ t("tools.booksGreekEditor.textModeNote") }}</p>
-        </template>
-      </div>
+        <div v-else-if="restoringSession" class="access-card">
+          <strong>{{ tr("Restoring session", "Επαναφορά συνεδρίας") }}</strong>
+          <p class="tool-card__description">
+            {{
+              tr(
+                "Checking the stored editor token before unlocking the workspace.",
+                "Γίνεται έλεγχος του αποθηκευμένου editor token πριν ξεκλειδώσει το περιβάλλον εργασίας."
+              )
+            }}
+          </p>
+        </div>
 
-      <div class="merge-step">
-        <p class="merge-step__title">{{ t("tools.booksGreekEditor.step2") }}</p>
-        <label class="checkbox-row" for="books-select-all-rules">
+        <form v-else-if="!hasValidatedAccess" class="access-card" @submit.prevent="submitToken">
+          <strong>{{ tr("Editor access required", "Απαιτείται πρόσβαση editor") }}</strong>
+          <p class="tool-card__description">
+            {{
+              tr(
+                "Enter a token that includes the books_greek_editor service flag. The workspace is shown only after backend validation.",
+                "Συμπληρώστε token που περιλαμβάνει το service flag books_greek_editor. Το περιβάλλον εργασίας εμφανίζεται μόνο μετά από επικύρωση από το backend."
+              )
+            }}
+          </p>
           <input
-            id="books-select-all-rules"
-            type="checkbox"
-            :checked="allRulesSelected"
-            :disabled="loading"
-            @change="setAllRules($event.target.checked)"
+            v-model="tokenInput"
+            type="password"
+            class="field"
+            :disabled="accessLoading"
+            :placeholder="tr('Enter editor token', 'Συμπληρώστε editor token')"
+            autocomplete="off"
           />
-          <span>
-            <strong>{{ t("tools.booksGreekEditor.selectAllRules") }}</strong>
-            <span class="checkbox-row__description">
-              {{ t("tools.booksGreekEditor.selectAllRulesHelp") }}
-            </span>
-          </span>
-        </label>
-        <p class="selection-pill">
-          {{ t("tools.booksGreekEditor.selectedRules", { count: selectedRuleIds.length }) }}
-        </p>
+          <button
+            type="submit"
+            class="button button--primary"
+            :disabled="accessLoading || !props.apiHealthy"
+          >
+            {{
+              accessLoading
+                ? tr("Validating token...", "Γίνεται επικύρωση token...")
+                : tr("Unlock editor", "Ξεκλείδωμα editor")
+            }}
+          </button>
+        </form>
 
-        <div v-for="section in sectionItems" :key="section.id" class="rule-section">
-          <details class="rule-section__details" :open="section.open">
-            <summary class="rule-section__summary">
-              <span class="rule-section__summary-copy">
-                <span class="rule-section__title">{{ section.title }}</span>
-                <span class="rule-section__description">{{ section.description }}</span>
-              </span>
-              <span class="rule-section__chevron" aria-hidden="true">▾</span>
-            </summary>
-
-            <div class="rule-checkboxes">
-              <label
-                v-for="rule in section.rules"
-                :key="rule.id"
-                class="rule-checkbox"
-                :for="`rule-${rule.id}`"
-              >
-                <span class="rule-checkbox__header">
-                  <input
-                    :id="`rule-${rule.id}`"
-                    :checked="selectedRuleIds.includes(rule.id)"
-                    type="checkbox"
-                    :disabled="loading"
-                    @change="toggleRule(rule.id)"
-                  />
-                  <span class="rule-checkbox__copy">
-                    <span class="rule-checkbox__title">{{ rule.title }}</span>
-                    <span class="rule-checkbox__description">{{ rule.description }}</span>
-                  </span>
-                </span>
-
-                <div v-if="rule.preferenceKey" class="rule-checkbox__preference">
-                  <label class="rule-checkbox__preference-label" :for="`${rule.id}-preference`">
-                    {{ rule.preferenceLabel }}
-                  </label>
-                  <select
-                    :id="`${rule.id}-preference`"
-                    class="rule-checkbox__select"
-                    :value="preferences[rule.preferenceKey]"
-                    :disabled="loading"
-                    @change="setPreference(rule.preferenceKey, $event.target.value)"
-                  >
-                    <option
-                      v-for="option in rule.preferenceOptions"
-                      :key="option.value"
-                      :value="option.value"
-                    >
-                      {{ option.label }}
-                    </option>
-                  </select>
-                </div>
-
-                <details class="rule-checkbox__details">
-                  <summary>{{ t("tools.booksGreekEditor.ruleHelp") }}</summary>
-                  <p class="rule-checkbox__details-line">
-                    <strong>{{ t("tools.booksGreekEditor.exampleLabel") }}:</strong>
-                    {{ rule.example }}
-                  </p>
-                  <p v-if="rule.cases" class="rule-checkbox__details-line">
-                    <strong>{{ t("tools.booksGreekEditor.casesLabel") }}:</strong>
-                    {{ rule.cases }}
-                  </p>
-                </details>
-              </label>
+        <div v-else class="access-card access-card--active">
+          <div class="access-card__summary">
+            <strong>{{ tr("Token validated", "Το token επικυρώθηκε") }}</strong>
+            <p class="tool-card__description">
+              {{ tr("Alias", "Alias") }}:
+              <strong>{{ accessSession?.alias || t("app.none") }}</strong>
+            </p>
+            <p class="tool-card__description">
+              {{ tr("Services", "Υπηρεσίες") }}:
+              {{ accessSession?.serviceFlags?.join(", ") || t("app.none") }}
+            </p>
+          </div>
+          <div class="tool-card__date">
+            <div class="tool-card__date-head">
+              <span class="tool-card__date-label">{{ tr("Expires", "Λήξη") }}</span>
+              <span class="tool-card__date-badge">{{ expiryStatus }}</span>
             </div>
-          </details>
+            <strong class="tool-card__date-value">{{ expiryLabel }}</strong>
+          </div>
         </div>
       </div>
 
-      <div class="merge-step">
-        <p class="merge-step__title">{{ t("tools.booksGreekEditor.step3") }}</p>
-        <label class="checkbox-row" for="books-include-report">
-          <input
-            id="books-include-report"
-            type="checkbox"
-            :checked="includeReport"
-            :disabled="loading"
-            @change="setIncludeReport($event.target.checked)"
-          />
-          <span>
-            <strong>{{ t("tools.booksGreekEditor.includeReport") }}</strong>
-            <span class="checkbox-row__description">
-              {{ t("tools.booksGreekEditor.includeReportHelp") }}
-            </span>
-          </span>
-        </label>
-      </div>
-
-      <div class="merge-step">
-        <p class="merge-step__title">{{ t("tools.booksGreekEditor.step4") }}</p>
-        <button
-          type="button"
-          class="button button--primary"
-          :disabled="!canApply"
-          @click="applyEditor(props.apiBaseUrl)"
-        >
-          {{ loading ? t("tools.booksGreekEditor.applying") : t("tools.booksGreekEditor.apply") }}
-        </button>
-        <p v-if="!apiHealthy" class="tool-card__description tool-card__description--error">
-          {{ t("app.serverOfflineAction") }}
+      <div v-if="hasValidatedAccess" class="books-panel">
+        <p class="merge-step__title">
+          {{ tr("Step 2 · Edit manuscript", "Βήμα 2 · Επιμέλεια χειρογράφου") }}
         </p>
 
-        <div v-if="loading" class="progress-panel" aria-live="polite">
-          <div class="progress-panel__head">
-            <strong>{{ progressLabel }}</strong>
-            <span>{{ progressPercent }}%</span>
+        <div class="panel-card">
+          <p class="panel-card__title">{{ tr("Choose input", "Επιλογή εισόδου") }}</p>
+          <div
+            class="mode-toggle"
+            role="radiogroup"
+            :aria-label="t('tools.booksGreekEditor.inputMode')"
+          >
+            <label class="mode-toggle__option" for="books-input-docx">
+              <input
+                id="books-input-docx"
+                type="radio"
+                name="books-input-mode"
+                value="docx"
+                :checked="inputMode === 'docx'"
+                :disabled="loading"
+                @change="onInputModeChange"
+              />
+              <span>{{ t("tools.booksGreekEditor.modes.docx") }}</span>
+            </label>
+            <label class="mode-toggle__option" for="books-input-text">
+              <input
+                id="books-input-text"
+                type="radio"
+                name="books-input-mode"
+                value="text"
+                :checked="inputMode === 'text'"
+                :disabled="loading"
+                @change="onInputModeChange"
+              />
+              <span>{{ t("tools.booksGreekEditor.modes.text") }}</span>
+            </label>
           </div>
-          <div class="progress-track">
-            <div class="progress-track__bar" :style="{ width: `${progressPercent}%` }" />
+
+          <template v-if="inputMode === 'docx'">
+            <input
+              type="file"
+              accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              @change="onFilesSelected"
+            />
+            <p class="tool-card__description">
+              {{ t("tools.common.selected", { value: file ? file.name : t("app.none") }) }}
+            </p>
+            <p class="tool-card__description">{{ t("tools.booksGreekEditor.scopeNote") }}</p>
+          </template>
+
+          <template v-else>
+            <textarea
+              class="books-editor-card__textarea"
+              :value="inputText"
+              :placeholder="t('tools.booksGreekEditor.textPlaceholder')"
+              :disabled="loading"
+              rows="10"
+              @input="onTextInput"
+            />
+            <p class="tool-card__description">{{ t("tools.booksGreekEditor.textModeNote") }}</p>
+          </template>
+        </div>
+
+        <div class="panel-card">
+          <p class="panel-card__title">{{ tr("Choose rules", "Επιλογή κανόνων") }}</p>
+          <div class="panel-card__header">
+            <p class="panel-card__subtitle">
+              {{
+                tr(
+                  "Expand only the groups you need and keep the checklist easy to scan.",
+                  "Expand only the groups you need and keep the checklist easy to scan."
+                )
+              }}
+            </p>
+          </div>
+          <div class="rules-toolbar">
+            <label class="checkbox-row checkbox-row--featured" for="books-select-all-rules">
+              <input
+                id="books-select-all-rules"
+                type="checkbox"
+                :checked="allRulesSelected"
+                :disabled="loading"
+                @change="setAllRules($event.target.checked)"
+              />
+              <span>
+                <strong>{{ t("tools.booksGreekEditor.selectAllRules") }}</strong>
+                <span class="checkbox-row__description">{{
+                  t("tools.booksGreekEditor.selectAllRulesHelp")
+                }}</span>
+              </span>
+            </label>
+            <p class="selection-pill">
+              {{ t("tools.booksGreekEditor.selectedRules", { count: selectedRuleIds.length }) }}
+            </p>
+          </div>
+
+          <div v-for="section in sectionItems" :key="section.id" class="rule-section">
+            <details class="rule-section__details" :open="section.open">
+              <summary class="rule-section__summary">
+                <span class="rule-section__summary-copy">
+                  <span class="rule-section__title">{{ section.title }}</span>
+                  <span class="rule-section__description">{{ section.description }}</span>
+                </span>
+                <span class="rule-section__summary-side">
+                  <span class="rule-section__count">{{ section.rules.length }}</span>
+                  <span class="rule-section__chevron" aria-hidden="true"></span>
+                </span>
+              </summary>
+
+              <div class="rule-checkboxes">
+                <label
+                  v-for="rule in section.rules"
+                  :key="rule.id"
+                  class="rule-checkbox"
+                  :for="`rule-${rule.id}`"
+                >
+                  <span class="rule-checkbox__layout">
+                    <span class="rule-checkbox__control">
+                      <input
+                        :id="`rule-${rule.id}`"
+                        :checked="selectedRuleIds.includes(rule.id)"
+                        type="checkbox"
+                        :disabled="loading"
+                        @change="toggleRule(rule.id)"
+                      />
+                    </span>
+                    <span class="rule-checkbox__body">
+                      <span class="rule-checkbox__header">
+                        <span class="rule-checkbox__copy">
+                          <span class="rule-checkbox__title">{{ rule.title }}</span>
+                          <span class="rule-checkbox__description">{{ rule.description }}</span>
+                        </span>
+                      </span>
+
+                      <div v-if="rule.preferenceKey" class="rule-checkbox__preference">
+                        <label
+                          class="rule-checkbox__preference-label"
+                          :for="`${rule.id}-preference`"
+                        >
+                          {{ rule.preferenceLabel }}
+                        </label>
+                        <select
+                          :id="`${rule.id}-preference`"
+                          class="rule-checkbox__select"
+                          :value="preferences[rule.preferenceKey]"
+                          :disabled="loading"
+                          @change="setPreference(rule.preferenceKey, $event.target.value)"
+                        >
+                          <option
+                            v-for="option in rule.preferenceOptions"
+                            :key="option.value"
+                            :value="option.value"
+                          >
+                            {{ option.label }}
+                          </option>
+                        </select>
+                      </div>
+
+                      <details class="rule-checkbox__details">
+                        <summary>{{ t("tools.booksGreekEditor.ruleHelp") }}</summary>
+                        <p class="rule-checkbox__details-line">
+                          <strong>{{ t("tools.booksGreekEditor.exampleLabel") }}:</strong>
+                          {{ rule.example }}
+                        </p>
+                        <p v-if="rule.cases" class="rule-checkbox__details-line">
+                          <strong>{{ t("tools.booksGreekEditor.casesLabel") }}:</strong>
+                          {{ rule.cases }}
+                        </p>
+                      </details>
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <p class="panel-card__title">{{ tr("Output options", "Επιλογές εξόδου") }}</p>
+          <label class="checkbox-row" for="books-include-report">
+            <input
+              id="books-include-report"
+              type="checkbox"
+              :checked="includeReport"
+              :disabled="loading"
+              @change="setIncludeReport($event.target.checked)"
+            />
+            <span>
+              <strong>{{ t("tools.booksGreekEditor.includeReport") }}</strong>
+              <span class="checkbox-row__description">{{
+                t("tools.booksGreekEditor.includeReportHelp")
+              }}</span>
+            </span>
+          </label>
+        </div>
+
+        <div class="panel-card">
+          <p class="panel-card__title">{{ tr("Run editor", "Εκτέλεση editor") }}</p>
+          <button
+            type="button"
+            class="button button--primary"
+            :disabled="!canApply"
+            @click="applyEditor(props.apiBaseUrl)"
+          >
+            {{ loading ? t("tools.booksGreekEditor.applying") : t("tools.booksGreekEditor.apply") }}
+          </button>
+          <div v-if="loading" class="progress-panel" aria-live="polite">
+            <div class="progress-panel__head">
+              <strong>{{ progressLabel }}</strong>
+              <span>{{ progressPercent }}%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-track__bar" :style="{ width: `${progressPercent}%` }" />
+            </div>
           </div>
         </div>
       </div>
 
-      <p v-if="error" class="tool-card__description tool-card__description--error">{{ error }}</p>
-      <p v-if="message" class="tool-card__description">{{ message }}</p>
-      <p v-if="requestId" class="tool-card__description">
-        {{ t("tools.common.requestReference") }}: <code>{{ requestId }}</code>
+      <p
+        v-if="hasValidatedAccess && error"
+        class="tool-card__description tool-card__description--error"
+      >
+        {{ error }}
       </p>
 
-      <p v-if="hasBinaryResult && !showSuccessModal" class="tool-card__description">
-        {{ t("tools.booksGreekEditor.ready") }}
-        <button type="button" class="button button--secondary" @click="showSuccessModal = true">
-          {{ t("app.openDownloadModal") }}
-        </button>
-      </p>
-
-      <div v-if="hasTextResult" class="books-result-panel">
+      <div v-if="hasValidatedAccess && hasTextResult" class="books-result-panel">
         <div class="books-result-panel__header">
           <h3 class="books-result-panel__title">
             {{ t("tools.booksGreekEditor.textResultTitle") }}
@@ -388,11 +641,13 @@ const closeSuccessModal = () => {
             {{ t("tools.booksGreekEditor.downloadCorrectedText") }}
           </a>
         </div>
-
         <textarea class="books-editor-card__textarea" :value="resultText" rows="10" readonly />
       </div>
 
-      <div v-if="reportData || reportText" class="books-result-panel books-result-panel__report">
+      <div
+        v-if="hasValidatedAccess && (reportData || reportText)"
+        class="books-result-panel books-result-panel__report"
+      >
         <div class="books-result-panel__header">
           <h3 class="books-result-panel__title">{{ t("tools.booksGreekEditor.reportTitle") }}</h3>
           <a
@@ -424,13 +679,13 @@ const closeSuccessModal = () => {
           <div class="report-groups">
             <details v-for="group in reportGroups" :key="group.ruleId" class="report-group">
               <summary class="report-group__header">
-                <span>
+                <span class="report-group__summary-copy">
                   <strong>{{ group.title }}</strong>
                   <span class="report-group__count">
                     {{ t("tools.booksGreekEditor.reportOccurrences", { count: group.count }) }}
                   </span>
                 </span>
-                <span class="rule-section__chevron" aria-hidden="true">▾</span>
+                <span class="rule-section__chevron" aria-hidden="true"></span>
               </summary>
               <div class="report-group__examples">
                 <article
@@ -440,7 +695,7 @@ const closeSuccessModal = () => {
                 >
                   <div class="report-example__tokens">
                     <span class="report-example__before">{{ change.before }}</span>
-                    <span class="report-example__arrow">→</span>
+                    <span class="report-example__arrow">&rarr;</span>
                     <span class="report-example__after">{{ change.after }}</span>
                   </div>
                   <div class="report-example__sentences">
@@ -463,7 +718,7 @@ const closeSuccessModal = () => {
       </div>
 
       <SuccessThankYouModal
-        :visible="showSuccessModal"
+        :visible="hasValidatedAccess && showSuccessModal"
         :title="t('tools.booksGreekEditor.modalTitle')"
         :description="t('tools.booksGreekEditor.modalDescription')"
         :download-url="resultUrl"
@@ -476,284 +731,661 @@ const closeSuccessModal = () => {
 
 <style scoped>
 /*
-  The layout groups input modes, rule metadata, and text results without
-  introducing a separate page, which keeps the Books flow compact and readable.
+  The editor uses the shared tool-card shell, so this stylesheet rebuilds the
+  page as a bright, high-contrast workspace with stronger section hierarchy,
+  stable checkbox alignment, and explicit scroll containers for dense content.
 */
 .books-editor-card {
+  --books-bg: linear-gradient(180deg, #f9fbfd 0%, #f2f6fa 100%);
+  --books-surface: #ffffff;
+  --books-surface-alt: #f6f9fc;
+  --books-surface-strong: #eef6f5;
+  --books-ink: #132235;
+  --books-muted: #5e6f84;
+  --books-border: #d5e0eb;
+  --books-border-strong: #bccddd;
+  --books-accent: #0f766e;
+  --books-accent-soft: rgba(15, 118, 110, 0.1);
+  --books-shadow: 0 18px 34px rgba(20, 33, 47, 0.08);
+
   display: grid;
-  gap: 1.25rem;
-}
-
-.mode-toggle {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.mode-toggle__option {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-}
-
-.books-editor-card__textarea {
-  width: 100%;
-  min-height: 12rem;
-  padding: 0.85rem 0.95rem;
-  border: 1px solid rgba(15, 23, 42, 0.18);
-  border-radius: 0.85rem;
-  font: inherit;
-  resize: vertical;
-  background: #fff;
-}
-
-.rule-section {
-  display: block;
-}
-
-.rule-section__details {
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 1rem;
-  background: rgba(248, 250, 252, 0.55);
-  overflow: hidden;
-}
-
-.rule-section__summary {
-  cursor: pointer;
+  gap: 1rem;
   padding: 1rem;
+  border: 1px solid var(--books-border);
+  border-radius: 18px;
+  background: var(--books-bg);
+  box-shadow: var(--books-shadow);
+  color: var(--books-ink);
+}
+
+.books-editor-card,
+.books-editor-card p,
+.books-editor-card span,
+.books-editor-card strong,
+.books-editor-card summary,
+.books-editor-card label,
+.books-editor-card code {
+  color: inherit;
+}
+
+.section-head--spaced {
+  margin-top: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.section-head__title {
+  margin: 0;
+  font-size: clamp(1.32rem, 2.2vw, 1.64rem);
+  color: var(--ink);
+}
+
+.section-head__subtitle {
+  margin: 0.3rem 0 0;
+  max-width: 62rem;
+  color: var(--ink-soft);
+}
+
+.books-panel,
+.panel-card,
+.access-card,
+.books-result-panel {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.95rem;
+  border: 1px solid var(--books-border);
+  border-radius: 14px;
+  background: var(--books-surface);
+}
+
+.books-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(246, 249, 252, 0.96));
+  border-color: var(--books-border-strong);
+}
+
+.books-panel__head,
+.books-result-panel__header,
+.report-group__header,
+.report-example__tokens {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.8rem;
+  flex-wrap: wrap;
 }
 
-.rule-section__summary::-webkit-details-marker {
+.merge-step__title {
+  margin: 0;
+  font-size: 0.77rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--books-accent);
+}
+
+.panel-card__header {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.panel-card__title,
+.books-result-panel__title {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: var(--books-ink);
+}
+
+.panel-card__subtitle,
+.books-editor-card .tool-card__description,
+.checkbox-row__description,
+.rule-section__description,
+.rule-checkbox__description,
+.rule-checkbox__details-line,
+.report-group__count,
+.report-example__sentence {
+  margin: 0;
+  color: var(--books-muted);
+  line-height: 1.5;
+}
+
+.access-card {
+  gap: 0.65rem;
+}
+
+.access-card--active {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  border-color: rgba(15, 118, 110, 0.28);
+  background: linear-gradient(180deg, #ffffff 0%, #f0fdf9 100%);
+}
+
+.access-card__summary {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+/*
+  The expiry tile separates label, status, and timestamp so the access card
+  reads like a session summary instead of a plain metadata row.
+*/
+.tool-card__date {
+  display: grid;
+  gap: 0.45rem;
+  width: min(100%, 26rem);
+  align-self: start;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(15, 118, 110, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(232, 250, 246, 0.92));
+  box-shadow: 0 10px 20px rgba(15, 118, 110, 0.08);
+}
+
+.tool-card__date-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.tool-card__date-label {
+  color: var(--books-muted);
+  font-size: 0.77rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tool-card__date-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.12);
+  color: var(--books-accent);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.tool-card__date-value {
+  color: var(--books-ink);
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.access-card--dev {
+  border-color: rgba(194, 120, 3, 0.3);
+  background: linear-gradient(180deg, #ffffff 0%, #fff9ef 100%);
+}
+
+.mode-toggle {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.mode-toggle__option,
+.checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.mode-toggle__option {
+  padding: 0.72rem 0.8rem;
+  border: 1px solid var(--books-border);
+  border-radius: 12px;
+  background: var(--books-surface-alt);
+  color: var(--books-ink) !important;
+}
+
+.checkbox-row {
+  padding: 0.72rem 0.8rem;
+  border: 1px solid var(--books-border);
+  border-radius: 12px;
+  background: var(--books-surface-alt);
+  color: var(--books-ink) !important;
+}
+
+.checkbox-row--featured {
+  background: linear-gradient(180deg, #fbfefe 0%, #f4faf9 100%);
+}
+
+.checkbox-row > span,
+.rule-checkbox__copy,
+.rule-section__summary-copy,
+.report-group__summary-copy,
+.report-example__sentences {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.books-editor-card input[type="text"],
+.books-editor-card input[type="password"],
+.books-editor-card input[type="file"],
+.books-editor-card select,
+.books-editor-card textarea {
+  width: 100%;
+  padding: 0.68rem 0.8rem;
+  border: 1px solid var(--books-border);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--books-ink);
+  font: inherit;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
+}
+
+.books-editor-card input[type="checkbox"],
+.books-editor-card input[type="radio"] {
+  accent-color: var(--books-accent);
+}
+
+.books-editor-card input:focus,
+.books-editor-card select:focus,
+.books-editor-card textarea:focus {
+  outline: none;
+  border-color: rgba(15, 118, 110, 0.48);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+}
+
+.books-editor-card input::placeholder,
+.books-editor-card textarea::placeholder {
+  color: #8ea0b3;
+}
+
+.books-editor-card .button {
+  border-radius: 12px;
+}
+
+.books-editor-card .button--primary {
+  border-color: transparent;
+  background: linear-gradient(180deg, #149589 0%, #0f766e 100%);
+  box-shadow: 0 12px 22px rgba(15, 118, 110, 0.2);
+}
+
+.books-editor-card .button--secondary {
+  border-color: var(--books-border);
+  background: #ffffff;
+  color: var(--books-ink);
+}
+
+.rules-toolbar {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.selection-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin: 0;
+  padding: 0.38rem 0.72rem;
+  border: 1px solid rgba(15, 118, 110, 0.22);
+  border-radius: 999px;
+  background: var(--books-accent-soft);
+  color: var(--books-accent);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.rule-section {
+  display: grid;
+}
+
+.rule-section__details,
+.rule-checkbox,
+.report-group,
+.report-stat,
+.report-example {
+  border: 1px solid var(--books-border);
+  background: #ffffff;
+}
+
+.rule-section__summary,
+.report-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+  list-style: none;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fafc 100%);
+}
+
+.rule-section__summary::-webkit-details-marker,
+.report-group__header::-webkit-details-marker {
   display: none;
 }
 
-.rule-section__summary-copy {
-  display: grid;
-  gap: 0.2rem;
+.rule-section__summary-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-shrink: 0;
+}
+
+.rule-section__title,
+.rule-checkbox__title {
+  font-weight: 800;
+  color: var(--books-ink);
+}
+
+.rule-section__count {
+  display: inline-flex;
+  min-width: 2rem;
+  justify-content: center;
+  padding: 0.2rem 0.48rem;
+  border-radius: 999px;
+  background: #edf4fb;
+  color: #4f647b;
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
 .rule-section__chevron {
-  font-size: 1rem;
-  color: rgba(15, 23, 42, 0.62);
-  transition: transform 0.18s ease;
+  width: 0.62rem;
+  height: 0.62rem;
+  border-right: 2px solid #6d7f92;
+  border-bottom: 2px solid #6d7f92;
+  transform: rotate(45deg);
+  transition: transform 140ms ease;
 }
 
 .rule-section__details[open] .rule-section__chevron,
 .report-group[open] .rule-section__chevron {
-  transform: rotate(180deg);
-}
-
-.rule-section__title {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.rule-section__description {
-  margin: 0;
-  color: rgba(15, 23, 42, 0.72);
+  transform: rotate(225deg);
 }
 
 .rule-checkboxes {
   display: grid;
-  gap: 0.75rem;
-  max-height: 28rem;
-  padding: 0 1rem 1rem;
+  gap: 0.8rem;
+  max-height: 26rem;
+  padding: 0.85rem;
   overflow: auto;
+  border-top: 1px solid var(--books-border);
+  background: #f9fbfd;
 }
 
 .rule-checkbox {
+  padding: 0.85rem 0.9rem;
+  background: #ffffff;
+  box-shadow: 0 8px 16px rgba(20, 33, 47, 0.04);
+}
+
+.rule-checkbox__layout {
   display: grid;
-  gap: 0.6rem;
-  padding: 0.9rem 1rem;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 0.95rem;
-  background: rgba(248, 250, 252, 0.8);
+  grid-template-columns: 1.3rem minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.rule-checkbox__control {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.1rem;
+}
+
+.rule-checkbox__control input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+}
+
+.rule-checkbox__body {
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
 }
 
 .rule-checkbox__header {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: 0.7rem;
 }
 
-.rule-checkbox__copy {
+.rule-checkbox__preference,
+.rule-checkbox__details {
   display: grid;
-  gap: 0.2rem;
-}
-
-.rule-checkbox__title {
-  display: block;
-  font-weight: 600;
-}
-
-.rule-checkbox__description,
-.rule-checkbox__details-line,
-.checkbox-row__description {
-  display: block;
-  color: rgba(15, 23, 42, 0.72);
+  gap: 0.35rem;
 }
 
 .rule-checkbox__preference {
-  display: grid;
-  gap: 0.35rem;
-  padding-left: 1.65rem;
+  padding: 0.7rem;
+  border: 1px solid var(--books-border);
+  border-radius: 12px;
+  background: #f8fbff;
 }
 
 .rule-checkbox__preference-label {
-  font-size: 0.94rem;
-  font-weight: 600;
-}
-
-.rule-checkbox__select {
-  width: min(100%, 18rem);
-  padding: 0.6rem 0.75rem;
-  border: 1px solid rgba(15, 23, 42, 0.18);
-  border-radius: 0.75rem;
-  background: #fff;
-  font: inherit;
+  color: var(--books-muted);
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .rule-checkbox__details {
-  padding-left: 1.65rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--books-border);
+  border-radius: 12px;
+  background: #fbfdff;
 }
 
 .rule-checkbox__details summary {
   cursor: pointer;
-  font-weight: 600;
+  color: #51657c;
+  font-weight: 700;
 }
 
-.checkbox-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.7rem;
+.books-editor-card__textarea {
+  min-height: 12rem;
+  resize: vertical;
 }
 
-.books-result-panel {
-  display: grid;
-  gap: 0.9rem;
-  padding: 1rem;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 1rem;
-  background: rgba(248, 250, 252, 0.85);
+.books-editor-card__textarea--result {
+  background: #fbfdff;
 }
 
-.books-result-panel__header {
+.books-editor-card__inline-action {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
 }
 
-.books-result-panel__title {
-  margin: 0;
-  font-size: 1rem;
+.progress-panel {
+  padding: 0.8rem;
+  border: 1px solid var(--books-border);
+  border-radius: 12px;
+  background: #f7fbfb;
+}
+
+.progress-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.progress-track {
+  width: 100%;
+  height: 0.55rem;
+  margin-top: 0.55rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #d7e9e6;
+}
+
+.progress-track__bar {
+  height: 100%;
+  background: linear-gradient(90deg, #17a596 0%, #0f766e 100%);
+  transition: width 160ms ease;
+}
+
+.books-result-panel__report,
+.report-summary,
+.report-groups {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.report-summary__stats {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.report-stat {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.85rem 0.9rem;
+  background: #f7fbff;
+}
+
+.report-stat strong {
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.report-group__summary-copy {
+  align-items: start;
+}
+
+.report-group__examples {
+  display: grid;
+  gap: 0.7rem;
+  max-height: 18rem;
+  padding: 0 0.85rem 0.85rem;
+  overflow: auto;
+}
+
+.report-example {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem 0.9rem;
+  background: #f9fbfe;
+}
+
+.report-example__before,
+.report-example__after {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.24rem 0.5rem;
+  border: 1px solid var(--books-border);
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.report-example__arrow {
+  color: var(--books-muted);
+  font-weight: 800;
 }
 
 .books-result-panel__pre {
   margin: 0;
-  padding: 0.85rem 0.95rem;
-  border-radius: 0.85rem;
-  background: rgba(15, 23, 42, 0.04);
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--books-border);
+  border-radius: 12px;
+  background: #fbfdff;
+  color: var(--books-ink);
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.report-summary {
-  display: grid;
-  gap: 1rem;
+.rule-checkboxes,
+.report-group__examples,
+.books-result-panel__pre,
+.books-editor-card__textarea {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(15, 118, 110, 0.55) rgba(148, 163, 184, 0.18);
 }
 
-.report-summary__stats {
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+.rule-checkboxes::-webkit-scrollbar,
+.report-group__examples::-webkit-scrollbar,
+.books-result-panel__pre::-webkit-scrollbar,
+.books-editor-card__textarea::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
 }
 
-.report-stat,
-.report-group {
-  display: grid;
-  gap: 0.35rem;
-  padding: 0.9rem 1rem;
-  border-radius: 0.85rem;
-  background: rgba(15, 23, 42, 0.04);
-}
-
-.report-group__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  cursor: pointer;
-  list-style: none;
-}
-
-.report-group__header::-webkit-details-marker {
-  display: none;
-}
-
-.report-group__header > span:first-child {
-  display: grid;
-  gap: 0.15rem;
-}
-
-.report-group__count {
-  color: rgba(15, 23, 42, 0.65);
-}
-
-.report-groups {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.report-group__examples {
-  display: grid;
-  gap: 0.65rem;
-  max-height: 20rem;
-  overflow: auto;
-  margin-top: 0.75rem;
-  padding-right: 0.2rem;
-}
-
-.report-example {
-  display: grid;
-  gap: 0.5rem;
-  padding: 0.75rem 0.85rem;
-  border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.report-example__tokens {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.report-example__sentences {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.report-example__sentence {
-  margin: 0;
-  color: rgba(15, 23, 42, 0.78);
-}
-
-.report-example__before,
-.report-example__after {
-  padding: 0.2rem 0.45rem;
+.rule-checkboxes::-webkit-scrollbar-track,
+.report-group__examples::-webkit-scrollbar-track,
+.books-result-panel__pre::-webkit-scrollbar-track,
+.books-editor-card__textarea::-webkit-scrollbar-track {
+  background: rgba(148, 163, 184, 0.18);
   border-radius: 999px;
-  background: #fff;
 }
 
-.report-example__arrow {
-  color: rgba(15, 23, 42, 0.56);
+.rule-checkboxes::-webkit-scrollbar-thumb,
+.report-group__examples::-webkit-scrollbar-thumb,
+.books-result-panel__pre::-webkit-scrollbar-thumb,
+.books-editor-card__textarea::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #1ab3a3, #0f766e);
+  border-radius: 999px;
+}
+
+.tool-card__description--error {
+  color: #b91c1c !important;
+}
+
+@media (max-width: 760px) {
+  .books-editor-card {
+    padding: 0.8rem;
+    border-radius: 14px;
+  }
+
+  .books-panel,
+  .panel-card,
+  .access-card,
+  .books-result-panel {
+    padding: 0.8rem;
+  }
+
+  .books-panel__head,
+  .books-result-panel__header,
+  .report-group__header {
+    align-items: stretch;
+  }
+
+  .access-card--active {
+    grid-template-columns: 1fr;
+  }
+
+  .tool-card__date {
+    width: 100%;
+  }
+
+  .books-panel__head > .button,
+  .access-card > .button,
+  .panel-card > .button,
+  .books-result-panel__header > .button,
+  .books-result-panel__header > a {
+    width: 100%;
+  }
+
+  .rule-section__summary,
+  .report-group__header {
+    padding: 0.8rem;
+  }
+
+  .rule-checkboxes {
+    max-height: 20rem;
+    padding: 0.7rem;
+  }
+
+  .rule-checkbox {
+    padding: 0.75rem;
+  }
+
+  .rule-checkbox__layout {
+    gap: 0.72rem;
+  }
 }
 </style>

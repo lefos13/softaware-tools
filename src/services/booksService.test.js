@@ -1,12 +1,14 @@
 /*
   Books service tests pin both the multipart DOCX contract and the JSON text
-  contract so frontend requests stay aligned with backend OpenAPI docs.
+  contract so frontend requests stay aligned with backend OpenAPI docs and the
+  protected editor token header.
 */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyGreekLiteratureEditor,
   applyGreekLiteratureEditorText,
   previewGreekLiteratureEditorReport,
+  validateGreekLiteratureEditorAccess,
 } from "./booksService";
 
 const uploadMultipartBinaryMock = vi.fn();
@@ -44,17 +46,53 @@ describe("booksService", () => {
         includeReport: true,
         preferences: { andrasStyle: "antras", avgoStyle: "avgo" },
       },
-      { taskId: "books-task-1", onUploadProgress: progressSpy }
+      { taskId: "books-task-1", onUploadProgress: progressSpy, serviceToken: "svc-token" }
     );
 
     const call = uploadMultipartBinaryMock.mock.calls[0][0];
     expect(call.url).toBe("http://localhost:3000/api/books/greek-editor/apply?taskId=books-task-1");
     expect(call.onUploadProgress).toBe(progressSpy);
+    expect(call.headers).toEqual({ "x-service-token": "svc-token" });
     expect(call.formData.get("files")).toBeTruthy();
     expect(call.formData.get("editorOptions")).toContain("kai_before_vowel");
     expect(call.formData.get("editorOptions")).toContain("includeReport");
     expect(result.fileName).toBe("custom-manuscript-edited.docx");
     expect(result.requestId).toBe("req-books-1");
+  });
+
+  it("validateGreekLiteratureEditorAccess sends the editor token and returns session data", async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        message: "token-ok",
+        data: {
+          authEnabled: true,
+          token: {
+            tokenId: "token-1",
+            alias: "Books editor token",
+            serviceFlags: ["books_greek_editor"],
+            expiresAt: "2026-04-01T00:00:00.000Z",
+          },
+        },
+        meta: { requestId: "req-access-1" },
+      }),
+    });
+
+    const result = await validateGreekLiteratureEditorAccess("http://localhost:3000", "svc-token");
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:3000/api/books/greek-editor/access",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          Accept: "application/json",
+          "x-service-token": "svc-token",
+        }),
+      })
+    );
+    expect(result.authEnabled).toBe(true);
+    expect(result.token?.alias).toBe("Books editor token");
+    expect(result.requestId).toBe("req-access-1");
   });
 
   it("applyGreekLiteratureEditorText posts JSON and returns corrected text payload", async () => {
@@ -79,7 +117,7 @@ describe("booksService", () => {
         ruleIds: ["sa_to_san", "ellipsis_normalize"],
         includeReport: true,
       },
-      { taskId: "books-task-2" }
+      { taskId: "books-task-2", serviceToken: "svc-token" }
     );
 
     expect(global.fetch).toHaveBeenCalledWith(
@@ -89,6 +127,7 @@ describe("booksService", () => {
         headers: expect.objectContaining({
           Accept: "application/json",
           "Content-Type": "application/json",
+          "x-service-token": "svc-token",
         }),
       })
     );
@@ -118,7 +157,7 @@ describe("booksService", () => {
         ruleIds: ["sa_to_san"],
         includeReport: true,
       },
-      { taskId: "books-task-3" }
+      { taskId: "books-task-3", serviceToken: "svc-token" }
     );
 
     expect(global.fetch).toHaveBeenCalledWith(
@@ -127,6 +166,7 @@ describe("booksService", () => {
         method: "POST",
         headers: expect.objectContaining({
           Accept: "application/json",
+          "x-service-token": "svc-token",
         }),
       })
     );

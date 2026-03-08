@@ -184,7 +184,7 @@ const messages = {
       "json-services": "JSON Services",
       "json-tool": "JSON Tool",
       contract: "API Contract",
-      "admin-reports": "Admin Reports",
+      "admin-tokens": "Admin Tokens",
       donate: "Support",
     },
     pages: {
@@ -692,7 +692,7 @@ const messages = {
       "json-services": "Υπηρεσίες JSON",
       "json-tool": "Εργαλείο JSON",
       contract: "Σύμβαση API",
-      "admin-reports": "Αναφορές διαχείρισης",
+      "admin-tokens": "Διαχείριση tokens",
       donate: "Υποστήριξη",
     },
     pages: {

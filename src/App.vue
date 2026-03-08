@@ -153,9 +153,9 @@ const breadcrumbs = computed(() => {
       { label: toRouteLabel("home"), path: "/" },
       { label: toRouteLabel("contract"), path: "/contract/openapi" },
     ],
-    "admin-reports": [
+    "admin-tokens": [
       { label: toRouteLabel("home"), path: "/" },
-      { label: toRouteLabel("admin-reports"), path: "/admin/reports" },
+      { label: toRouteLabel("admin-tokens"), path: "/admin/tokens" },
     ],
     donate: [
       { label: toRouteLabel("home"), path: "/" },

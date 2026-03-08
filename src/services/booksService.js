@@ -1,6 +1,7 @@
 /*
   The Books service client mirrors the backend split between binary DOCX work
-  and JSON text editing so the UI can keep one rule picker across both modes.
+  and JSON text editing while attaching the editor service token only to the
+  protected Greek editor endpoints, including the access-validation handshake.
 */
 import {
   buildUrl,
@@ -12,6 +13,39 @@ import {
 } from "./apiClient";
 
 const buildTaskSuffix = (taskId) => (taskId ? `?taskId=${encodeURIComponent(taskId)}` : "");
+const buildServiceTokenHeaders = (serviceToken) =>
+  serviceToken
+    ? {
+        "x-service-token": String(serviceToken || "").trim(),
+      }
+    : {};
+
+/*
+  The validation call gives the browser a single source of truth for whether a
+  persisted token can unlock the editor or must be discarded immediately.
+*/
+export const validateGreekLiteratureEditorAccess = async (baseUrl, serviceToken) => {
+  const response = await fetch(buildUrl(baseUrl, "/api/books/greek-editor/access"), {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      ...buildServiceTokenHeaders(serviceToken),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  const payload = await response.json();
+
+  return {
+    authEnabled: payload?.data?.authEnabled !== false,
+    token: payload?.data?.token || null,
+    message: payload?.message || "Greek editor token validated successfully",
+    requestId: payload?.meta?.requestId || "",
+  };
+};
 
 export const applyGreekLiteratureEditor = async (
   baseUrl,
@@ -27,6 +61,7 @@ export const applyGreekLiteratureEditor = async (
     url: `${buildUrl(baseUrl, "/api/books/greek-editor/apply")}${buildTaskSuffix(options.taskId)}`,
     formData,
     onUploadProgress: options.onUploadProgress,
+    headers: buildServiceTokenHeaders(options.serviceToken),
   });
 
   return {
@@ -53,6 +88,7 @@ export const applyGreekLiteratureEditorText = async (
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
+        ...buildServiceTokenHeaders(options.serviceToken),
       },
       body: JSON.stringify({
         inputText,
@@ -93,6 +129,7 @@ export const previewGreekLiteratureEditorReport = async (
       method: "POST",
       headers: {
         Accept: "application/json",
+        ...buildServiceTokenHeaders(options.serviceToken),
       },
       body: formData,
     }

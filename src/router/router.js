@@ -3,7 +3,7 @@
   can reuse one workspace route while preserving lightweight navigation state.
 */
 import { computed, ref } from "vue";
-import AdminReportsView from "../views/AdminReportsView.vue";
+import AdminTokensView from "../views/AdminTokensView.vue";
 import BooksGreekEditorFlowView from "../views/BooksGreekEditorFlowView.vue";
 import BooksServicesView from "../views/BooksServicesView.vue";
 import DonateView from "../views/DonateView.vue";
@@ -130,10 +130,10 @@ const staticRoutes = [
     component: OpenApiView,
   },
   {
-    path: "/admin/reports",
-    name: "admin-reports",
-    label: "Admin Reports",
-    component: AdminReportsView,
+    path: "/admin/tokens",
+    name: "admin-tokens",
+    label: "Admin Tokens",
+    component: AdminTokensView,
   },
   {
     path: "/donate",

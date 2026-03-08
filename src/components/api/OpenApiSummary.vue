@@ -27,7 +27,7 @@ const summaryItems = computed(() =>
         "Η μετατροπή εικόνων δέχεται πολλές εικόνες και μορφές jpeg/png/webp/avif/tiff/gif.",
         "Η αφαίρεση φόντου υποστηρίζει αυτόματη ή χειροκίνητη επιλογή με preview μίας εικόνας.",
         "Το `GET /api/tasks/:taskId` επιστρέφει πραγματική πρόοδο επεξεργασίας από το backend.",
-        "Οι αναφορές admin απαιτούν `x-admin-token`, ενώ οι superadmins μπορούν να δουν και να ανακαλέσουν tokens.",
+        "Η οθόνη διαχείρισης tokens απαιτεί `x-admin-token`, ενώ ο Greek editor απαιτεί `x-service-token` με το service flag `books_greek_editor`.",
         "Τα μεταβαλλόμενα API requests έχουν rate limit ανά IP (προεπιλογή 5 requests/λεπτό).",
         "Όρια αποστολής: 20 αρχεία, 25 MB το καθένα, 120 MB συνολικά ανά αίτημα.",
       ]
@@ -48,7 +48,7 @@ const summaryItems = computed(() =>
         "Image conversion accepts multiple images and target formats: jpeg, png, webp, avif, tiff, gif.",
         "Transparent background conversion supports automatic or picker-based detection with one-image preview.",
         "`GET /api/tasks/:taskId` returns real backend processing progress.",
-        "Admin reports require `x-admin-token`, and superadmins can inspect and revoke token sessions.",
+        "Token management requires `x-admin-token`, and the Greek editor requires `x-service-token` with the `books_greek_editor` service flag.",
         "Mutating API requests are rate-limited per IP (5 requests per minute by default).",
         "Upload limits are 20 files, 25 MB each, and 120 MB total per request.",
       ]
