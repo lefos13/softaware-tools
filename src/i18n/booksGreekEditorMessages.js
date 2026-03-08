@@ -190,6 +190,13 @@ export const booksGreekEditorMessages = {
         example: "ακόμη και -> ακόμα και",
         cases: "ακόμη και, ακόμη κι",
       },
+      giati_giati_normalize: {
+        title: 'Normalize "για αυτό / γι αυτό / γι\' αυτό" to "γι’ αυτό"',
+        description:
+          'Converts the supported phrase variants into the single contracted form "γι’ αυτό".',
+        example: "για αυτό -> γι’ αυτό, γι αυτό -> γι’ αυτό, γι' αυτό -> γι’ αυτό",
+        cases: "για αυτό, γι αυτό, γι' αυτό",
+      },
       me_se_mena_sena_contract: {
         title: 'Contract "με/σε" before "μένα/σένα"',
         description:
@@ -269,7 +276,7 @@ export const booksGreekEditorMessages = {
           "Adds a comma before common lowercase subordinators when they introduce a continuation inside the same sentence.",
         example: "έφυγα όταν νύχτωσε -> έφυγα, όταν νύχτωσε",
         cases:
-          "για να, όταν, μέχρι, γιατί, επειδή, διότι, αν, άμα, εάν in lowercase and not at sentence start",
+          "για να, όταν, μέχρι, γιατί, επειδή, διότι, αν, εάν in lowercase and not at sentence start",
       },
       anamesa_article_contract: {
         title: 'Adjust article after "ανάμεσα ... και ..."',
@@ -906,6 +913,13 @@ export const booksGreekEditorMessages = {
         example: "ακόμη και -> ακόμα και",
         cases: "ακόμη και, ακόμη κι",
       },
+      giati_giati_normalize: {
+        title: 'Κανονικοποίηση του "για αυτό / γι αυτό / γι\' αυτό" σε "γι’ αυτό"',
+        description:
+          'Μετατρέπει τις υποστηριζόμενες παραλλαγές της φράσης στην ενιαία συντετμημένη μορφή "γι’ αυτό".',
+        example: "για αυτό -> γι’ αυτό, γι αυτό -> γι’ αυτό, γι' αυτό -> γι’ αυτό",
+        cases: "για αυτό, γι αυτό, γι' αυτό",
+      },
       me_se_mena_sena_contract: {
         title: 'Σύντμηση του "με/σε" πριν από "μένα/σένα"',
         description:
@@ -985,7 +999,7 @@ export const booksGreekEditorMessages = {
           "Προσθέτει κόμμα πριν από συχνούς πεζούς υποτακτικούς συνδέσμους όταν συνεχίζουν την ίδια πρόταση.",
         example: "έφυγα όταν νύχτωσε -> έφυγα, όταν νύχτωσε",
         cases:
-          "για να, όταν, μέχρι, γιατί, επειδή, διότι, αν, άμα, εάν με πεζά και όχι στην αρχή πρότασης",
+          "για να, όταν, μέχρι, γιατί, επειδή, διότι, αν, εάν με πεζά και όχι στην αρχή πρότασης",
       },
       anamesa_article_contract: {
         title: 'Προσαρμογή άρθρου μετά από το σχήμα "ανάμεσα ... και ..."',

@@ -1,7 +1,5 @@
 # AGENTS.md - softaware-tools
 
-This file defines local agent instructions for `/Users/eevangelinos/Documents/softaware/softaware-tools`.
-
 ## 1) Instruction Priority
 
 1. Follow global Codex/system/developer instructions first.
