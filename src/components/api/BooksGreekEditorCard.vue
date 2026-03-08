@@ -66,7 +66,7 @@ const canApply = computed(
 const showSuccessModal = ref(false);
 
 const sectionItems = computed(() =>
-  ["literary", "orthography"].map((sectionId) => ({
+  ["literary", "orthography", "preferences"].map((sectionId) => ({
     id: sectionId,
     open: sectionId === "literary",
     title: t(`tools.booksGreekEditor.sections.${sectionId}.title`),

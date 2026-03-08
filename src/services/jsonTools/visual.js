@@ -19,6 +19,13 @@ const themeStyles = {
   },
 };
 
+/*
+  Canvas-generated previews render text outside normal CSS inheritance, so the
+  drawing context uses the same Roboto stack as the UI to keep exported images
+  visually aligned with the pages.
+*/
+const APP_FONT_STACK = '"Roboto", "Segoe UI", sans-serif';
+
 const drawRoundedRect = (context, x, y, width, height, radius) => {
   const r = Math.max(0, Math.min(radius, Math.min(width, height) / 2));
   context.beginPath();
@@ -123,7 +130,7 @@ export const renderJsonAsImage = async ({ toolId, input, options = {} }) => {
     throw new Error("Canvas rendering context is unavailable");
   }
 
-  context.font = `${fontSize}px "Avenir Next", "Segoe UI", sans-serif`;
+  context.font = `${fontSize}px ${APP_FONT_STACK}`;
   const maxTextWidth = width - padding * 2 - cardPadding * 2;
   const wrappedLines = baseLines.flatMap((line) =>
     wrapLine({ context, text: line, maxWidth: maxTextWidth })
@@ -154,14 +161,14 @@ export const renderJsonAsImage = async ({ toolId, input, options = {} }) => {
   let cursorY = cardY + cardPadding;
   if (toolId === "screenshot-json") {
     context.fillStyle = theme.accent;
-    context.font = `700 24px "Avenir Next", "Segoe UI", sans-serif`;
+    context.font = `700 24px ${APP_FONT_STACK}`;
     context.textBaseline = "top";
     context.fillText(titleText, cardX + cardPadding, cursorY);
     cursorY += titleHeight - 14;
   }
 
   context.fillStyle = theme.ink;
-  context.font = `${fontSize}px "Avenir Next", "Segoe UI", sans-serif`;
+  context.font = `${fontSize}px ${APP_FONT_STACK}`;
   context.textBaseline = "top";
 
   const maxRows = Math.floor((cardHeight - cardPadding * 2 - titleHeight) / lineHeight);

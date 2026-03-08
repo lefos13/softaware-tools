@@ -1,3 +1,24 @@
+/*
+  The app now loads the bundled Roboto variable fonts locally so every route,
+  shared component, and native form control uses the same typography without
+  depending on platform-specific fallbacks.
+*/
+@font-face {
+  font-family: "Roboto";
+  src: url("./assets/fonts/Roboto-VariableFont_wdth,wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roboto";
+  src: url("./assets/fonts/Roboto-Italic-VariableFont_wdth,wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
 /* Updated styles to support automated API-guard overlays and a guided PDF pre-merge workflow with previews/order/rotation controls. */
 :root {
   --bg: #f7f5f0;
@@ -12,20 +33,32 @@
   --border: #d7e0ec;
   --shadow: 0 24px 48px rgba(24, 33, 47, 0.08);
   --error: #b91c1c;
+  --font-sans: "Roboto", "Segoe UI", sans-serif;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  font-family: var(--font-sans);
+}
+
 body {
   margin: 0;
   min-height: 100vh;
   color: var(--ink);
-  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
   background:
     radial-gradient(circle at 8% 12%, rgba(13, 148, 136, 0.14), transparent 28%),
     radial-gradient(circle at 90% 10%, rgba(249, 115, 22, 0.14), transparent 24%), var(--bg);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 /*
@@ -509,6 +542,10 @@ body {
   color: var(--error);
 }
 
+.mode-toggle__option {
+  color: var(--ink-soft) !important;
+}
+
 /* Why this exists: all flow forms now use grouped blocks and consistent control
    spacing so option-heavy tools feel cleaner and easier to scan. */
 .merge-step {
@@ -519,6 +556,9 @@ body {
   background: #fdfefe;
   display: grid;
   gap: 0.55rem;
+}
+.merge-step .tool-card__description {
+  color: var(--ink-soft);
 }
 
 .merge-step__title {
@@ -914,15 +954,23 @@ body {
   align-items: start;
 }
 
+.merge-step strong {
+  color: var(--ink-soft) !important;
+}
 .rule-checkbox__header input[type="checkbox"] {
   margin-top: 0.18rem;
   width: 1rem;
   height: 1rem;
 }
 
+.rule-checkbox__details summary {
+  color: var(--ink-soft);
+}
+
 .rule-checkbox__title {
   display: block;
   font-weight: 700;
+  color: var(--ink-soft);
 }
 
 .rule-checkbox__description {

@@ -54,10 +54,22 @@ export const booksGreekEditorMessages = {
       },
       orthography: {
         title: "Common spelling rules",
-        description: "Frequent orthographic normalizations and preference-based word forms.",
+        description: "Frequent orthographic normalizations and spelling corrections.",
+      },
+      preferences: {
+        title: "Preference-based rules",
+        description:
+          "Rules that apply one of multiple valid forms based on the user's preferred style.",
       },
     },
     preferences: {
+      denNegationStyle: {
+        label: 'Preferred style for "δεν / δε"',
+        options: {
+          contextual: 'Use contextual "δε"',
+          alwaysDen: 'Always use "δεν"',
+        },
+      },
       andrasStyle: {
         label: 'Preferred form for "άντρας / άνδρας"',
         options: {
@@ -70,6 +82,13 @@ export const booksGreekEditorMessages = {
         options: {
           avgo: 'Prefer "αυγό"',
           avgoBeta: 'Prefer "αβγό"',
+        },
+      },
+      quotePeriodStyle: {
+        label: "Preferred placement for period and closing quote",
+        options: {
+          outside: 'Prefer "». "',
+          inside: 'Prefer ".»"',
         },
       },
     },
@@ -120,11 +139,12 @@ export const booksGreekEditorMessages = {
         cases: "<< and >>",
       },
       den_negation_trim: {
-        title: 'Shorten "δεν" before specific consonants',
+        title: 'Choose between contextual "δε" and global "δεν"',
         description:
-          'Turns "δεν" into "δε" before β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ, excluding γγ, γκ, μπ, ντ.',
-        example: "δεν βγαίνω -> δε βγαίνω",
-        cases: "β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ except γγ, γκ, μπ, ντ",
+          'Either applies the existing contextual trimming before selected consonants or normalizes all standalone "δε" forms to "δεν", based on your preference.',
+        example: "δεν βγαίνω -> δε βγαίνω or δε μένω -> δεν μένω",
+        cases:
+          'Contextual trimming before selected consonants, or global standalone "δε/δεν" normalization to "δεν".',
       },
       akomi_to_akoma_before_kai: {
         title: 'Change "ακόμη" to "ακόμα" before "και/κι"',
@@ -144,6 +164,79 @@ export const booksGreekEditorMessages = {
           'Turns "με μένα", "με σένα", "σε μένα", and "σε σένα" into contracted forms with apostrophe.',
         example: "με σένα -> μ' εσένα",
         cases: "με μένα, με σένα, σε μένα, σε σένα",
+      },
+      prin_before_time_phrase: {
+        title: 'Change "πριν" to "πριν από" before time and event phrases',
+        description:
+          'Turns "πριν" into "πριν από" when it is followed by specific time spans, meals, seasons, or common event phrases.',
+        example: "πριν το μάθημα -> πριν από το μάθημα",
+        cases:
+          "το μάθημα, τη δουλειά, το ταξίδι, γεύματα, εποχές, ώρα, εβδομάδα/ες, χρόνος/χρόνια, μήνας/μήνες, numeric duration phrases",
+      },
+      question_pou_pos_toning: {
+        title: 'Accent opening "που/πως" in direct questions',
+        description:
+          'Accents sentence-opening "που" and "πως" when the sentence ends with a Greek question mark and stays a single direct question.',
+        example: "Που πήγες; -> Πού πήγες;",
+        cases:
+          "Sentence starts with που/πως and ends with ; without another full stop, exclamation mark, ellipsis, or upper dot.",
+      },
+      quote_comma_trim: {
+        title: "Remove comma after closing guillemet",
+        description: 'Removes the comma in the sequence "»,".',
+        example: "«Γύρισα», -> «Γύρισα»",
+        cases: 'Only the exact sequence "»,".',
+      },
+      mesa_sto_contract: {
+        title: 'Contract "μέσα στο/στην/στον" to "μες ..."',
+        description:
+          'Turns "μέσα στο", "μέσα στην", and "μέσα στον" into the shorter literary forms.',
+        example: "μέσα στην πόλη -> μες στην πόλη",
+        cases: "μέσα στο, μέσα στην, μέσα στον",
+      },
+      kathe_enas_series: {
+        title: 'Join "κάθε ένας/μία/ένα/έναν/τι" into one word',
+        description:
+          'Turns the split forms into the standard single-word forms such as "καθένας" and "καθεμία".',
+        example: "κάθε ένας -> καθένας",
+        cases: "κάθε ένας, κάθε μία, κάθε ένα, κάθε έναν, κάθε τι",
+      },
+      quote_period_preference: {
+        title: "Choose whether the period stays inside or outside closing guillemets",
+        description:
+          "Moves the period to the preferred side of the closing guillemet using the option you choose below.",
+        example: "«Γύρνα». -> «Γύρνα.» or the reverse",
+        cases: 'Only the combinations ".»" and "».", according to your preference.',
+      },
+      theos_phrases_normalize: {
+        title: 'Normalize fixed "Θεός" phrases',
+        description:
+          'Normalizes the phrases "δόξα τον Θεό" and "μα τω Θεώ" to the preferred fixed forms.',
+        example: "δόξα τον Θεό -> δόξα τω Θεώ, μα τω Θεώ -> μα τον Θεό",
+        cases: 'The fixed phrases "δόξα τον Θεό" and "μα τω Θεώ".',
+      },
+      comma_before_subordinators: {
+        title: "Insert comma before common subordinators",
+        description:
+          "Adds a comma before common lowercase subordinators when they introduce a continuation inside the same sentence.",
+        example: "έφυγα όταν νύχτωσε -> έφυγα, όταν νύχτωσε",
+        cases:
+          "για να, όταν, μέχρι, γιατί, επειδή, διότι, αν, άμα, εάν in lowercase and not at sentence start",
+      },
+      anamesa_article_contract: {
+        title: 'Adjust article after "ανάμεσα ... και ..."',
+        description:
+          'Turns "και το/τον/τη/την ..." into "και στο/στον/στη/στην ..." after the pattern "ανάμεσα ... και ...".',
+        example: "ανάμεσα στην πόλη και την θάλασσα -> ανάμεσα στην πόλη και στην θάλασσα",
+        cases: "ανάμεσα σε/στο/στον/στη/στην ... και το/τον/τη/την ...",
+      },
+      sto_to_contract: {
+        title: 'Change specific "στο ..." phrases to "σ\' το ..."',
+        description:
+          'Contracts the fixed phrases "στο είπα", "στο έδωσα", "στο έστειλα" and the rest of the selected list.',
+        example: "στο είπα -> σ' το είπα",
+        cases:
+          "στο είπα, στο έδωσα, στο έστειλα, στο έγραψα, στο εξήγησα, στο έδειξα, στο ζήτησα, στο θύμισα, στο έφερα, στο είχα πει",
       },
       vromia_family_omicron: {
         title: 'Normalize the "βρομ-" family with omicron',
@@ -165,6 +258,13 @@ export const booksGreekEditorMessages = {
           "Normalizes common misspellings of κλοτσώ derivatives that are written with omega in the first syllable.",
         example: "κλωτσάω -> κλοτσάω",
         cases: "Words that start with κλωτσ-/κλώτσ-",
+      },
+      skeptikos_family_normalize: {
+        title: 'Normalize the "σκεπτικός" family',
+        description:
+          'Normalizes misspellings of "σκεπτικός" and its derivatives when they are written as "σκεφτηκ-" or "σκεφτικ-".',
+        example: "σκεφτηκός -> σκεπτικός",
+        cases: "σκεφτηκός, σκεφτική, σκεφτικοί and related forms",
       },
       andras_preference: {
         title: 'Choose the preferred form for "άντρας / άνδρας"',
@@ -264,6 +364,31 @@ export const booksGreekEditorMessages = {
         example: "είμαι δεκαοχτώ χρονών -> είμαι δεκαοχτώ χρόνων",
         cases: 'The standalone word "χρονών".',
       },
+      xefysixe_normalize: {
+        title: 'Normalize "φύσησε / ξεφύσησε" to the "φύσηξε / ξεφύσηξε" family',
+        description:
+          'Turns common forms of "φύσησε" and "ξεφύσησε" into the corresponding "φύσηξε / ξεφύσηξε" spellings.',
+        example: "φύσησε -> φύσηξε, ξεφύσησαν -> ξεφύσηξαν",
+        cases: "φύσησα, φύσησες, φύσησε, φύσησαν and ξεφύσησα, ξεφύσησες, ξεφύσησε, ξεφύσησαν",
+      },
+      me_mias_normalize: {
+        title: 'Change "με μιας" to "μεμιάς"',
+        description: 'Turns the phrase "με μιας" into "μεμιάς".',
+        example: "με μιας -> μεμιάς",
+        cases: 'The full phrase "με μιας".',
+      },
+      ex_archis_normalize: {
+        title: 'Change "εξ αρχής" to "εξαρχής"',
+        description: 'Turns the phrase "εξ αρχής" into "εξαρχής".',
+        example: "εξ αρχής -> εξαρχής",
+        cases: 'The full phrase "εξ αρχής".',
+      },
+      pou_kai_pou_toning: {
+        title: 'Accent the fixed phrases "που και που" and "πως και πως"',
+        description: 'Turns the fixed phrases into "πού και πού" and "πώς και πώς".',
+        example: "που και που -> πού και πού",
+        cases: 'The full phrases "που και που" and "πως και πως".',
+      },
       colloquial_past_progressive_normalize: {
         title: 'Normalize common colloquial "-αγα" verb endings',
         description:
@@ -343,11 +468,21 @@ export const booksGreekEditorMessages = {
       },
       orthography: {
         title: "Συχνοί ορθογραφικοί κανόνες",
-        description:
-          "Συχνές ορθογραφικές κανονικοποιήσεις και επιλογές λέξεων με προτίμηση χρήστη.",
+        description: "Συχνές ορθογραφικές κανονικοποιήσεις και διορθώσεις γραφής.",
+      },
+      preferences: {
+        title: "Κανόνες πολλαπλών επιλογών",
+        description: "Κανόνες όπου εφαρμόζεται η προτιμώμενη μορφή που επιλέγει ο χρήστης.",
       },
     },
     preferences: {
+      denNegationStyle: {
+        label: 'Προτιμώμενο ύφος για "δεν / δε"',
+        options: {
+          contextual: 'Χρήση συμφραστικού "δε"',
+          alwaysDen: 'Πάντα "δεν"',
+        },
+      },
       andrasStyle: {
         label: 'Προτιμώμενη γραφή για "άντρας / άνδρας"',
         options: {
@@ -360,6 +495,13 @@ export const booksGreekEditorMessages = {
         options: {
           avgo: 'Προτίμηση στο "αυγό"',
           avgoBeta: 'Προτίμηση στο "αβγό"',
+        },
+      },
+      quotePeriodStyle: {
+        label: "Προτιμώμενη θέση της τελείας σε σχέση με τα εισαγωγικά",
+        options: {
+          outside: 'Προτίμηση στο "»."',
+          inside: 'Προτίμηση στο ".»"',
         },
       },
     },
@@ -411,11 +553,12 @@ export const booksGreekEditorMessages = {
         cases: "<< και >>",
       },
       den_negation_trim: {
-        title: 'Σύντμηση του "δεν" πριν από συγκεκριμένα σύμφωνα',
+        title: 'Επιλογή ανάμεσα σε συμφραστικό "δε" και καθολικό "δεν"',
         description:
-          'Μετατρέπει το "δεν" σε "δε" πριν από β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ, με εξαιρέσεις τα γγ, γκ, μπ και ντ.',
-        example: "δεν βγαίνω -> δε βγαίνω",
-        cases: "β, γ, δ, ζ, θ, λ, μ, ν, ρ, σ, φ, χ εκτός από γγ, γκ, μπ, ντ",
+          'Είτε εφαρμόζει την υπάρχουσα συμφραστική σύντμηση πριν από συγκεκριμένα σύμφωνα είτε κανονικοποιεί όλες τις αυτόνομες μορφές "δε" σε "δεν", ανάλογα με την προτίμησή σας.',
+        example: "δεν βγαίνω -> δε βγαίνω ή δε μένω -> δεν μένω",
+        cases:
+          'Συμφραστική σύντμηση πριν από συγκεκριμένα σύμφωνα ή καθολική κανονικοποίηση των αυτόνομων "δε/δεν" σε "δεν".',
       },
       akomi_to_akoma_before_kai: {
         title: 'Αλλαγή του "ακόμη" σε "ακόμα" πριν από "και/κι"',
@@ -435,6 +578,79 @@ export const booksGreekEditorMessages = {
           'Μετατρέπει τα "με μένα", "με σένα", "σε μένα" και "σε σένα" στις αποστροφικές μορφές.',
         example: "με σένα -> μ' εσένα",
         cases: "με μένα, με σένα, σε μένα, σε σένα",
+      },
+      prin_before_time_phrase: {
+        title: 'Αλλαγή του "πριν" σε "πριν από" πριν από χρονικές και θεματικές φράσεις',
+        description:
+          'Μετατρέπει το "πριν" σε "πριν από" όταν ακολουθούν συγκεκριμένες χρονικές διάρκειες, γεύματα, εποχές ή συχνές φράσεις γεγονότων.',
+        example: "πριν το μάθημα -> πριν από το μάθημα",
+        cases:
+          "το μάθημα, τη δουλειά, το ταξίδι, γεύματα, εποχές, ώρα, εβδομάδα/ες, χρόνος/χρόνια, μήνας/μήνες και αριθμητικές διάρκειες",
+      },
+      question_pou_pos_toning: {
+        title: 'Τονισμός του αρχικού "που/πως" σε ευθείες ερωτήσεις',
+        description:
+          'Τονίζει το αρχικό "που" και "πως" όταν η πρόταση κλείνει με ελληνικό ερωτηματικό και παραμένει μία ενιαία ευθεία ερώτηση.',
+        example: "Που πήγες; -> Πού πήγες;",
+        cases:
+          "Πρόταση που ξεκινά με που/πως και τελειώνει σε ; χωρίς να παρεμβάλλεται τελεία, θαυμαστικό, αποσιωπητικά ή άνω τελεία",
+      },
+      quote_comma_trim: {
+        title: "Αφαίρεση κόμματος μετά από κλείσιμο εισαγωγικών",
+        description: 'Αφαιρεί το κόμμα στη μορφή "»,".',
+        example: "«Γύρισα», -> «Γύρισα»",
+        cases: 'Μόνο η ακριβής ακολουθία "»,".',
+      },
+      mesa_sto_contract: {
+        title: 'Σύντμηση του "μέσα στο/στην/στον" σε "μες ..."',
+        description:
+          'Μετατρέπει τα "μέσα στο", "μέσα στην" και "μέσα στον" στις συντομότερες λογοτεχνικές μορφές.',
+        example: "μέσα στην πόλη -> μες στην πόλη",
+        cases: "μέσα στο, μέσα στην, μέσα στον",
+      },
+      kathe_enas_series: {
+        title: 'Ένωση του "κάθε ένας/μία/ένα/έναν/τι" σε μία λέξη',
+        description:
+          'Μετατρέπει τις χωριστές μορφές στις καθιερωμένες ενιαίες μορφές όπως "καθένας" και "καθεμία".',
+        example: "κάθε ένας -> καθένας",
+        cases: "κάθε ένας, κάθε μία, κάθε ένα, κάθε έναν, κάθε τι",
+      },
+      quote_period_preference: {
+        title: "Επιλογή θέσης της τελείας σε σχέση με τα κλείσιμο εισαγωγικά",
+        description:
+          "Μετακινεί την τελεία πριν ή μετά από το κλείσιμο των εισαγωγικών ανάλογα με την προτίμηση που επιλέγετε.",
+        example: "«Γύρνα». -> «Γύρνα.» ή το αντίστροφο",
+        cases: 'Μόνο οι ακολουθίες ".»" και "».", ανάλογα με την προτίμησή σας.',
+      },
+      theos_phrases_normalize: {
+        title: 'Κανονικοποίηση σταθερών φράσεων με το "Θεός"',
+        description:
+          'Κανονικοποιεί τις φράσεις "δόξα τον Θεό" και "μα τω Θεώ" στις ζητούμενες σταθερές μορφές.',
+        example: "δόξα τον Θεό -> δόξα τω Θεώ, μα τω Θεώ -> μα τον Θεό",
+        cases: 'Οι σταθερές φράσεις "δόξα τον Θεό" και "μα τω Θεώ".',
+      },
+      comma_before_subordinators: {
+        title: "Προσθήκη κόμματος πριν από συχνούς υποτακτικούς συνδέσμους",
+        description:
+          "Προσθέτει κόμμα πριν από συχνούς πεζούς υποτακτικούς συνδέσμους όταν συνεχίζουν την ίδια πρόταση.",
+        example: "έφυγα όταν νύχτωσε -> έφυγα, όταν νύχτωσε",
+        cases:
+          "για να, όταν, μέχρι, γιατί, επειδή, διότι, αν, άμα, εάν με πεζά και όχι στην αρχή πρότασης",
+      },
+      anamesa_article_contract: {
+        title: 'Προσαρμογή άρθρου μετά από το σχήμα "ανάμεσα ... και ..."',
+        description:
+          'Μετατρέπει το "και το/τον/τη/την ..." σε "και στο/στον/στη/στην ..." όταν προηγείται το μοτίβο "ανάμεσα ... και ...".',
+        example: "ανάμεσα στην πόλη και την θάλασσα -> ανάμεσα στην πόλη και στην θάλασσα",
+        cases: "ανάμεσα σε/στο/στον/στη/στην ... και το/τον/τη/την ...",
+      },
+      sto_to_contract: {
+        title: 'Αλλαγή συγκεκριμένων φράσεων "στο ..." σε "σ\' το ..."',
+        description:
+          'Μετατρέπει τις σταθερές φράσεις "στο είπα", "στο έδωσα", "στο έστειλα" και τις υπόλοιπες επιλεγμένες περιπτώσεις.',
+        example: "στο είπα -> σ' το είπα",
+        cases:
+          "στο είπα, στο έδωσα, στο έστειλα, στο έγραψα, στο εξήγησα, στο έδειξα, στο ζήτησα, στο θύμισα, στο έφερα, στο είχα πει",
       },
       vromia_family_omicron: {
         title: 'Κανονικοποίηση της οικογένειας "βρομ-" με όμικρον',
@@ -456,6 +672,13 @@ export const booksGreekEditorMessages = {
           "Κανονικοποιεί συχνά λάθη σε παράγωγες μορφές του κλοτσώ όταν η πρώτη συλλαβή γράφεται με ωμέγα.",
         example: "κλωτσάω -> κλοτσάω",
         cases: "Λέξεις που αρχίζουν από κλωτσ-/κλώτσ-",
+      },
+      skeptikos_family_normalize: {
+        title: 'Κανονικοποίηση της οικογένειας "σκεπτικός"',
+        description:
+          'Κανονικοποιεί λάθη της λέξης "σκεπτικός" και των παραγώγων της όταν γράφονται ως "σκεφτηκ-" ή "σκεφτικ-".',
+        example: "σκεφτηκός -> σκεπτικός",
+        cases: "σκεφτηκός, σκεφτική, σκεφτικοί και συγγενικές μορφές",
       },
       andras_preference: {
         title: 'Επιλογή προτιμώμενης γραφής για "άντρας / άνδρας"',
@@ -552,6 +775,31 @@ export const booksGreekEditorMessages = {
         description: 'Μετατρέπει τη λέξη "χρονών" σε "χρόνων".',
         example: "είμαι δεκαοχτώ χρονών -> είμαι δεκαοχτώ χρόνων",
         cases: 'Η αυτόνομη λέξη "χρονών".',
+      },
+      xefysixe_normalize: {
+        title: 'Κανονικοποίηση των "φύσησε / ξεφύσησε" στη σειρά "φύσηξε / ξεφύσηξε"',
+        description:
+          'Μετατρέπει συχνές μορφές των "φύσησε" και "ξεφύσησε" στις αντίστοιχες γραφές "φύσηξε / ξεφύσηξε".',
+        example: "φύσησε -> φύσηξε, ξεφύσησαν -> ξεφύσηξαν",
+        cases: "φύσησα, φύσησες, φύσησε, φύσησαν και ξεφύσησα, ξεφύσησες, ξεφύσησε, ξεφύσησαν",
+      },
+      me_mias_normalize: {
+        title: 'Αλλαγή του "με μιας" σε "μεμιάς"',
+        description: 'Μετατρέπει τη φράση "με μιας" σε "μεμιάς".',
+        example: "με μιας -> μεμιάς",
+        cases: 'Η πλήρης φράση "με μιας".',
+      },
+      ex_archis_normalize: {
+        title: 'Αλλαγή του "εξ αρχής" σε "εξαρχής"',
+        description: 'Μετατρέπει τη φράση "εξ αρχής" σε "εξαρχής".',
+        example: "εξ αρχής -> εξαρχής",
+        cases: 'Η πλήρης φράση "εξ αρχής".',
+      },
+      pou_kai_pou_toning: {
+        title: 'Τονισμός των φράσεων "που και που" και "πως και πως"',
+        description: 'Μετατρέπει τις σταθερές φράσεις σε "πού και πού" και "πώς και πώς".',
+        example: "που και που -> πού και πού",
+        cases: 'Οι πλήρεις φράσεις "που και που" και "πως και πως".',
       },
       colloquial_past_progressive_normalize: {
         title: 'Κανονικοποίηση κοινών ρηματικών καταλήξεων σε "-αγα"',

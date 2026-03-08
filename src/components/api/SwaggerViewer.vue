@@ -120,7 +120,7 @@ onBeforeUnmount(() => {
 }
 
 .swagger-host :deep(.swagger-ui) {
-  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
   min-width: 0;
 }
 
