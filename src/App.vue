@@ -6,6 +6,7 @@
 */
 import { computed, onBeforeUnmount, provide, ref } from "vue";
 import { useHealthCheck } from "./composables/useHealthCheck";
+import { usePortalAccess } from "./composables/usePortalAccess";
 import { createPortalI18n, PORTAL_I18N_KEY } from "./i18n";
 import { createPortalRouter } from "./router/router";
 
@@ -14,6 +15,7 @@ const i18n = createPortalI18n();
 
 const { checking, hasChecked, isHealthy, status, message, requestId, error, lastCheckedAt } =
   useHealthCheck(apiBaseUrl);
+const portalAccess = usePortalAccess(apiBaseUrl);
 
 const router = createPortalRouter();
 
@@ -29,6 +31,7 @@ provide("portalContext", {
   lastCheckedAt,
 });
 provide("portalRouter", router);
+provide("portalAccess", portalAccess);
 provide(PORTAL_I18N_KEY, i18n);
 
 const showGuardOverlay = computed(() => hasChecked.value && !isHealthy.value);
@@ -36,9 +39,9 @@ const activeRouteName = computed(() => router.currentRoute.value.name);
 const currentPath = computed(() => router.currentPath.value);
 const currentComponent = computed(() => router.currentComponent.value);
 const navigationRoutes = computed(() =>
-  router.routes.filter(
-    (route) =>
-      ![
+  router.routes.filter((route) => {
+    if (
+      [
         "pdf",
         "pdf-services",
         "pdf-split",
@@ -56,7 +59,16 @@ const navigationRoutes = computed(() =>
         "json-services",
         "json-tool",
       ].includes(route.name)
-  )
+    ) {
+      return false;
+    }
+
+    if (route.name === "dashboard") {
+      return portalAccess.planType.value === "token" || activeRouteName.value === "dashboard";
+    }
+
+    return true;
+  })
 );
 const pageTitle = computed(() => i18n.t(`routes.${activeRouteName.value}`, {}, "Softaware Tools"));
 const statusLabel = computed(() => (checking.value ? i18n.t("app.checking") : status.value));
@@ -153,6 +165,10 @@ const breadcrumbs = computed(() => {
       { label: toRouteLabel("home"), path: "/" },
       { label: toRouteLabel("contract"), path: "/contract/openapi" },
     ],
+    dashboard: [
+      { label: toRouteLabel("home"), path: "/" },
+      { label: toRouteLabel("dashboard"), path: "/dashboard" },
+    ],
     "admin-tokens": [
       { label: toRouteLabel("home"), path: "/" },
       { label: toRouteLabel("admin-tokens"), path: "/admin/tokens" },
@@ -169,6 +185,10 @@ const breadcrumbs = computed(() => {
 const onNavigate = (path, event) => {
   event.preventDefault();
   router.navigate(path);
+};
+
+const openDashboard = () => {
+  router.navigate("/dashboard");
 };
 
 onBeforeUnmount(() => {
@@ -192,6 +212,17 @@ onBeforeUnmount(() => {
                 · {{ i18n.t("app.timeNow", { time: i18n.formatTime(lastCheckedAt) }) }}
               </span>
             </p>
+            <p v-if="portalAccess.plan" class="hero__status">
+              Plan: {{ portalAccess.planType === "token" ? "Token" : "Free" }}
+            </p>
+            <button
+              v-if="portalAccess.planType === 'token'"
+              type="button"
+              class="button button--secondary"
+              @click="openDashboard"
+            >
+              {{ i18n.t("routes.dashboard", {}, "Dashboard") }}
+            </button>
             <div class="language-toggle" :aria-label="i18n.t('app.languageLabel')">
               <span class="language-toggle__label">{{ currentLanguage }}</span>
               <button

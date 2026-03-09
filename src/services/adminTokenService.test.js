@@ -7,6 +7,7 @@ import {
   createAccessToken,
   extendAccessToken,
   listAccessTokens,
+  resetAccessTokenUsage,
   renewAccessToken,
   revokeAccessToken,
   updateAccessToken,
@@ -41,7 +42,7 @@ describe("adminTokenService", () => {
     );
   });
 
-  it("creates an access token with alias, ttl, and service flags", async () => {
+  it("creates an access token with alias, ttl, and service policies", async () => {
     const fetchSpy = vi.fn(async () => ({
       ok: true,
       json: async () => ({ data: { token: "sat_plain", record: { tokenId: "tok-2" } } }),
@@ -50,7 +51,7 @@ describe("adminTokenService", () => {
 
     const result = await createAccessToken("http://localhost:3000", "super-token", {
       alias: "Books editor",
-      serviceFlags: ["books_greek_editor"],
+      servicePolicies: { books_greek_editor: "100000_words" },
       ttl: "30d",
     });
 
@@ -65,7 +66,7 @@ describe("adminTokenService", () => {
         }),
         body: JSON.stringify({
           alias: "Books editor",
-          serviceFlags: ["books_greek_editor"],
+          servicePolicies: { books_greek_editor: "100000_words" },
           ttl: "30d",
         }),
       })
@@ -81,7 +82,7 @@ describe("adminTokenService", () => {
 
     const result = await updateAccessToken("http://localhost:3000", "super-token", "tok-3", {
       alias: "Updated",
-      serviceFlags: ["books_greek_editor", "pdf"],
+      servicePolicies: { books_greek_editor: "300000_words", pdf: "30_per_day" },
     });
 
     expect(result).toEqual({ record: { tokenId: "tok-3", alias: "Updated" } });
@@ -117,13 +118,18 @@ describe("adminTokenService", () => {
     }));
     vi.stubGlobal("fetch", fetchSpy);
 
-    const result = await renewAccessToken("http://localhost:3000", "super-token", "tok-5", "14d");
+    const result = await renewAccessToken("http://localhost:3000", "super-token", "tok-5", "14d", {
+      servicePolicies: { books_greek_editor: "300000_words" },
+    });
     expect(result).toEqual({ token: "sat_new", record: { tokenId: "tok-5" } });
     expect(fetchSpy).toHaveBeenCalledWith(
       "http://localhost:3000/api/admin/tokens/tok-5/renew",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ ttl: "14d" }),
+        body: JSON.stringify({
+          ttl: "14d",
+          servicePolicies: { books_greek_editor: "300000_words" },
+        }),
       })
     );
   });
@@ -142,6 +148,24 @@ describe("adminTokenService", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ ttl: "7d" }),
+      })
+    );
+  });
+
+  it("resets access token usage counters", async () => {
+    const fetchSpy = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ data: { record: { tokenId: "tok-7", usageResetAt: "now" } } }),
+    }));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await resetAccessTokenUsage("http://localhost:3000", "super-token", "tok-7");
+    expect(result).toEqual({ record: { tokenId: "tok-7", usageResetAt: "now" } });
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://localhost:3000/api/admin/tokens/tok-7/reset-usage",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ "x-admin-token": "super-token" }),
       })
     );
   });

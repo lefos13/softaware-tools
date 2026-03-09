@@ -3,7 +3,7 @@
   Extraction flow now reuses the shared success overlay for completion actions.
   The result download and donation prompt stay consistent with all other services.
 */
-import { computed, ref, watch } from "vue";
+import { computed, inject, ref, watch } from "vue";
 import SuccessThankYouModal from "../SuccessThankYouModal.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { usePortalI18n } from "../../i18n";
@@ -20,6 +20,7 @@ const props = defineProps({
   },
 });
 const { t } = usePortalI18n();
+const serviceFlowShell = inject("serviceFlowShell", null);
 
 const {
   file,
@@ -54,6 +55,26 @@ watch(resultUrl, (nextUrl, prevUrl) => {
     showSuccessModal.value = false;
   }
 });
+
+/*
+  The extract-to-Word card reports loading and completed output back to the
+  shell so the shared stepper reflects the same state as the modal flow.
+*/
+watch(
+  () => loading.value,
+  (nextValue) => {
+    serviceFlowShell?.setLoading(nextValue);
+  },
+  { immediate: true }
+);
+
+watch(
+  () => Boolean(resultUrl.value),
+  (nextValue) => {
+    serviceFlowShell?.setHasResult(nextValue);
+  },
+  { immediate: true }
+);
 
 const onFilesSelected = (event) => {
   selectFiles(Array.from(event.target.files || []));

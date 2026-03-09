@@ -3,7 +3,7 @@
   Numbering UI supports both standard page labels and Bates numbering with one
   concise form so legal/admin workflows can be tested quickly.
 */
-import { computed, ref } from "vue";
+import { computed, inject, ref, watch } from "vue";
 import { usePortalI18n } from "../../i18n";
 import { addPdfPageNumbers } from "../../services/pdfService";
 
@@ -12,6 +12,7 @@ const props = defineProps({
   apiHealthy: { type: Boolean, required: true },
 });
 const { t } = usePortalI18n();
+const serviceFlowShell = inject("serviceFlowShell", null);
 
 const file = ref(null);
 const mode = ref("page_numbers");
@@ -26,6 +27,26 @@ const message = ref("");
 const requestId = ref("");
 const outputUrl = ref("");
 const outputName = ref("");
+
+/*
+  Numbering uses inline downloads, but the shared shell still needs explicit
+  loading/result updates so the current step changes at the right moment.
+*/
+watch(
+  () => loading.value,
+  (nextValue) => {
+    serviceFlowShell?.setLoading(nextValue);
+  },
+  { immediate: true }
+);
+
+watch(
+  () => Boolean(outputUrl.value),
+  (nextValue) => {
+    serviceFlowShell?.setHasResult(nextValue);
+  },
+  { immediate: true }
+);
 
 const canRun = computed(() => props.apiHealthy && file.value && !loading.value);
 

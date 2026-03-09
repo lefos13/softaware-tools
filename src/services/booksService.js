@@ -2,6 +2,8 @@
   The Books service client mirrors the backend split between binary DOCX work
   and JSON text editing while attaching the editor service token only to the
   protected Greek editor endpoints, including the access-validation handshake.
+  A dedicated flowSessionId now groups apply + preview calls into one billing
+  session so usage is consumed once per full books workflow.
 */
 import {
   buildUrl,
@@ -11,12 +13,26 @@ import {
   unwrapFileName,
   uploadMultipartBinary,
 } from "./apiClient";
+import { emitAccessUsageUpdated, readActiveServiceToken } from "./accessClientState";
 
-const buildTaskSuffix = (taskId) => (taskId ? `?taskId=${encodeURIComponent(taskId)}` : "");
+const buildTaskSuffix = (taskId, flowSessionId) => {
+  const params = new URLSearchParams();
+
+  if (taskId) {
+    params.set("taskId", taskId);
+  }
+
+  if (flowSessionId) {
+    params.set("flowSessionId", flowSessionId);
+  }
+
+  const query = params.toString();
+  return query ? `?${query}` : "";
+};
 const buildServiceTokenHeaders = (serviceToken) =>
-  serviceToken
+  (serviceToken ?? readActiveServiceToken())
     ? {
-        "x-service-token": String(serviceToken || "").trim(),
+        "x-service-token": String(serviceToken ?? readActiveServiceToken()).trim(),
       }
     : {};
 
@@ -58,11 +74,15 @@ export const applyGreekLiteratureEditor = async (
   formData.append("editorOptions", JSON.stringify(editorOptions || {}));
 
   const response = await uploadMultipartBinary({
-    url: `${buildUrl(baseUrl, "/api/books/greek-editor/apply")}${buildTaskSuffix(options.taskId)}`,
+    url: `${buildUrl(baseUrl, "/api/books/greek-editor/apply")}${buildTaskSuffix(
+      options.taskId,
+      options.flowSessionId
+    )}`,
     formData,
     onUploadProgress: options.onUploadProgress,
     headers: buildServiceTokenHeaders(options.serviceToken),
   });
+  emitAccessUsageUpdated();
 
   return {
     blob: response.blob,
@@ -82,7 +102,10 @@ export const applyGreekLiteratureEditorText = async (
   options = {}
 ) => {
   const response = await fetch(
-    `${buildUrl(baseUrl, "/api/books/greek-editor/apply-text")}${buildTaskSuffix(options.taskId)}`,
+    `${buildUrl(baseUrl, "/api/books/greek-editor/apply-text")}${buildTaskSuffix(
+      options.taskId,
+      options.flowSessionId
+    )}`,
     {
       method: "POST",
       headers: {
@@ -102,6 +125,7 @@ export const applyGreekLiteratureEditorText = async (
   }
 
   const payload = await response.json();
+  emitAccessUsageUpdated();
 
   return {
     correctedText: payload?.data?.correctedText || "",
@@ -124,7 +148,10 @@ export const previewGreekLiteratureEditorReport = async (
   formData.append("editorOptions", JSON.stringify(editorOptions || {}));
 
   const response = await fetch(
-    `${buildUrl(baseUrl, "/api/books/greek-editor/preview-report")}${buildTaskSuffix(options.taskId)}`,
+    `${buildUrl(baseUrl, "/api/books/greek-editor/preview-report")}${buildTaskSuffix(
+      options.taskId,
+      options.flowSessionId
+    )}`,
     {
       method: "POST",
       headers: {
@@ -140,6 +167,7 @@ export const previewGreekLiteratureEditorReport = async (
   }
 
   const payload = await response.json();
+  emitAccessUsageUpdated();
 
   return {
     summary: payload?.data?.summary || {},

@@ -3,7 +3,7 @@
   Watermark UI keeps the first release practical by exposing text/image modes
   with minimal controls while preserving the same upload-to-download pattern.
 */
-import { computed, ref } from "vue";
+import { computed, inject, ref, watch } from "vue";
 import { usePortalI18n } from "../../i18n";
 import { watermarkPdf } from "../../services/pdfService";
 
@@ -18,6 +18,7 @@ const props = defineProps({
   },
 });
 const { t } = usePortalI18n();
+const serviceFlowShell = inject("serviceFlowShell", null);
 
 const sourceFile = ref(null);
 const watermarkImage = ref(null);
@@ -31,6 +32,26 @@ const message = ref("");
 const requestId = ref("");
 const outputUrl = ref("");
 const outputName = ref("");
+
+/*
+  Watermarking uses the same shared stepper contract as the other cards so the
+  wrapper only reveals result review after execution has started or completed.
+*/
+watch(
+  () => loading.value,
+  (nextValue) => {
+    serviceFlowShell?.setLoading(nextValue);
+  },
+  { immediate: true }
+);
+
+watch(
+  () => Boolean(outputUrl.value),
+  (nextValue) => {
+    serviceFlowShell?.setHasResult(nextValue);
+  },
+  { immediate: true }
+);
 
 const canRun = computed(() => props.apiHealthy && sourceFile.value && !loading.value);
 

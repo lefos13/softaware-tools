@@ -3,7 +3,7 @@
   Edit-pages UI now uses guided form inputs and converts them to backend
   editPlan JSON internally so non-technical users can run page operations.
 */
-import { computed, ref } from "vue";
+import { computed, inject, ref, watch } from "vue";
 import { usePortalI18n } from "../../i18n";
 import { editPdfPages } from "../../services/pdfService";
 
@@ -12,6 +12,7 @@ const props = defineProps({
   apiHealthy: { type: Boolean, required: true },
 });
 const { t } = usePortalI18n();
+const serviceFlowShell = inject("serviceFlowShell", null);
 
 const file = ref(null);
 const keepPagesInput = ref("");
@@ -24,6 +25,26 @@ const message = ref("");
 const requestId = ref("");
 const outputUrl = ref("");
 const outputName = ref("");
+
+/*
+  Edit-pages returns a downloadable file inline, so it now reports both
+  execution and completion to the shared stepper shell.
+*/
+watch(
+  () => loading.value,
+  (nextValue) => {
+    serviceFlowShell?.setLoading(nextValue);
+  },
+  { immediate: true }
+);
+
+watch(
+  () => Boolean(outputUrl.value),
+  (nextValue) => {
+    serviceFlowShell?.setHasResult(nextValue);
+  },
+  { immediate: true }
+);
 
 const canRun = computed(() => props.apiHealthy && file.value && !loading.value);
 

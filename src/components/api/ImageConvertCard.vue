@@ -3,7 +3,7 @@
   Conversion flow now shows completion through the shared success overlay.
   This keeps the download + donation experience consistent with the other tools.
 */
-import { computed, ref, watch } from "vue";
+import { computed, inject, ref, watch } from "vue";
 import SuccessThankYouModal from "../SuccessThankYouModal.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { usePortalI18n } from "../../i18n";
@@ -20,6 +20,7 @@ const props = defineProps({
   },
 });
 const { t } = usePortalI18n();
+const serviceFlowShell = inject("serviceFlowShell", null);
 
 const {
   files,
@@ -77,6 +78,26 @@ watch(archiveUrl, (nextUrl, prevUrl) => {
     showSuccessModal.value = false;
   }
 });
+
+/*
+  The conversion card updates the shared stepper from its archive lifecycle so
+  result review appears only after an actual conversion attempt has produced output.
+*/
+watch(
+  () => loading.value,
+  (nextValue) => {
+    serviceFlowShell?.setLoading(nextValue);
+  },
+  { immediate: true }
+);
+
+watch(
+  () => Boolean(archiveUrl.value),
+  (nextValue) => {
+    serviceFlowShell?.setHasResult(nextValue);
+  },
+  { immediate: true }
+);
 
 const onFilesSelected = (event) => {
   selectFiles(Array.from(event.target.files || []));

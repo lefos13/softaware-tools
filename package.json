@@ -23,6 +23,7 @@
     "jsondiffpatch": "^0.7.3",
     "jsonpath-plus": "^10.4.0",
     "jsonrepair": "^3.13.2",
+    "jszip": "^3.10.1",
     "papaparse": "^5.5.3",
     "sql-formatter": "^15.7.2",
     "swagger-ui-dist": "^5.31.2",

@@ -1,6 +1,7 @@
 <script setup>
 // Why this exists: PDF merge now runs in its own route so users stay focused on a single task flow.
 import { inject } from "vue";
+import ServiceFlowShell from "../components/api/ServiceFlowShell.vue";
 import PdfMergeCard from "../components/api/PdfMergeCard.vue";
 
 const portalContext = inject("portalContext");
@@ -8,9 +9,11 @@ const portalContext = inject("portalContext");
 
 <template>
   <section class="flow-view">
-    <PdfMergeCard
-      :api-base-url="portalContext.apiBaseUrl.value"
-      :api-healthy="portalContext.isHealthy.value"
-    />
+    <ServiceFlowShell service-key="pdf" :api-healthy="portalContext.isHealthy.value">
+      <PdfMergeCard
+        :api-base-url="portalContext.apiBaseUrl.value"
+        :api-healthy="portalContext.isHealthy.value"
+      />
+    </ServiceFlowShell>
   </section>
 </template>

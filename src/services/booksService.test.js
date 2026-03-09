@@ -46,11 +46,18 @@ describe("booksService", () => {
         includeReport: true,
         preferences: { andrasStyle: "antras", avgoStyle: "avgo" },
       },
-      { taskId: "books-task-1", onUploadProgress: progressSpy, serviceToken: "svc-token" }
+      {
+        taskId: "books-task-1",
+        flowSessionId: "books-flow-1",
+        onUploadProgress: progressSpy,
+        serviceToken: "svc-token",
+      }
     );
 
     const call = uploadMultipartBinaryMock.mock.calls[0][0];
-    expect(call.url).toBe("http://localhost:3000/api/books/greek-editor/apply?taskId=books-task-1");
+    expect(call.url).toBe(
+      "http://localhost:3000/api/books/greek-editor/apply?taskId=books-task-1&flowSessionId=books-flow-1"
+    );
     expect(call.onUploadProgress).toBe(progressSpy);
     expect(call.headers).toEqual({ "x-service-token": "svc-token" });
     expect(call.formData.get("files")).toBeTruthy();
@@ -117,11 +124,11 @@ describe("booksService", () => {
         ruleIds: ["sa_to_san", "ellipsis_normalize"],
         includeReport: true,
       },
-      { taskId: "books-task-2", serviceToken: "svc-token" }
+      { taskId: "books-task-2", flowSessionId: "books-flow-2", serviceToken: "svc-token" }
     );
 
     expect(global.fetch).toHaveBeenCalledWith(
-      "http://localhost:3000/api/books/greek-editor/apply-text?taskId=books-task-2",
+      "http://localhost:3000/api/books/greek-editor/apply-text?taskId=books-task-2&flowSessionId=books-flow-2",
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({
@@ -157,11 +164,11 @@ describe("booksService", () => {
         ruleIds: ["sa_to_san"],
         includeReport: true,
       },
-      { taskId: "books-task-3", serviceToken: "svc-token" }
+      { taskId: "books-task-3", flowSessionId: "books-flow-3", serviceToken: "svc-token" }
     );
 
     expect(global.fetch).toHaveBeenCalledWith(
-      "http://localhost:3000/api/books/greek-editor/preview-report?taskId=books-task-3",
+      "http://localhost:3000/api/books/greek-editor/preview-report?taskId=books-task-3&flowSessionId=books-flow-3",
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({

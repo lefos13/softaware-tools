@@ -10,6 +10,7 @@ import {
   createAccessToken,
   extendAccessToken,
   listAccessTokens,
+  resetAccessTokenUsage,
   renewAccessToken,
   revokeAccessToken,
   updateAccessToken,
@@ -32,26 +33,71 @@ const saving = ref(false);
 const error = ref("");
 const success = ref("");
 const accessTokens = ref([]);
-const availableServiceFlags = ref([]);
+const availableServicePolicies = ref({});
 const revealedToken = ref("");
 const revealedTokenLabel = ref("");
 const editingTokenId = ref("");
+const buildEmptyPolicies = () => ({
+  books_greek_editor: "",
+  image: "",
+  pdf: "",
+  tasks: "",
+});
 const form = ref({
   alias: "",
   ttl: DEFAULT_TTL,
-  serviceFlags: [],
+  servicePolicies: buildEmptyPolicies(),
 });
 
 const isAuthenticated = computed(() => Boolean(activeToken.value));
 const isEditing = computed(() => Boolean(editingTokenId.value));
-const sortedServiceFlags = computed(() => [...availableServiceFlags.value].sort());
+const sortedServicePolicies = computed(() =>
+  Object.entries(availableServicePolicies.value || {}).sort(([left], [right]) =>
+    left.localeCompare(right)
+  )
+);
+
+const normalizeSelectedPolicies = (policies) =>
+  Object.fromEntries(
+    Object.entries(policies || {}).filter(([, preset]) => String(preset || "").trim())
+  );
+
+/*
+  Usage summaries must distinguish consumed versus remaining quota, otherwise
+  word-based plans can look healthy while the backend has already exhausted them.
+*/
+const formatUsageSummary = (serviceItem) => {
+  const requestQuota = serviceItem?.quota?.requests;
+  const wordQuota = serviceItem?.quota?.words;
+  const parts = [];
+
+  if (requestQuota?.limit !== null) {
+    parts.push(
+      tr(
+        `${requestQuota.used}/${requestQuota.limit} req used`,
+        `${requestQuota.used}/${requestQuota.limit} αιτήματα`
+      )
+    );
+  }
+
+  if (wordQuota?.limit !== null) {
+    const usedLabel = tr(
+      `${wordQuota.used}/${wordQuota.limit} words used`,
+      `${wordQuota.used}/${wordQuota.limit} λέξεις`
+    );
+    const remainingLabel = tr(`${wordQuota.remaining} left`, `${wordQuota.remaining} υπόλοιπο`);
+    parts.push(`${usedLabel} (${remainingLabel})`);
+  }
+
+  return `${serviceItem.serviceKey}: ${parts.join(" · ") || tr("unlimited", "απεριόριστο")}`;
+};
 
 const resetForm = () => {
   editingTokenId.value = "";
   form.value = {
     alias: "",
     ttl: DEFAULT_TTL,
-    serviceFlags: [],
+    servicePolicies: buildEmptyPolicies(),
   };
 };
 
@@ -65,7 +111,7 @@ const clearSuperadminToken = () => {
   tokenInput.value = "";
   sessionStorage.removeItem(SUPERADMIN_TOKEN_STORAGE_KEY);
   accessTokens.value = [];
-  availableServiceFlags.value = [];
+  availableServicePolicies.value = {};
   clearReveal();
   resetForm();
   error.value = "";
@@ -83,9 +129,10 @@ const loadTokens = async () => {
   try {
     const data = await listAccessTokens(portalContext.apiBaseUrl.value, activeToken.value);
     accessTokens.value = Array.isArray(data.tokens) ? data.tokens : [];
-    availableServiceFlags.value = Array.isArray(data.availableServiceFlags)
-      ? data.availableServiceFlags
-      : [];
+    availableServicePolicies.value =
+      data?.availableServicePolicies && typeof data.availableServicePolicies === "object"
+        ? data.availableServicePolicies
+        : {};
   } catch (loadError) {
     const message =
       loadError instanceof Error
@@ -110,26 +157,15 @@ const authenticate = async () => {
   await loadTokens();
 };
 
-const toggleServiceFlag = (serviceFlag) => {
-  const nextFlags = new Set(form.value.serviceFlags);
-  if (nextFlags.has(serviceFlag)) {
-    nextFlags.delete(serviceFlag);
-  } else {
-    nextFlags.add(serviceFlag);
-  }
-
-  form.value = {
-    ...form.value,
-    serviceFlags: Array.from(nextFlags),
-  };
-};
-
 const startEdit = (tokenItem) => {
   editingTokenId.value = tokenItem.tokenId;
   form.value = {
     alias: tokenItem.alias || "",
     ttl: DEFAULT_TTL,
-    serviceFlags: Array.isArray(tokenItem.serviceFlags) ? [...tokenItem.serviceFlags] : [],
+    servicePolicies: {
+      ...buildEmptyPolicies(),
+      ...(tokenItem.servicePolicies || {}),
+    },
   };
   clearReveal();
   error.value = "";
@@ -154,7 +190,7 @@ const submitForm = async () => {
         editingTokenId.value,
         {
           alias: form.value.alias,
-          serviceFlags: form.value.serviceFlags,
+          servicePolicies: normalizeSelectedPolicies(form.value.servicePolicies),
         }
       );
 
@@ -168,7 +204,7 @@ const submitForm = async () => {
 
     const result = await createAccessToken(portalContext.apiBaseUrl.value, activeToken.value, {
       alias: form.value.alias,
-      serviceFlags: form.value.serviceFlags,
+      servicePolicies: normalizeSelectedPolicies(form.value.servicePolicies),
       ttl: form.value.ttl || DEFAULT_TTL,
     });
 
@@ -251,7 +287,10 @@ const runRenew = async (tokenItem) => {
       portalContext.apiBaseUrl.value,
       activeToken.value,
       tokenItem.tokenId,
-      ttl
+      ttl,
+      {
+        servicePolicies: tokenItem.servicePolicies || {},
+      }
     );
     revealedToken.value = result?.token || "";
     revealedTokenLabel.value = result?.record?.alias || tokenItem.alias;
@@ -302,6 +341,43 @@ const runExtend = async (tokenItem) => {
       runError instanceof Error
         ? runError.message
         : tr("Could not extend the token.", "Δεν ήταν δυνατή η επέκταση του token.");
+  } finally {
+    saving.value = false;
+  }
+};
+
+const runResetUsage = async (tokenItem) => {
+  if (!activeToken.value) {
+    return;
+  }
+
+  const accepted = window.confirm(
+    tr(
+      `Reset usage counters for "${tokenItem.alias}" to zero now?`,
+      `Να μηδενιστούν τώρα οι μετρητές χρήσης για το "${tokenItem.alias}";`
+    )
+  );
+  if (!accepted) {
+    return;
+  }
+
+  saving.value = true;
+  error.value = "";
+  success.value = "";
+
+  try {
+    await resetAccessTokenUsage(
+      portalContext.apiBaseUrl.value,
+      activeToken.value,
+      tokenItem.tokenId
+    );
+    success.value = tr("Access token usage reset.", "Η χρήση του access token μηδενίστηκε.");
+    await loadTokens();
+  } catch (runError) {
+    error.value =
+      runError instanceof Error
+        ? runError.message
+        : tr("Could not reset token usage.", "Δεν ήταν δυνατός ο μηδενισμός χρήσης.");
   } finally {
     saving.value = false;
   }
@@ -427,20 +503,20 @@ if (activeToken.value) {
           </label>
 
           <div class="admin-form__field">
-            <span>{{ tr("Service Flags", "Service Flags") }}</span>
-            <div class="admin-flags">
+            <span>{{ tr("Service policies", "Πολιτικές υπηρεσιών") }}</span>
+            <div class="admin-policy-grid">
               <label
-                v-for="serviceFlag in sortedServiceFlags"
-                :key="serviceFlag"
-                class="checkbox-row admin-flags__item"
+                v-for="[serviceKey, presets] in sortedServicePolicies"
+                :key="serviceKey"
+                class="admin-form__field"
               >
-                <input
-                  type="checkbox"
-                  :checked="form.serviceFlags.includes(serviceFlag)"
-                  :disabled="saving"
-                  @change="toggleServiceFlag(serviceFlag)"
-                />
-                <span>{{ serviceFlag }}</span>
+                <span>{{ serviceKey }}</span>
+                <select v-model="form.servicePolicies[serviceKey]" class="field" :disabled="saving">
+                  <option value="">{{ tr("Disabled", "Απενεργοποιημένο") }}</option>
+                  <option v-for="preset in presets" :key="preset" :value="preset">
+                    {{ preset }}
+                  </option>
+                </select>
               </label>
             </div>
           </div>
@@ -491,13 +567,24 @@ if (activeToken.value) {
               <span>{{ tr("Type", "Τύπος") }}: {{ tokenItem.tokenType }}</span>
               <span>id {{ tokenItem.tokenId }}</span>
               <span>{{ tr("Expires", "Λήγει") }}: {{ formatDateTime(tokenItem.expiresAt) }}</span>
+              <span v-if="tokenItem.usageResetAt">
+                {{ tr("Usage reset", "Μηδενισμός χρήσης") }}:
+                {{ formatDateTime(tokenItem.usageResetAt) }}
+              </span>
               <span>
-                {{ tr("Flags", "Flags") }}:
+                {{ tr("Policies", "Πολιτικές") }}:
                 {{
-                  Array.isArray(tokenItem.serviceFlags) && tokenItem.serviceFlags.length > 0
-                    ? tokenItem.serviceFlags.join(", ")
+                  tokenItem.servicePolicies && Object.keys(tokenItem.servicePolicies).length > 0
+                    ? Object.entries(tokenItem.servicePolicies)
+                        .map(([serviceKey, preset]) => `${serviceKey}: ${preset}`)
+                        .join(", ")
                     : tr("none", "κανένα")
                 }}
+              </span>
+              <span
+                v-if="Array.isArray(tokenItem.usageSummary) && tokenItem.usageSummary.length > 0"
+              >
+                {{ tokenItem.usageSummary.map((item) => formatUsageSummary(item)).join(" | ") }}
               </span>
             </div>
 
@@ -518,6 +605,14 @@ if (activeToken.value) {
             </div>
 
             <div class="preview-card__actions">
+              <button
+                type="button"
+                class="button button--secondary"
+                :disabled="saving || !tokenItem.isActive"
+                @click="runResetUsage(tokenItem)"
+              >
+                {{ tr("Reset usage", "Μηδενισμός χρήσης") }}
+              </button>
               <button
                 type="button"
                 class="button button--secondary"
@@ -650,17 +745,9 @@ if (activeToken.value) {
   font-weight: 700;
 }
 
-.admin-flags {
+.admin-policy-grid {
   display: grid;
   gap: 0.55rem;
-}
-
-.admin-flags__item {
-  padding: 0.65rem 0.8rem;
-  border: 1px solid var(--border);
-  border-radius: 0.9rem;
-  background: #ffffff;
-  color: var(--ink);
 }
 
 .admin-token-list {

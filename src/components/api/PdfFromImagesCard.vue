@@ -3,7 +3,7 @@
   Images-to-PDF UI follows the existing flow pattern with multi-file upload and
   direct download, covering a frequent admin/document assembly use case.
 */
-import { computed, ref } from "vue";
+import { computed, inject, ref, watch } from "vue";
 import { usePortalI18n } from "../../i18n";
 import { pdfFromImages } from "../../services/pdfService";
 
@@ -12,6 +12,7 @@ const props = defineProps({
   apiHealthy: { type: Boolean, required: true },
 });
 const { t } = usePortalI18n();
+const serviceFlowShell = inject("serviceFlowShell", null);
 
 const files = ref([]);
 const loading = ref(false);
@@ -20,6 +21,26 @@ const message = ref("");
 const requestId = ref("");
 const outputUrl = ref("");
 const outputName = ref("");
+
+/*
+  Inline-result cards also publish execution state to the shell so the
+  stepper can stay consistent with modal-based tools.
+*/
+watch(
+  () => loading.value,
+  (nextValue) => {
+    serviceFlowShell?.setLoading(nextValue);
+  },
+  { immediate: true }
+);
+
+watch(
+  () => Boolean(outputUrl.value),
+  (nextValue) => {
+    serviceFlowShell?.setHasResult(nextValue);
+  },
+  { immediate: true }
+);
 
 const canRun = computed(() => props.apiHealthy && files.value.length > 0 && !loading.value);
 

@@ -7,6 +7,7 @@ import AdminTokensView from "../views/AdminTokensView.vue";
 import BooksGreekEditorFlowView from "../views/BooksGreekEditorFlowView.vue";
 import BooksServicesView from "../views/BooksServicesView.vue";
 import DonateView from "../views/DonateView.vue";
+import AccessDashboardView from "../views/AccessDashboardView.vue";
 import HomeView from "../views/HomeView.vue";
 import ImageConvertFlowView from "../views/ImageConvertFlowView.vue";
 import ImageFlowView from "../views/ImageFlowView.vue";
@@ -34,6 +35,12 @@ const staticRoutes = [
     name: "home",
     label: "Home",
     component: HomeView,
+  },
+  {
+    path: "/dashboard",
+    name: "dashboard",
+    label: "Dashboard",
+    component: AccessDashboardView,
   },
   {
     path: "/flows/pdf-services",

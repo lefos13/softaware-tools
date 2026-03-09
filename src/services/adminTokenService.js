@@ -1,6 +1,7 @@
 /*
   Superadmin token management uses one authenticated client so the browser can
-  list, create, update, revoke, renew, and extend access tokens consistently.
+  list, create, update, revoke, renew, extend, and reset access token usage
+  consistently from one authenticated control-plane client.
 */
 import { buildUrl, parseApiError } from "./apiClient";
 
@@ -67,13 +68,16 @@ export const revokeAccessToken = async (baseUrl, token, tokenId) => {
   return readJsonData(response, null);
 };
 
-export const renewAccessToken = async (baseUrl, token, tokenId, ttl) => {
+export const renewAccessToken = async (baseUrl, token, tokenId, ttl, payload = {}) => {
   const response = await fetch(
     buildUrl(baseUrl, `/api/admin/tokens/${encodeURIComponent(tokenId)}/renew`),
     {
       method: "POST",
       headers: buildJsonHeaders(token),
-      body: JSON.stringify({ ttl }),
+      body: JSON.stringify({
+        ttl,
+        servicePolicies: payload?.servicePolicies || {},
+      }),
     }
   );
 
@@ -87,6 +91,18 @@ export const extendAccessToken = async (baseUrl, token, tokenId, ttl) => {
       method: "POST",
       headers: buildJsonHeaders(token),
       body: JSON.stringify({ ttl }),
+    }
+  );
+
+  return readJsonData(response, null);
+};
+
+export const resetAccessTokenUsage = async (baseUrl, token, tokenId) => {
+  const response = await fetch(
+    buildUrl(baseUrl, `/api/admin/tokens/${encodeURIComponent(tokenId)}/reset-usage`),
+    {
+      method: "POST",
+      headers: buildAuthHeaders(token),
     }
   );
 

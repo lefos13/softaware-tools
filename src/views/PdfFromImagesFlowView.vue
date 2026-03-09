@@ -4,6 +4,7 @@
   context and service card structure used by the rest of the portal.
 */
 import { inject } from "vue";
+import ServiceFlowShell from "../components/api/ServiceFlowShell.vue";
 import PdfFromImagesCard from "../components/api/PdfFromImagesCard.vue";
 
 const portalContext = inject("portalContext");
@@ -11,9 +12,11 @@ const portalContext = inject("portalContext");
 
 <template>
   <section class="flow-view">
-    <PdfFromImagesCard
-      :api-base-url="portalContext.apiBaseUrl.value"
-      :api-healthy="portalContext.isHealthy.value"
-    />
+    <ServiceFlowShell service-key="pdf" :api-healthy="portalContext.isHealthy.value">
+      <PdfFromImagesCard
+        :api-base-url="portalContext.apiBaseUrl.value"
+        :api-healthy="portalContext.isHealthy.value"
+      />
+    </ServiceFlowShell>
   </section>
 </template>

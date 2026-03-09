@@ -28,6 +28,7 @@ const summaryItems = computed(() =>
         "Η αφαίρεση φόντου υποστηρίζει αυτόματη ή χειροκίνητη επιλογή με preview μίας εικόνας.",
         "Το `GET /api/tasks/:taskId` επιστρέφει πραγματική πρόοδο επεξεργασίας από το backend.",
         "Η οθόνη διαχείρισης tokens απαιτεί `x-admin-token`, ενώ ο Greek editor απαιτεί `x-service-token` με το service flag `books_greek_editor`.",
+        "Το `GET /api/access/plan` επιστρέφει το ενεργό free ή token πλάνο, ενώ το `GET /api/access/dashboard` επιστρέφει όρια, υπόλοιπο χρήσης και ιστορικό ενεργειών για το token.",
         "Τα μεταβαλλόμενα API requests έχουν rate limit ανά IP (προεπιλογή 5 requests/λεπτό).",
         "Όρια αποστολής: 20 αρχεία, 25 MB το καθένα, 120 MB συνολικά ανά αίτημα.",
       ]
@@ -49,6 +50,7 @@ const summaryItems = computed(() =>
         "Transparent background conversion supports automatic or picker-based detection with one-image preview.",
         "`GET /api/tasks/:taskId` returns real backend processing progress.",
         "Token management requires `x-admin-token`, and the Greek editor requires `x-service-token` with the `books_greek_editor` service flag.",
+        "`GET /api/access/plan` returns the active free or token plan, and `GET /api/access/dashboard` returns token limits, remaining usage, and action history.",
         "Mutating API requests are rate-limited per IP (5 requests per minute by default).",
         "Upload limits are 20 files, 25 MB each, and 120 MB total per request.",
       ]

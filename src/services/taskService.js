@@ -1,10 +1,14 @@
 // Task service polls backend task progress so UI can show real processing progress beyond upload completion.
 import { buildUrl, parseApiError } from "./apiClient";
+import { readActiveServiceToken } from "./accessClientState";
 
 export const getTaskProgress = async (baseUrl, taskId) => {
   const response = await fetch(buildUrl(baseUrl, `/api/tasks/${encodeURIComponent(taskId)}`), {
     method: "GET",
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+      ...(readActiveServiceToken() ? { "x-service-token": readActiveServiceToken() } : {}),
+    },
   });
 
   if (response.status === 404) {

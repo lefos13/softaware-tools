@@ -6,6 +6,16 @@ import {
   unwrapFileName,
   uploadMultipartBinary,
 } from "./apiClient";
+import { emitAccessUsageUpdated, readActiveServiceToken } from "./accessClientState";
+
+const buildServiceHeaders = (serviceToken) => {
+  const token = String(serviceToken ?? readActiveServiceToken()).trim();
+  return token
+    ? {
+        "x-service-token": token,
+      }
+    : {};
+};
 
 export const mergePdfFiles = async (baseUrl, files, mergePlan = [], options = {}) => {
   const formData = new FormData();
@@ -23,7 +33,9 @@ export const mergePdfFiles = async (baseUrl, files, mergePlan = [], options = {}
     url: `${buildUrl(baseUrl, "/api/pdf/merge")}${taskIdSuffix}`,
     formData,
     onUploadProgress: options.onUploadProgress,
+    headers: buildServiceHeaders(options.serviceToken),
   });
+  emitAccessUsageUpdated();
 
   return {
     blob: response.blob,
@@ -45,7 +57,9 @@ export const splitPdfFile = async (baseUrl, file, mode, splitOptions = {}, optio
     url: `${buildUrl(baseUrl, "/api/pdf/split")}${taskIdSuffix}`,
     formData,
     onUploadProgress: options.onUploadProgress,
+    headers: buildServiceHeaders(options.serviceToken),
   });
+  emitAccessUsageUpdated();
 
   return {
     blob: response.blob,
@@ -66,7 +80,9 @@ export const extractPdfToDocx = async (baseUrl, file, extractOptions = {}, optio
     url: `${buildUrl(baseUrl, "/api/pdf/extract-to-docx")}${taskIdSuffix}`,
     formData,
     onUploadProgress: options.onUploadProgress,
+    headers: buildServiceHeaders(options.serviceToken),
   });
+  emitAccessUsageUpdated();
 
   return {
     blob: response.blob,
@@ -102,7 +118,9 @@ export const watermarkPdf = async (
     url: `${buildUrl(baseUrl, "/api/pdf/watermark")}${taskIdSuffix}`,
     formData,
     onUploadProgress: options.onUploadProgress,
+    headers: buildServiceHeaders(options.serviceToken),
   });
+  emitAccessUsageUpdated();
 
   return {
     blob: response.blob,
@@ -125,7 +143,9 @@ export const addPdfPageNumbers = async (baseUrl, file, pageNumberOptions = {}, o
     url: `${buildUrl(baseUrl, "/api/pdf/page-numbers")}${taskIdSuffix}`,
     formData,
     onUploadProgress: options.onUploadProgress,
+    headers: buildServiceHeaders(options.serviceToken),
   });
+  emitAccessUsageUpdated();
 
   return {
     blob: response.blob,
@@ -145,7 +165,9 @@ export const editPdfPages = async (baseUrl, file, editPlan, options = {}) => {
     url: `${buildUrl(baseUrl, "/api/pdf/edit-pages")}${taskIdSuffix}`,
     formData,
     onUploadProgress: options.onUploadProgress,
+    headers: buildServiceHeaders(options.serviceToken),
   });
+  emitAccessUsageUpdated();
 
   return {
     blob: response.blob,
@@ -168,7 +190,9 @@ export const extractPdfText = async (baseUrl, file, textExtractOptions = {}, opt
     url: `${buildUrl(baseUrl, "/api/pdf/extract-text")}${taskIdSuffix}`,
     formData,
     onUploadProgress: options.onUploadProgress,
+    headers: buildServiceHeaders(options.serviceToken),
   });
+  emitAccessUsageUpdated();
 
   return {
     blob: response.blob,
@@ -189,7 +213,9 @@ export const pdfFromImages = async (baseUrl, files, options = {}) => {
     url: `${buildUrl(baseUrl, "/api/pdf/from-images")}${taskIdSuffix}`,
     formData,
     onUploadProgress: options.onUploadProgress,
+    headers: buildServiceHeaders(options.serviceToken),
   });
+  emitAccessUsageUpdated();
 
   return {
     blob: response.blob,

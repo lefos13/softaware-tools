@@ -1,25 +1,21 @@
 <script setup>
 /*
-  The books editor now unlocks in two steps: validate a persisted editor token,
-  then expose the workspace only for an active session. Development builds can
-  bypass the gate, while production always keeps validation enabled.
+  The books editor now follows the portal-wide access plan so free usage and
+  shared paid-token sessions unlock the same workspace without a local token gate.
 */
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, inject, ref, watch } from "vue";
 import SuccessThankYouModal from "../SuccessThankYouModal.vue";
 import { BOOKS_GREEK_EDITOR_PREFERENCES } from "../../config/booksGreekEditorRules";
 import { useGreekLiteratureEditor } from "../../composables/useGreekLiteratureEditor";
 import { usePortalI18n } from "../../i18n";
-import { validateGreekLiteratureEditorAccess } from "../../services/booksService";
-
-const TOKEN_STORAGE_KEY = "books_greek_editor_session_token";
-const DEV_AUTH_DISABLED =
-  !import.meta.env.PROD && import.meta.env.VITE_BOOKS_EDITOR_TOKEN_AUTH_ENABLED === "false";
 
 const props = defineProps({
   apiBaseUrl: { type: String, required: true },
   apiHealthy: { type: Boolean, required: true },
 });
 
+const portalAccess = inject("portalAccess");
+const serviceFlowShell = inject("serviceFlowShell", null);
 const { t, locale } = usePortalI18n();
 const tr = (en, el) => (locale.value === "el" ? el : en);
 const {
@@ -43,6 +39,9 @@ const {
   reportName,
   progressPercent,
   progressLabel,
+  estimatedWordCount,
+  estimatedWordCountLoading,
+  estimatedWordCountError,
   rulesBySection,
   hasInput,
   hasSelectedRules,
@@ -56,76 +55,22 @@ const {
   setAllRules,
   setPreference,
   setIncludeReport,
+  clearExecution,
   applyEditor,
 } = useGreekLiteratureEditor();
 
-const tokenInput = ref("");
-const accessLoading = ref(false);
-const accessError = ref("");
-const accessMessage = ref("");
-const accessRequestId = ref("");
-const restoringSession = ref(!DEV_AUTH_DISABLED);
-const accessSession = ref(null);
 const showSuccessModal = ref(false);
-
-const readStoredToken = () =>
-  typeof window !== "undefined" ? window.localStorage.getItem(TOKEN_STORAGE_KEY) || "" : "";
-const persistStoredToken = (value) => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  if (value) {
-    window.localStorage.setItem(TOKEN_STORAGE_KEY, value);
-    return;
-  }
-
-  window.localStorage.removeItem(TOKEN_STORAGE_KEY);
-};
-
-const hasValidatedAccess = computed(() => DEV_AUTH_DISABLED || Boolean(accessSession.value));
+const hasDownloadResult = computed(() => Boolean(resultUrl.value || resultTextUrl.value));
+const hasAnyResult = computed(
+  () => hasDownloadResult.value || Boolean(reportData.value || reportText.value)
+);
 const canApply = computed(
   () =>
     props.apiHealthy &&
-    hasValidatedAccess.value &&
+    portalAccess?.initialized?.value === true &&
     hasInput.value &&
     hasSelectedRules.value &&
     !loading.value
-);
-
-/*
-  The validated-token panel formats the expiry timestamp and surfaces it as a
-  compact status tile, which is easier to scan than inline metadata text.
-*/
-const expiryDate = computed(() => {
-  const rawValue = accessSession.value?.expiresAt;
-  if (!rawValue) {
-    return null;
-  }
-
-  const parsed = new Date(rawValue);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-});
-
-const expiryLabel = computed(() => {
-  if (!accessSession.value?.expiresAt) {
-    return t("app.none");
-  }
-
-  if (!expiryDate.value) {
-    return accessSession.value.expiresAt;
-  }
-
-  return new Intl.DateTimeFormat(locale.value === "el" ? "el-GR" : "en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(expiryDate.value);
-});
-
-const expiryStatus = computed(() =>
-  expiryDate.value
-    ? tr("Session active", "Ενεργή συνεδρία")
-    : tr("No expiry data", "Χωρίς στοιχεία λήξης")
 );
 
 const sectionItems = computed(() =>
@@ -188,79 +133,39 @@ watch(resultUrl, (nextUrl, prevUrl) => {
   showSuccessModal.value = Boolean(nextUrl && nextUrl !== prevUrl);
 });
 
+watch(
+  () => loading.value,
+  (nextValue) => {
+    serviceFlowShell?.setLoading(nextValue);
+  },
+  { immediate: true }
+);
+
+watch(
+  () => hasAnyResult.value,
+  (nextValue) => {
+    serviceFlowShell?.setHasResult(nextValue);
+  },
+  { immediate: true }
+);
+
 /*
-  Revalidating the stored token on load prevents refreshes from restoring a
-  revoked or expired editor session purely from browser storage.
+  The editor service token is inherited from the shared portal access store so
+  the books flow stays aligned with the client-wide free-versus-paid session.
 */
-const validateAccess = async (candidateToken, { persist = true, silent = false } = {}) => {
-  const normalizedToken = String(candidateToken || "").trim();
-
-  if (!normalizedToken) {
-    accessError.value = tr(
-      "Enter an editor token to continue.",
-      "Συμπληρώστε editor token για να συνεχίσετε."
-    );
-    return false;
-  }
-
-  accessLoading.value = true;
-  if (!silent) {
-    accessError.value = "";
-    accessMessage.value = "";
-  }
-
-  try {
-    const result = await validateGreekLiteratureEditorAccess(props.apiBaseUrl, normalizedToken);
-    accessSession.value = result.token || {
-      tokenId: "validated-session",
-      alias: tr("Validated editor session", "Επικυρωμένη συνεδρία editor"),
-      serviceFlags: ["books_greek_editor"],
-      expiresAt: "",
-    };
-    accessMessage.value = result.message;
-    accessRequestId.value = result.requestId;
-    tokenInput.value = "";
-    setServiceToken(normalizedToken);
-    if (persist) {
-      persistStoredToken(normalizedToken);
+watch(
+  () => [portalAccess?.activeToken?.value, portalAccess?.plan?.value?.token],
+  () => {
+    const nextToken = portalAccess?.activeToken?.value || "";
+    if (nextToken) {
+      setServiceToken(nextToken);
+      return;
     }
-    return true;
-  } catch (caughtError) {
-    accessSession.value = null;
-    accessRequestId.value = "";
+
     clearServiceToken();
-    persistStoredToken("");
-    accessError.value =
-      caughtError instanceof Error
-        ? caughtError.message
-        : tr("Token validation failed.", "Η επικύρωση token απέτυχε.");
-    return false;
-  } finally {
-    accessLoading.value = false;
-  }
-};
-
-const restoreAccessSession = async () => {
-  if (DEV_AUTH_DISABLED) {
-    restoringSession.value = false;
-    accessMessage.value = tr(
-      "Development mode: token validation is disabled for this build.",
-      "Λειτουργία ανάπτυξης: η επικύρωση token είναι απενεργοποιημένη για αυτό το build."
-    );
-    clearServiceToken();
-    return;
-  }
-
-  const storedToken = readStoredToken();
-  if (storedToken) {
-    await validateAccess(storedToken, { persist: false, silent: true });
-  }
-  restoringSession.value = false;
-};
-
-onMounted(() => {
-  void restoreAccessSession();
-});
+  },
+  { immediate: true }
+);
 
 const onFilesSelected = (event) => {
   selectFiles(Array.from(event.target.files || []));
@@ -271,20 +176,12 @@ const onInputModeChange = (event) => {
 const onTextInput = (event) => {
   setInputText(event.target.value);
 };
-const submitToken = async () => {
-  await validateAccess(tokenInput.value);
-};
-const logoutAccess = () => {
-  persistStoredToken("");
-  accessSession.value = null;
-  accessMessage.value = "";
-  accessRequestId.value = "";
-  accessError.value = "";
-  tokenInput.value = "";
-  clearServiceToken();
-};
 const closeSuccessModal = () => {
   showSuccessModal.value = false;
+};
+const clearCompletedExecution = () => {
+  showSuccessModal.value = false;
+  clearExecution();
 };
 
 /*
@@ -307,104 +204,14 @@ const closeSuccessModal = () => {
     </div>
 
     <div class="tool-card books-editor-card">
-      <div class="books-panel">
-        <div class="books-panel__head">
-          <p class="merge-step__title">
-            {{ tr("Step 1 · Validate token", "Βήμα 1 · Επικύρωση token") }}
-          </p>
-          <button
-            v-if="hasValidatedAccess && !DEV_AUTH_DISABLED"
-            type="button"
-            class="button button--secondary"
-            :disabled="loading || accessLoading"
-            @click="logoutAccess"
-          >
-            {{ tr("Logout token", "Αποσύνδεση token") }}
-          </button>
-        </div>
-
-        <div v-if="DEV_AUTH_DISABLED" class="access-card access-card--dev">
-          <strong>{{
-            tr("Development bypass enabled", "Το development bypass είναι ενεργό")
-          }}</strong>
-          <p class="tool-card__description">
-            {{
-              tr(
-                "This build skips editor token validation. Production builds always enforce token access.",
-                "Αυτό το build παρακάμπτει την επικύρωση editor token. Τα production builds επιβάλλουν πάντα token πρόσβασης."
-              )
-            }}
-          </p>
-        </div>
-
-        <div v-else-if="restoringSession" class="access-card">
-          <strong>{{ tr("Restoring session", "Επαναφορά συνεδρίας") }}</strong>
-          <p class="tool-card__description">
-            {{
-              tr(
-                "Checking the stored editor token before unlocking the workspace.",
-                "Γίνεται έλεγχος του αποθηκευμένου editor token πριν ξεκλειδώσει το περιβάλλον εργασίας."
-              )
-            }}
-          </p>
-        </div>
-
-        <form v-else-if="!hasValidatedAccess" class="access-card" @submit.prevent="submitToken">
-          <strong>{{ tr("Editor access required", "Απαιτείται πρόσβαση editor") }}</strong>
-          <p class="tool-card__description">
-            {{
-              tr(
-                "Enter a token that includes the books_greek_editor service flag. The workspace is shown only after backend validation.",
-                "Συμπληρώστε token που περιλαμβάνει το service flag books_greek_editor. Το περιβάλλον εργασίας εμφανίζεται μόνο μετά από επικύρωση από το backend."
-              )
-            }}
-          </p>
-          <input
-            v-model="tokenInput"
-            type="password"
-            class="field"
-            :disabled="accessLoading"
-            :placeholder="tr('Enter editor token', 'Συμπληρώστε editor token')"
-            autocomplete="off"
-          />
-          <button
-            type="submit"
-            class="button button--primary"
-            :disabled="accessLoading || !props.apiHealthy"
-          >
-            {{
-              accessLoading
-                ? tr("Validating token...", "Γίνεται επικύρωση token...")
-                : tr("Unlock editor", "Ξεκλείδωμα editor")
-            }}
-          </button>
-        </form>
-
-        <div v-else class="access-card access-card--active">
-          <div class="access-card__summary">
-            <strong>{{ tr("Token validated", "Το token επικυρώθηκε") }}</strong>
-            <p class="tool-card__description">
-              {{ tr("Alias", "Alias") }}:
-              <strong>{{ accessSession?.alias || t("app.none") }}</strong>
-            </p>
-            <p class="tool-card__description">
-              {{ tr("Services", "Υπηρεσίες") }}:
-              {{ accessSession?.serviceFlags?.join(", ") || t("app.none") }}
-            </p>
-          </div>
-          <div class="tool-card__date">
-            <div class="tool-card__date-head">
-              <span class="tool-card__date-label">{{ tr("Expires", "Λήξη") }}</span>
-              <span class="tool-card__date-badge">{{ expiryStatus }}</span>
-            </div>
-            <strong class="tool-card__date-value">{{ expiryLabel }}</strong>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="hasValidatedAccess" class="books-panel">
+      <div v-if="!hasAnyResult" class="books-panel">
         <p class="merge-step__title">
-          {{ tr("Step 2 · Edit manuscript", "Βήμα 2 · Επιμέλεια χειρογράφου") }}
+          {{
+            tr(
+              "Step 2 · Upload document and choose rules",
+              "Βήμα 2 · Ανέβασμα εγγράφου και επιλογή κανόνων"
+            )
+          }}
         </p>
 
         <div class="panel-card">
@@ -449,6 +256,28 @@ const closeSuccessModal = () => {
             <p class="tool-card__description">
               {{ t("tools.common.selected", { value: file ? file.name : t("app.none") }) }}
             </p>
+            <p v-if="estimatedWordCountLoading" class="tool-card__description">
+              {{
+                tr(
+                  "Calculating billed word count from the uploaded DOCX...",
+                  "Υπολογίζεται το χρεώσιμο πλήθος λέξεων από το DOCX..."
+                )
+              }}
+            </p>
+            <p
+              v-else-if="estimatedWordCountError"
+              class="tool-card__description tool-card__description--error"
+            >
+              {{ estimatedWordCountError }}
+            </p>
+            <p v-else-if="file" class="tool-card__description">
+              {{
+                tr(
+                  `Estimated billed words: ${estimatedWordCount.toLocaleString()}`,
+                  `Εκτιμώμενες χρεώσιμες λέξεις: ${estimatedWordCount.toLocaleString()}`
+                )
+              }}
+            </p>
             <p class="tool-card__description">{{ t("tools.booksGreekEditor.scopeNote") }}</p>
           </template>
 
@@ -461,6 +290,14 @@ const closeSuccessModal = () => {
               rows="10"
               @input="onTextInput"
             />
+            <p class="tool-card__description">
+              {{
+                tr(
+                  `Estimated billed words: ${estimatedWordCount.toLocaleString()}`,
+                  `Εκτιμώμενες χρεώσιμες λέξεις: ${estimatedWordCount.toLocaleString()}`
+                )
+              }}
+            </p>
             <p class="tool-card__description">{{ t("tools.booksGreekEditor.textModeNote") }}</p>
           </template>
         </div>
@@ -620,105 +457,178 @@ const closeSuccessModal = () => {
         </div>
       </div>
 
-      <p
-        v-if="hasValidatedAccess && error"
-        class="tool-card__description tool-card__description--error"
-      >
-        {{ error }}
-      </p>
+      <p v-if="error" class="tool-card__description tool-card__description--error">{{ error }}</p>
 
-      <div v-if="hasValidatedAccess && hasTextResult" class="books-result-panel">
-        <div class="books-result-panel__header">
-          <h3 class="books-result-panel__title">
-            {{ t("tools.booksGreekEditor.textResultTitle") }}
-          </h3>
-          <a
-            v-if="resultTextUrl"
+      <div v-if="loading || hasAnyResult" class="books-panel">
+        <div class="books-panel__head">
+          <p class="merge-step__title">
+            {{
+              tr(
+                "Step 3 · Download link and report results",
+                "Βήμα 3 · Σύνδεσμος λήψης και αποτελέσματα report"
+              )
+            }}
+          </p>
+          <button
+            v-if="hasAnyResult && !loading"
+            type="button"
             class="button button--secondary"
-            :href="resultTextUrl"
-            :download="resultTextName"
+            @click="clearCompletedExecution"
           >
-            {{ t("tools.booksGreekEditor.downloadCorrectedText") }}
-          </a>
-        </div>
-        <textarea class="books-editor-card__textarea" :value="resultText" rows="10" readonly />
-      </div>
-
-      <div
-        v-if="hasValidatedAccess && (reportData || reportText)"
-        class="books-result-panel books-result-panel__report"
-      >
-        <div class="books-result-panel__header">
-          <h3 class="books-result-panel__title">{{ t("tools.booksGreekEditor.reportTitle") }}</h3>
-          <a
-            v-if="reportUrl"
-            class="button button--secondary"
-            :href="reportUrl"
-            :download="reportName"
-          >
-            {{ t("tools.booksGreekEditor.downloadReport") }}
-          </a>
+            {{ tr("Clear", "Καθαρισμός") }}
+          </button>
         </div>
 
-        <div v-if="reportData" class="report-summary">
-          <div class="report-summary__stats">
-            <article class="report-stat">
-              <strong>{{ reportData.summary?.totalReplacements || 0 }}</strong>
-              <span>{{ t("tools.booksGreekEditor.reportStats.totalChanges") }}</span>
-            </article>
-            <article class="report-stat">
-              <strong>{{ reportGroups.length }}</strong>
-              <span>{{ t("tools.booksGreekEditor.reportStats.rulesTouched") }}</span>
-            </article>
-            <article v-if="reportData.summary?.changedParagraphs" class="report-stat">
-              <strong>{{ reportData.summary.changedParagraphs }}</strong>
-              <span>{{ t("tools.booksGreekEditor.reportStats.changedParagraphs") }}</span>
-            </article>
+        <div v-if="loading" class="books-result-panel books-result-panel--pending">
+          <strong>{{ tr("Processing document", "Γίνεται επεξεργασία εγγράφου") }}</strong>
+          <p class="tool-card__description">
+            {{
+              tr(
+                "The editor is running. The download link and report appear here when the request completes.",
+                "Ο editor εκτελείται. Ο σύνδεσμος λήψης και το report θα εμφανιστούν εδώ όταν ολοκληρωθεί το αίτημα."
+              )
+            }}
+          </p>
+        </div>
+
+        <div v-else-if="hasAnyResult" class="books-results-stack">
+          <div v-if="hasDownloadResult" class="books-result-panel">
+            <div class="books-result-panel__header">
+              <h3 class="books-result-panel__title">
+                {{ tr("Download output", "Λήψη αποτελέσματος") }}
+              </h3>
+              <div class="books-result-panel__actions">
+                <a
+                  v-if="resultUrl"
+                  class="button button--secondary"
+                  :href="resultUrl"
+                  :download="resultName"
+                >
+                  {{ tr("Download corrected DOCX", "Λήψη διορθωμένου DOCX") }}
+                </a>
+                <a
+                  v-if="resultTextUrl"
+                  class="button button--secondary"
+                  :href="resultTextUrl"
+                  :download="resultTextName"
+                >
+                  {{ t("tools.booksGreekEditor.downloadCorrectedText") }}
+                </a>
+              </div>
+            </div>
+            <p class="tool-card__description">
+              {{
+                resultUrl
+                  ? tr(
+                      "The corrected DOCX is ready to download from the link above.",
+                      "Το διορθωμένο DOCX είναι έτοιμο για λήψη από τον παραπάνω σύνδεσμο."
+                    )
+                  : tr(
+                      "The corrected text is ready and can also be downloaded from the link above.",
+                      "Το διορθωμένο κείμενο είναι έτοιμο και μπορεί επίσης να ληφθεί από τον παραπάνω σύνδεσμο."
+                    )
+              }}
+            </p>
+            <p v-if="includeReport && resultUrl" class="tool-card__description">
+              {{
+                tr(
+                  "The detailed report is included inside the downloaded ZIP package to avoid consuming quota twice.",
+                  "Το αναλυτικό report περιλαμβάνεται μέσα στο ZIP λήψης ώστε να μην καταναλώνεται το quota δύο φορές."
+                )
+              }}
+            </p>
           </div>
 
-          <div class="report-groups">
-            <details v-for="group in reportGroups" :key="group.ruleId" class="report-group">
-              <summary class="report-group__header">
-                <span class="report-group__summary-copy">
-                  <strong>{{ group.title }}</strong>
-                  <span class="report-group__count">
-                    {{ t("tools.booksGreekEditor.reportOccurrences", { count: group.count }) }}
-                  </span>
-                </span>
-                <span class="rule-section__chevron" aria-hidden="true"></span>
-              </summary>
-              <div class="report-group__examples">
-                <article
-                  v-for="(change, index) in group.changes"
-                  :key="`${group.ruleId}-${index}`"
-                  class="report-example"
-                >
-                  <div class="report-example__tokens">
-                    <span class="report-example__before">{{ change.before }}</span>
-                    <span class="report-example__arrow">&rarr;</span>
-                    <span class="report-example__after">{{ change.after }}</span>
-                  </div>
-                  <div class="report-example__sentences">
-                    <p class="report-example__sentence">
-                      <strong>{{ t("tools.booksGreekEditor.reportSentenceBefore") }}:</strong>
-                      {{ change.sentenceBefore }}
-                    </p>
-                    <p class="report-example__sentence">
-                      <strong>{{ t("tools.booksGreekEditor.reportSentenceAfter") }}:</strong>
-                      {{ change.sentenceAfter }}
-                    </p>
-                  </div>
+          <div v-if="hasTextResult" class="books-result-panel">
+            <div class="books-result-panel__header">
+              <h3 class="books-result-panel__title">
+                {{ t("tools.booksGreekEditor.textResultTitle") }}
+              </h3>
+            </div>
+            <textarea class="books-editor-card__textarea" :value="resultText" rows="10" readonly />
+          </div>
+
+          <div
+            v-if="reportData || reportText"
+            class="books-result-panel books-result-panel__report"
+          >
+            <div class="books-result-panel__header">
+              <h3 class="books-result-panel__title">
+                {{ t("tools.booksGreekEditor.reportTitle") }}
+              </h3>
+              <a
+                v-if="reportUrl"
+                class="button button--secondary"
+                :href="reportUrl"
+                :download="reportName"
+              >
+                {{ t("tools.booksGreekEditor.downloadReport") }}
+              </a>
+            </div>
+
+            <div v-if="reportData" class="report-summary">
+              <div class="report-summary__stats">
+                <article class="report-stat">
+                  <strong>{{ reportData.summary?.totalReplacements || 0 }}</strong>
+                  <span>{{ t("tools.booksGreekEditor.reportStats.totalChanges") }}</span>
+                </article>
+                <article class="report-stat">
+                  <strong>{{ reportGroups.length }}</strong>
+                  <span>{{ t("tools.booksGreekEditor.reportStats.rulesTouched") }}</span>
+                </article>
+                <article v-if="reportData.summary?.changedParagraphs" class="report-stat">
+                  <strong>{{ reportData.summary.changedParagraphs }}</strong>
+                  <span>{{ t("tools.booksGreekEditor.reportStats.changedParagraphs") }}</span>
                 </article>
               </div>
-            </details>
+
+              <div class="report-groups">
+                <details v-for="group in reportGroups" :key="group.ruleId" class="report-group">
+                  <summary class="report-group__header">
+                    <span class="report-group__summary-copy">
+                      <strong>{{ group.title }}</strong>
+                      <span class="report-group__count">
+                        {{ t("tools.booksGreekEditor.reportOccurrences", { count: group.count }) }}
+                      </span>
+                    </span>
+                    <span class="rule-section__chevron" aria-hidden="true"></span>
+                  </summary>
+                  <div class="report-group__examples">
+                    <article
+                      v-for="(change, index) in group.changes"
+                      :key="`${group.ruleId}-${index}`"
+                      class="report-example"
+                    >
+                      <div class="report-example__tokens">
+                        <span class="report-example__before">{{ change.before }}</span>
+                        <span class="report-example__arrow">&rarr;</span>
+                        <span class="report-example__after">{{ change.after }}</span>
+                      </div>
+                      <div class="report-example__sentences">
+                        <p class="report-example__sentence">
+                          <strong>{{ t("tools.booksGreekEditor.reportSentenceBefore") }}:</strong>
+                          {{ change.sentenceBefore }}
+                        </p>
+                        <p class="report-example__sentence">
+                          <strong>{{ t("tools.booksGreekEditor.reportSentenceAfter") }}:</strong>
+                          {{ change.sentenceAfter }}
+                        </p>
+                      </div>
+                    </article>
+                  </div>
+                </details>
+              </div>
+            </div>
+
+            <pre v-if="!reportData && reportText" class="books-result-panel__pre">{{
+              reportText
+            }}</pre>
           </div>
         </div>
-
-        <pre v-if="!reportData && reportText" class="books-result-panel__pre">{{ reportText }}</pre>
       </div>
 
       <SuccessThankYouModal
-        :visible="hasValidatedAccess && showSuccessModal"
+        :visible="showSuccessModal"
         :title="t('tools.booksGreekEditor.modalTitle')"
         :description="t('tools.booksGreekEditor.modalDescription')"
         :download-url="resultUrl"
@@ -787,7 +697,6 @@ const closeSuccessModal = () => {
 
 .books-panel,
 .panel-card,
-.access-card,
 .books-result-panel {
   display: grid;
   gap: 0.85rem;
@@ -852,78 +761,6 @@ const closeSuccessModal = () => {
   margin: 0;
   color: var(--books-muted);
   line-height: 1.5;
-}
-
-.access-card {
-  gap: 0.65rem;
-}
-
-.access-card--active {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  border-color: rgba(15, 118, 110, 0.28);
-  background: linear-gradient(180deg, #ffffff 0%, #f0fdf9 100%);
-}
-
-.access-card__summary {
-  display: grid;
-  gap: 0.65rem;
-  min-width: 0;
-}
-
-/*
-  The expiry tile separates label, status, and timestamp so the access card
-  reads like a session summary instead of a plain metadata row.
-*/
-.tool-card__date {
-  display: grid;
-  gap: 0.45rem;
-  width: min(100%, 26rem);
-  align-self: start;
-  padding: 0.8rem 0.9rem;
-  border: 1px solid rgba(15, 118, 110, 0.18);
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(232, 250, 246, 0.92));
-  box-shadow: 0 10px 20px rgba(15, 118, 110, 0.08);
-}
-
-.tool-card__date-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.tool-card__date-label {
-  color: var(--books-muted);
-  font-size: 0.77rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.tool-card__date-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  background: rgba(15, 118, 110, 0.12);
-  color: var(--books-accent);
-  font-size: 0.75rem;
-  font-weight: 800;
-}
-
-.tool-card__date-value {
-  color: var(--books-ink);
-  font-size: 1rem;
-  line-height: 1.35;
-}
-
-.access-card--dev {
-  border-color: rgba(194, 120, 3, 0.3);
-  background: linear-gradient(180deg, #ffffff 0%, #fff9ef 100%);
 }
 
 .mode-toggle {
@@ -1236,9 +1073,22 @@ const closeSuccessModal = () => {
 
 .books-result-panel__report,
 .report-summary,
-.report-groups {
+.report-groups,
+.books-results-stack {
   display: grid;
   gap: 0.85rem;
+}
+
+.books-result-panel--empty,
+.books-result-panel--pending {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 250, 252, 0.95));
+}
+
+.books-result-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
 }
 
 .report-summary__stats {
@@ -1349,7 +1199,6 @@ const closeSuccessModal = () => {
 
   .books-panel,
   .panel-card,
-  .access-card,
   .books-result-panel {
     padding: 0.8rem;
   }
@@ -1360,19 +1209,11 @@ const closeSuccessModal = () => {
     align-items: stretch;
   }
 
-  .access-card--active {
-    grid-template-columns: 1fr;
-  }
-
-  .tool-card__date {
-    width: 100%;
-  }
-
   .books-panel__head > .button,
-  .access-card > .button,
   .panel-card > .button,
   .books-result-panel__header > .button,
-  .books-result-panel__header > a {
+  .books-result-panel__header > a,
+  .books-result-panel__actions > a {
     width: 100%;
   }
 

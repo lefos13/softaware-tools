@@ -3,7 +3,7 @@
   Merge flow now opens a shared success overlay when output is ready.
   The card keeps processing controls while completion actions move to one reusable modal.
 */
-import { computed, ref, watch } from "vue";
+import { computed, inject, ref, watch } from "vue";
 import SuccessThankYouModal from "../SuccessThankYouModal.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { usePortalI18n } from "../../i18n";
@@ -20,6 +20,7 @@ const props = defineProps({
   },
 });
 const { t } = usePortalI18n();
+const serviceFlowShell = inject("serviceFlowShell", null);
 
 const {
   files,
@@ -54,6 +55,26 @@ watch(fileUrl, (nextUrl, prevUrl) => {
     showSuccessModal.value = false;
   }
 });
+
+/*
+  The shared shell needs live execution state from each tool card so the
+  current step moves from form editing to result review only after a run starts.
+*/
+watch(
+  () => loading.value,
+  (nextValue) => {
+    serviceFlowShell?.setLoading(nextValue);
+  },
+  { immediate: true }
+);
+
+watch(
+  () => Boolean(fileUrl.value),
+  (nextValue) => {
+    serviceFlowShell?.setHasResult(nextValue);
+  },
+  { immediate: true }
+);
 
 const onFilesSelected = (event) => {
   selectFiles(Array.from(event.target.files || []));

@@ -1,6 +1,10 @@
 /*
   This composable now keeps only the editor request state so the component can
   own token validation, persistence, logout, and environment-specific gating.
+  Books apply and report-preview calls now share one task-linked billing
+  session so the report stays visible in the UI without double-counting usage.
+  flowSessionId groups the whole user run, while taskId remains dedicated to
+  backend progress polling and task state updates.
 */
 import { computed, onBeforeUnmount, ref } from "vue";
 import {
@@ -19,6 +23,7 @@ import {
   applyGreekLiteratureEditorText,
   previewGreekLiteratureEditorReport,
 } from "../services/booksService";
+import { countBooksDocxWords, countBooksTextWords } from "../services/booksWordCount";
 import { getTaskProgress } from "../services/taskService";
 
 const createTaskId = () => {
@@ -60,8 +65,12 @@ export const useGreekLiteratureEditor = () => {
   const reportName = ref("greek-editor-report.txt");
   const progressPercent = ref(0);
   const progressLabel = ref("");
+  const estimatedWordCount = ref(0);
+  const estimatedWordCountLoading = ref(false);
+  const estimatedWordCountError = ref("");
 
   let pollIntervalId = null;
+  let wordCountJobId = 0;
 
   const clearTaskPolling = () => {
     if (pollIntervalId) {
@@ -96,6 +105,52 @@ export const useGreekLiteratureEditor = () => {
     clearTaskPolling();
     progressPercent.value = 0;
     progressLabel.value = "";
+  };
+
+  const clearEstimatedWordCount = () => {
+    wordCountJobId += 1;
+    estimatedWordCount.value = 0;
+    estimatedWordCountLoading.value = false;
+    estimatedWordCountError.value = "";
+  };
+
+  const updateTextWordCount = (value) => {
+    estimatedWordCount.value = countBooksTextWords(value);
+    estimatedWordCountLoading.value = false;
+    estimatedWordCountError.value = "";
+  };
+
+  /*
+    The upload-time DOCX estimate follows the backend XML traversal so the
+    user sees the same billed manuscript size before clicking apply.
+  */
+  const updateDocxWordCount = async (nextFile) => {
+    const jobId = ++wordCountJobId;
+    estimatedWordCount.value = 0;
+    estimatedWordCountLoading.value = true;
+    estimatedWordCountError.value = "";
+
+    try {
+      const nextCount = await countBooksDocxWords(nextFile);
+      if (jobId !== wordCountJobId) {
+        return;
+      }
+
+      estimatedWordCount.value = nextCount;
+    } catch (caughtError) {
+      if (jobId !== wordCountJobId) {
+        return;
+      }
+
+      estimatedWordCountError.value =
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Could not estimate manuscript word count.";
+    } finally {
+      if (jobId === wordCountJobId) {
+        estimatedWordCountLoading.value = false;
+      }
+    }
   };
 
   const applyBackendProgress = (task) => {
@@ -175,6 +230,7 @@ export const useGreekLiteratureEditor = () => {
   const selectFiles = (nextFiles) => {
     clearResult();
     error.value = "";
+    clearEstimatedWordCount();
 
     if (!Array.isArray(nextFiles) || nextFiles.length === 0) {
       file.value = null;
@@ -212,6 +268,7 @@ export const useGreekLiteratureEditor = () => {
     }
 
     file.value = nextFile;
+    void updateDocxWordCount(nextFile);
   };
 
   const setInputMode = (nextMode) => {
@@ -222,12 +279,28 @@ export const useGreekLiteratureEditor = () => {
     inputMode.value = nextMode === "text" ? "text" : "docx";
     clearResult();
     error.value = "";
+
+    if (inputMode.value === "text") {
+      updateTextWordCount(inputText.value);
+      return;
+    }
+
+    if (file.value) {
+      void updateDocxWordCount(file.value);
+      return;
+    }
+
+    clearEstimatedWordCount();
   };
 
   const setInputText = (value) => {
     inputText.value = String(value || "");
     clearResult();
     error.value = "";
+
+    if (inputMode.value === "text") {
+      updateTextWordCount(inputText.value);
+    }
   };
 
   const setServiceToken = (value) => {
@@ -280,6 +353,19 @@ export const useGreekLiteratureEditor = () => {
     }
   };
 
+  /*
+    Clearing a finished run keeps the token and rule setup intact, but removes
+    the previous input and generated outputs so a new document can be submitted.
+  */
+  const clearExecution = () => {
+    file.value = null;
+    inputText.value = "";
+    error.value = "";
+    clearResult();
+    clearEstimatedWordCount();
+    resetProgress();
+  };
+
   const applyEditor = async (baseUrl) => {
     clearResult();
     error.value = "";
@@ -303,6 +389,7 @@ export const useGreekLiteratureEditor = () => {
     loading.value = true;
 
     const taskId = createTaskId();
+    const flowSessionId = createTaskId();
     startTaskPolling(baseUrl, taskId);
 
     try {
@@ -312,6 +399,7 @@ export const useGreekLiteratureEditor = () => {
       if (inputMode.value === "docx") {
         const result = await applyGreekLiteratureEditor(baseUrl, file.value, buildEditorOptions(), {
           taskId,
+          flowSessionId,
           onUploadProgress,
           serviceToken: serviceToken.value,
         });
@@ -327,7 +415,7 @@ export const useGreekLiteratureEditor = () => {
               baseUrl,
               file.value,
               buildEditorOptions(),
-              { serviceToken: serviceToken.value }
+              { taskId, flowSessionId, serviceToken: serviceToken.value }
             );
             revokeIfPresent(reportUrl.value);
             reportData.value = preview.report;
@@ -338,7 +426,7 @@ export const useGreekLiteratureEditor = () => {
                 )
               : "";
           } catch {
-            // The download should still succeed even if the report preview cannot be shown.
+            // The main download should still succeed even if the report preview cannot be shown.
           }
         }
 
@@ -349,7 +437,7 @@ export const useGreekLiteratureEditor = () => {
           baseUrl,
           inputText.value,
           buildEditorOptions(),
-          { taskId, serviceToken: serviceToken.value }
+          { taskId, flowSessionId, serviceToken: serviceToken.value }
         );
 
         writeTextOutputs(result.correctedText, result.reportText, result.report);
@@ -417,6 +505,9 @@ export const useGreekLiteratureEditor = () => {
     reportName,
     progressPercent,
     progressLabel,
+    estimatedWordCount,
+    estimatedWordCountLoading,
+    estimatedWordCountError,
     rulesBySection,
     hasFile,
     hasSelectedRules,
@@ -433,6 +524,7 @@ export const useGreekLiteratureEditor = () => {
     setAllRules,
     setPreference,
     setIncludeReport,
+    clearExecution,
     applyEditor,
   };
 };

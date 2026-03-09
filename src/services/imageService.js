@@ -7,6 +7,16 @@ import {
   unwrapFileName,
   uploadMultipartBinary,
 } from "./apiClient";
+import { emitAccessUsageUpdated, readActiveServiceToken } from "./accessClientState";
+
+const buildServiceHeaders = (serviceToken) => {
+  const token = String(serviceToken ?? readActiveServiceToken()).trim();
+  return token
+    ? {
+        "x-service-token": token,
+      }
+    : {};
+};
 
 export const compressImages = async (
   baseUrl,
@@ -33,7 +43,9 @@ export const compressImages = async (
     url: `${buildUrl(baseUrl, "/api/image/compress")}${taskIdSuffix}`,
     formData,
     onUploadProgress: options.onUploadProgress,
+    headers: buildServiceHeaders(options.serviceToken),
   });
+  emitAccessUsageUpdated();
 
   return {
     blob: response.blob,
@@ -68,7 +80,9 @@ export const convertImages = async (
     url: `${buildUrl(baseUrl, "/api/image/convert")}${taskIdSuffix}`,
     formData,
     onUploadProgress: options.onUploadProgress,
+    headers: buildServiceHeaders(options.serviceToken),
   });
+  emitAccessUsageUpdated();
 
   return {
     blob: response.blob,
@@ -99,7 +113,9 @@ export const convertImagePreview = async (
     url: `${buildUrl(baseUrl, "/api/image/convert-preview")}${taskIdSuffix}`,
     formData,
     onUploadProgress: options.onUploadProgress,
+    headers: buildServiceHeaders(options.serviceToken),
   });
+  emitAccessUsageUpdated();
 
   const extensionByFormat = {
     jpeg: "jpg",

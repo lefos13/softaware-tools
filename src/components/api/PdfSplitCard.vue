@@ -3,7 +3,7 @@
   Split flow now shares the same completion overlay with other services.
   Result download and donation prompt are shown through one reusable modal component.
 */
-import { computed, ref, watch } from "vue";
+import { computed, inject, ref, watch } from "vue";
 import SuccessThankYouModal from "../SuccessThankYouModal.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { usePortalI18n } from "../../i18n";
@@ -20,6 +20,7 @@ const props = defineProps({
   },
 });
 const { t } = usePortalI18n();
+const serviceFlowShell = inject("serviceFlowShell", null);
 
 const {
   file,
@@ -57,6 +58,26 @@ watch(archiveUrl, (nextUrl, prevUrl) => {
     showSuccessModal.value = false;
   }
 });
+
+/*
+  The wrapper tracks per-card progress through injected setters so only the
+  active stage in the shared stepper is highlighted while users work.
+*/
+watch(
+  () => loading.value,
+  (nextValue) => {
+    serviceFlowShell?.setLoading(nextValue);
+  },
+  { immediate: true }
+);
+
+watch(
+  () => Boolean(archiveUrl.value),
+  (nextValue) => {
+    serviceFlowShell?.setHasResult(nextValue);
+  },
+  { immediate: true }
+);
 
 const onFilesSelected = (event) => {
   selectFiles(Array.from(event.target.files || []));
