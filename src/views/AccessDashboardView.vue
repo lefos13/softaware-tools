@@ -17,6 +17,23 @@ const error = ref("");
 const dashboard = ref(null);
 const selectedService = ref("");
 const selectedStatus = ref("");
+const currentPage = ref(1);
+const pageSize = ref(10);
+const sortBy = ref("createdAt");
+const sortDirection = ref("desc");
+
+/*
+  History is now rendered as a sortable and paginated usage table, so every
+  dashboard reload carries filter, sort, and paging state to the backend.
+*/
+const historySortColumns = [
+  "createdAt",
+  "operationName",
+  "serviceKey",
+  "status",
+  "consumedRequests",
+  "consumedWords",
+];
 
 const loadDashboard = async () => {
   if (portalAccess?.planType?.value !== "token" || !portalAccess?.activeToken?.value) {
@@ -32,8 +49,12 @@ const loadDashboard = async () => {
       portalContext.apiBaseUrl.value,
       portalAccess.activeToken.value,
       {
+        page: currentPage.value,
+        limit: pageSize.value,
         serviceKey: selectedService.value,
         status: selectedStatus.value,
+        sortBy: sortBy.value,
+        sortDirection: sortDirection.value,
       }
     );
   } catch (caughtError) {
@@ -67,7 +88,57 @@ const formatQuota = (serviceItem) => {
 };
 
 const services = computed(() => dashboard.value?.services || []);
-const historyItems = computed(() => dashboard.value?.history?.items || []);
+const history = computed(() => dashboard.value?.history || null);
+const historyItems = computed(() => history.value?.items || []);
+const totalHistoryItems = computed(() => Number(history.value?.total || 0));
+const totalPages = computed(() => Math.max(1, Math.ceil(totalHistoryItems.value / pageSize.value)));
+const canGoPrev = computed(() => currentPage.value > 1);
+const canGoNext = computed(() => currentPage.value < totalPages.value);
+
+const formatDateTime = (value) =>
+  value
+    ? new Date(value).toLocaleString(locale.value === "el" ? "el-GR" : "en-US")
+    : tr("n/a", "δ/υ");
+
+const formatNumber = (value) =>
+  new Intl.NumberFormat(locale.value === "el" ? "el-GR" : "en-US").format(Number(value || 0));
+
+const formatStatus = (value) =>
+  value === "success" ? tr("Success", "Επιτυχία") : tr("Failed", "Αποτυχία");
+
+const toggleSort = (columnKey) => {
+  if (!historySortColumns.includes(columnKey)) {
+    return;
+  }
+
+  if (sortBy.value === columnKey) {
+    sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
+  } else {
+    sortBy.value = columnKey;
+    sortDirection.value = columnKey === "createdAt" ? "desc" : "asc";
+  }
+
+  currentPage.value = 1;
+};
+
+const sortIndicator = (columnKey) => {
+  if (sortBy.value !== columnKey) {
+    return "";
+  }
+  return sortDirection.value === "asc" ? "▲" : "▼";
+};
+
+const goToPage = (nextPage) => {
+  const boundedPage = Math.min(totalPages.value, Math.max(1, Number(nextPage) || 1));
+  if (boundedPage === currentPage.value) {
+    return;
+  }
+  currentPage.value = boundedPage;
+};
+
+watch([selectedService, selectedStatus], () => {
+  currentPage.value = 1;
+});
 
 watch(
   () => [
@@ -75,6 +146,10 @@ watch(
     portalAccess?.activeToken?.value,
     selectedService.value,
     selectedStatus.value,
+    currentPage.value,
+    pageSize.value,
+    sortBy.value,
+    sortDirection.value,
   ],
   () => {
     void loadDashboard();
@@ -164,6 +239,11 @@ onMounted(() => {
               <option value="success">{{ tr("Success", "Επιτυχία") }}</option>
               <option value="failed">{{ tr("Failed", "Αποτυχία") }}</option>
             </select>
+            <select v-model.number="pageSize" class="rotation-select">
+              <option :value="10">10</option>
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+            </select>
           </div>
         </div>
 
@@ -173,21 +253,112 @@ onMounted(() => {
         <p v-else-if="error" class="tool-card__description tool-card__description--error">
           {{ error }}
         </p>
-        <div v-else class="dashboard-history__list">
-          <article v-for="item in historyItems" :key="item.eventId" class="dashboard-history__item">
-            <div>
-              <strong>{{ item.operationName }}</strong>
-              <p class="tool-card__description">{{ item.serviceKey }} · {{ item.status }}</p>
-            </div>
-            <div class="dashboard-history__meta">
-              <span>{{ item.createdAt }}</span>
-              <span v-if="item.consumedWords">{{ item.consumedWords }} words</span>
-              <span v-if="item.consumedRequests">{{ item.consumedRequests }} request</span>
-            </div>
-          </article>
-          <p v-if="!historyItems.length" class="tool-card__description">
+        <div v-else class="dashboard-history__table-wrap">
+          <table v-if="historyItems.length" class="dashboard-history__table">
+            <thead>
+              <tr>
+                <th>
+                  <button
+                    type="button"
+                    class="dashboard-history__sort-btn"
+                    @click="toggleSort('createdAt')"
+                  >
+                    {{ tr("Date", "Ημερομηνία") }} {{ sortIndicator("createdAt") }}
+                  </button>
+                </th>
+                <th>
+                  <button
+                    type="button"
+                    class="dashboard-history__sort-btn"
+                    @click="toggleSort('operationName')"
+                  >
+                    {{ tr("Operation", "Ενέργεια") }} {{ sortIndicator("operationName") }}
+                  </button>
+                </th>
+                <th>
+                  <button
+                    type="button"
+                    class="dashboard-history__sort-btn"
+                    @click="toggleSort('serviceKey')"
+                  >
+                    {{ tr("Service", "Υπηρεσία") }} {{ sortIndicator("serviceKey") }}
+                  </button>
+                </th>
+                <th>
+                  <button
+                    type="button"
+                    class="dashboard-history__sort-btn"
+                    @click="toggleSort('status')"
+                  >
+                    {{ tr("Status", "Κατάσταση") }} {{ sortIndicator("status") }}
+                  </button>
+                </th>
+                <th class="dashboard-history__table-number">
+                  <button
+                    type="button"
+                    class="dashboard-history__sort-btn"
+                    @click="toggleSort('consumedRequests')"
+                  >
+                    {{ tr("Requests", "Αιτήματα") }} {{ sortIndicator("consumedRequests") }}
+                  </button>
+                </th>
+                <th class="dashboard-history__table-number">
+                  <button
+                    type="button"
+                    class="dashboard-history__sort-btn"
+                    @click="toggleSort('consumedWords')"
+                  >
+                    {{ tr("Words", "Λέξεις") }} {{ sortIndicator("consumedWords") }}
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in historyItems" :key="item.eventId">
+                <td>{{ formatDateTime(item.createdAt) }}</td>
+                <td>{{ item.operationName }}</td>
+                <td>{{ item.serviceKey }}</td>
+                <td>{{ formatStatus(item.status) }}</td>
+                <td class="dashboard-history__table-number">
+                  {{ formatNumber(item.consumedRequests) }}
+                </td>
+                <td class="dashboard-history__table-number">
+                  {{ formatNumber(item.consumedWords) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p v-else class="tool-card__description">
             {{ tr("No activity yet.", "Δεν υπάρχει δραστηριότητα ακόμα.") }}
           </p>
+
+          <div v-if="historyItems.length" class="dashboard-history__pagination">
+            <button
+              type="button"
+              class="rotation-select"
+              :disabled="!canGoPrev"
+              @click="goToPage(currentPage - 1)"
+            >
+              {{ tr("Previous", "Προηγούμενο") }}
+            </button>
+            <span>
+              {{
+                tr(
+                  `Page ${currentPage} of ${totalPages} (${formatNumber(totalHistoryItems)} total)`,
+                  `Σελίδα ${currentPage} από ${totalPages} (${formatNumber(totalHistoryItems)} σύνολο)`
+                )
+              }}
+            </span>
+            <button
+              type="button"
+              class="rotation-select"
+              :disabled="!canGoNext"
+              @click="goToPage(currentPage + 1)"
+            >
+              {{ tr("Next", "Επόμενο") }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -204,14 +375,12 @@ onMounted(() => {
   gap: 1rem;
 }
 
-.dashboard-service-list,
-.dashboard-history__list {
+.dashboard-service-list {
   display: grid;
   gap: 0.75rem;
 }
 
-.dashboard-service-item,
-.dashboard-history__item {
+.dashboard-service-item {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
@@ -222,8 +391,7 @@ onMounted(() => {
 }
 
 .dashboard-history__head,
-.dashboard-history__filters,
-.dashboard-history__meta {
+.dashboard-history__filters {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
@@ -234,17 +402,55 @@ onMounted(() => {
   align-items: center;
 }
 
-.dashboard-history__meta {
-  color: var(--ink-soft);
+.dashboard-history__table-wrap {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.dashboard-history__table {
+  width: 100%;
+  border-collapse: collapse;
   font-size: 0.92rem;
+}
+
+.dashboard-history__table th,
+.dashboard-history__table td {
+  padding: 0.65rem 0.7rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.24);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.dashboard-history__table-number {
+  text-align: right;
+}
+
+.dashboard-history__sort-btn {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+
+.dashboard-history__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 720px) {
   .dashboard-service-item,
-  .dashboard-history__item,
   .dashboard-history__head {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .dashboard-history__table-wrap {
+    overflow-x: auto;
   }
 }
 </style>

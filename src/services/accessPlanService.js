@@ -45,6 +45,12 @@ export const fetchAccessDashboard = async (baseUrl, serviceToken, options = {}) 
   if (options.status) {
     searchParams.set("status", String(options.status));
   }
+  if (options.sortBy) {
+    searchParams.set("sortBy", String(options.sortBy));
+  }
+  if (options.sortDirection) {
+    searchParams.set("sortDirection", String(options.sortDirection));
+  }
 
   const query = searchParams.toString();
   const response = await fetch(
