@@ -25,6 +25,24 @@ npm run build
 npm run preview
 ```
 
+## Production deploy
+
+1. Copy the production template and fill in the real API/domain values:
+   ```bash
+   cp .env.production.example .env.production
+   ```
+2. Run the deploy script:
+   ```bash
+   npm run deploy:prod
+   ```
+
+What it does:
+
+- loads `.env.production`
+- installs dependencies with `npm ci`
+- builds the Vite app for production
+- publishes `dist/` into `DEPLOY_TARGET_DIR`
+
 <!-- Added this section so frontend and backend contributors use the same lint/format/hook workflow before merging changes. -->
 
 ## Code Quality Tooling
