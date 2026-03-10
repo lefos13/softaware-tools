@@ -133,9 +133,10 @@ export const booksGreekEditorMessages = {
       min_negation_trim: {
         title: 'Normalize "μη / μην" by the following sound',
         description:
-          'Keeps or turns the negation into "μην" before γκ, γγ, ντ, μπ, κ, π, τ, ξ, ψ, and vowels, and uses bare "μη" in other cases.',
+          'Keeps or turns the negation into "μην" before γκ, γγ, ντ, μπ, κ, π, τ, ξ, ψ, and vowels, and uses bare "μη" in other cases, while preserving fixed phrases such as "μη αλκοολούχα" and "αν μη τι άλλο".',
         example: "μη γκρινιάζεις -> μην γκρινιάζεις, μην βγεις -> μη βγεις",
-        cases: "μην before γκ, γγ, ντ, μπ, κ, π, τ, ξ, ψ and vowels; μη in other cases.",
+        cases:
+          'μην before γκ, γγ, ντ, μπ, κ, π, τ, ξ, ψ and vowels; μη in other cases; fixed exceptions include "μη αλκοολούχα" and "αν μη τι άλλο".',
       },
       sa_to_san: {
         title: 'Change standalone "σα" to "σαν"',
@@ -215,10 +216,10 @@ export const booksGreekEditorMessages = {
       question_pou_pos_toning: {
         title: 'Accent opening "που/πως" in direct questions',
         description:
-          'Accents sentence-opening "που" and "πως" when the sentence ends with a Greek question mark and stays a single direct question.',
+          'Accents sentence-opening "που" and "πως" only in conservative direct-question patterns, avoiding clause openings that read as explanatory, elliptical, or multi-part phrasing.',
         example: "Που πήγες; -> Πού πήγες;",
         cases:
-          "Sentence starts with που/πως and ends with ; without another full stop, exclamation mark, ellipsis, or upper dot.",
+          'Sentence starts with που/πως, ends with ;, contains no internal comma, and does not immediately open with markers like "να", "όταν", "που", or "πως".',
       },
       quote_comma_trim: {
         title: "Remove comma after closing guillemet",
@@ -226,6 +227,22 @@ export const booksGreekEditorMessages = {
           "Removes the comma when it appears immediately before or after a closing guillemet.",
         example: "«Γύρισα», -> «Γύρισα», «γύρνα,» -> «γύρνα»",
         cases: 'The exact sequences "»," and ",»".',
+      },
+      logo_genitive_normalize: {
+        title: 'Normalize genitive "λόγο ..." to "λόγω ..." in fixed phrase use',
+        description:
+          'Turns standalone "λόγο" into "λόγω" only when it starts a conservative genitive phrase such as "λόγο της/του/των ...".',
+        example: "Λόγο της βροχής έφυγα -> Λόγω της βροχής έφυγα",
+        cases:
+          "Standalone λόγο/λογο followed by της/του/των plus a Greek word, only at sentence start or after comma, colon, dash, or opening bracket.",
+      },
+      vasei_genitive_normalize: {
+        title: 'Normalize genitive "βάση ..." and "με βάση ..." to "βάσει"',
+        description:
+          'Turns "βάση" or "με βάση" into "βάσει" only when a conservative genitive phrase follows, such as "βάση του ..." or "με βάση των ...".',
+        example: "Με βάση των στοιχείων -> Βάσει των στοιχείων",
+        cases:
+          'Standalone βάση/βαση followed by της/του/των plus a Greek word at a safe phrase boundary, or the exact phrase "με βάση/με βαση" before της/του/των plus a Greek word.',
       },
       kyriarx_no_hyphen: {
         title: 'Remove the hyphen from "κυρ-", "πάτερ-", and "καπετάν-"',
@@ -273,10 +290,11 @@ export const booksGreekEditorMessages = {
       comma_before_subordinators: {
         title: "Insert comma before common subordinators",
         description:
-          "Adds a comma before common lowercase subordinators when they introduce a continuation inside the same sentence.",
-        example: "μίλησα γιατί το ήθελα -> μίλησα, γιατί το ήθελα",
+          'Adds a comma before lowercase "για να" when it introduces a long continuation inside the same sentence.',
+        example:
+          "κάθισα λίγο για να τελειώσω τη δουλειά -> κάθισα λίγο, για να τελειώσω τη δουλειά",
         cases:
-          "για να, μέχρι, γιατί, επειδή, διότι, αν, εάν in lowercase and not at sentence start",
+          'Lowercase "για να", not at sentence start, with at least two previous words and more than three following words.',
       },
       anamesa_article_contract: {
         title: 'Adjust article after "ανάμεσα ... και ..."',
@@ -344,11 +362,11 @@ export const booksGreekEditorMessages = {
         cases: "νύκτα, νυκτερινός and related forms",
       },
       niotho_family_normalize: {
-        title: 'Normalize the "νοιώθω" family',
+        title: 'Normalize the "νιώθω" family',
         description:
-          'Normalizes forms written as "νιώθ-" or "νιώσ-" into the preferred "νοιώθ-/νοιώσ-" family.',
-        example: "Νιώθω -> Νοιώθω",
-        cases: "Νιώθω, νιώσαμε and related forms",
+          'Normalizes forms written as "νοιώθ-" or "νοιώσ-" into the preferred "νιώθ-/νιώσ-" family.',
+        example: "Νοιώθω -> Νιώθω",
+        cases: "Νοιώθω, νοιώσαμε and related forms",
       },
       dechtika_family_normalize: {
         title: 'Normalize the "δέχτηκα" family',
@@ -854,10 +872,10 @@ export const booksGreekEditorMessages = {
       min_negation_trim: {
         title: 'Κανονικοποίηση του "μη / μην" ανάλογα με τον επόμενο φθόγγο',
         description:
-          'Κρατά ή μετατρέπει την άρνηση σε "μην" πριν από γκ, γγ, ντ, μπ, κ, π, τ, ξ, ψ και φωνήεντα, και χρησιμοποιεί σκέτο "μη" σε κάθε άλλη περίπτωση.',
+          'Κρατά ή μετατρέπει την άρνηση σε "μην" πριν από γκ, γγ, ντ, μπ, κ, π, τ, ξ, ψ και φωνήεντα, και χρησιμοποιεί σκέτο "μη" σε κάθε άλλη περίπτωση, διατηρώντας σταθερές φράσεις όπως "μη αλκοολούχα" και "αν μη τι άλλο".',
         example: "μη γκρινιάζεις -> μην γκρινιάζεις, μην βγεις -> μη βγεις",
         cases:
-          "μην πριν από γκ, γγ, ντ, μπ, κ, π, τ, ξ, ψ και φωνήεντα· μη σε όλες τις άλλες περιπτώσεις.",
+          'μην πριν από γκ, γγ, ντ, μπ, κ, π, τ, ξ, ψ και φωνήεντα· μη σε όλες τις άλλες περιπτώσεις· σταθερές εξαιρέσεις: "μη αλκοολούχα" και "αν μη τι άλλο".',
       },
       sa_to_san: {
         title: 'Αλλαγή του αυτόνομου "σα" σε "σαν"',
@@ -938,10 +956,10 @@ export const booksGreekEditorMessages = {
       question_pou_pos_toning: {
         title: 'Τονισμός του αρχικού "που/πως" σε ευθείες ερωτήσεις',
         description:
-          'Τονίζει το αρχικό "που" και "πως" όταν η πρόταση κλείνει με ελληνικό ερωτηματικό και παραμένει μία ενιαία ευθεία ερώτηση.',
+          'Τονίζει το αρχικό "που" και "πως" μόνο σε συντηρητικά αναγνωρίσιμες ευθείες ερωτήσεις, αποφεύγοντας ανοίγματα που διαβάζονται ως επεξηγηματικά, ελλειπτικά ή πολυμερή.',
         example: "Που πήγες; -> Πού πήγες;",
         cases:
-          "Πρόταση που ξεκινά με που/πως και τελειώνει σε ; χωρίς να παρεμβάλλεται τελεία, θαυμαστικό, αποσιωπητικά ή άνω τελεία",
+          'Πρόταση που ξεκινά με που/πως, τελειώνει σε ;, δεν έχει εσωτερικό κόμμα και δεν ανοίγει αμέσως με δείκτες όπως "να", "όταν", "που" ή "πως".',
       },
       quote_comma_trim: {
         title: "Αφαίρεση κόμματος μετά από κλείσιμο εισαγωγικών",
@@ -949,6 +967,22 @@ export const booksGreekEditorMessages = {
           "Αφαιρεί το κόμμα όταν βρίσκεται αμέσως πριν ή αμέσως μετά από κλείσιμο εισαγωγικών.",
         example: "«Γύρισα», -> «Γύρισα», «γύρνα,» -> «γύρνα»",
         cases: 'Οι ακριβείς ακολουθίες "»," και ",»".',
+      },
+      logo_genitive_normalize: {
+        title: 'Κανονικοποίηση του γενικού "λόγο ..." σε "λόγω ..." όταν είναι παγιωμένη φράση',
+        description:
+          'Μετατρέπει το αυτόνομο "λόγο" σε "λόγω" μόνο όταν ξεκινά συντηρητικά αναγνωρίσιμη γενική φράση, όπως "λόγο της/του/των ...".',
+        example: "Λόγο της βροχής έφυγα -> Λόγω της βροχής έφυγα",
+        cases:
+          "Αυτόνομο λόγο/λογο πριν από της/του/των και επόμενη ελληνική λέξη, μόνο στην αρχή πρότασης ή μετά από κόμμα, άνω-κάτω τελεία, παύλα ή άνοιγμα παρενθέσεων.",
+      },
+      vasei_genitive_normalize: {
+        title: 'Κανονικοποίηση του γενικού "βάση ..." και "με βάση ..." σε "βάσει"',
+        description:
+          'Μετατρέπει το "βάση" ή το "με βάση" σε "βάσει" μόνο όταν ακολουθεί συντηρητικά αναγνωρίσιμη γενική φράση, όπως "βάση του ..." ή "με βάση των ...".',
+        example: "Με βάση των στοιχείων -> Βάσει των στοιχείων",
+        cases:
+          'Αυτόνομο βάση/βαση πριν από της/του/των και επόμενη ελληνική λέξη σε ασφαλές boundary φράσης, ή η ακριβής φράση "με βάση/με βαση" πριν από της/του/των και επόμενη ελληνική λέξη.',
       },
       kyriarx_no_hyphen: {
         title: 'Αφαίρεση της ενωτικής παύλας από τα "κυρ-", "πάτερ-", "καπετάν-"',
@@ -996,9 +1030,11 @@ export const booksGreekEditorMessages = {
       comma_before_subordinators: {
         title: "Προσθήκη κόμματος πριν από συχνούς υποτακτικούς συνδέσμους",
         description:
-          "Προσθέτει κόμμα πριν από συχνούς πεζούς υποτακτικούς συνδέσμους όταν συνεχίζουν την ίδια πρόταση.",
-        example: "μίλησα γιατί το ήθελα -> μίλησα, γιατί το ήθελα",
-        cases: "για να, μέχρι, γιατί, επειδή, διότι, αν, εάν με πεζά και όχι στην αρχή πρότασης",
+          'Προσθέτει κόμμα πριν από το πεζό "για να" όταν συνεχίζει με αρκετό μήκος την ίδια πρόταση.',
+        example:
+          "κάθισα λίγο για να τελειώσω τη δουλειά -> κάθισα λίγο, για να τελειώσω τη δουλειά",
+        cases:
+          'Πεζό "για να", όχι στην αρχή πρότασης, με τουλάχιστον δύο προηγούμενες λέξεις και πάνω από τρεις επόμενες λέξεις',
       },
       anamesa_article_contract: {
         title: 'Προσαρμογή άρθρου μετά από το σχήμα "ανάμεσα ... και ..."',
@@ -1067,11 +1103,11 @@ export const booksGreekEditorMessages = {
         cases: "νύκτα, νυκτερινός και συγγενικές μορφές, εκτός από τη φράση «κρέμα νυκτός»",
       },
       niotho_family_normalize: {
-        title: 'Κανονικοποίηση της οικογένειας "νοιώθω"',
+        title: 'Κανονικοποίηση της οικογένειας "νιώθω"',
         description:
-          'Κανονικοποιεί μορφές που γράφονται ως "νιώθ-" ή "νιώσ-" στην προτιμώμενη οικογένεια "νοιώθ-/νοιώσ-".',
-        example: "Νιώθω -> Νοιώθω",
-        cases: "Νιώθω, νιώσαμε και συγγενικές μορφές",
+          'Κανονικοποιεί μορφές που γράφονται ως "νοιώθ-" ή "νοιώσ-" στην προτιμώμενη οικογένεια "νιώθ-/νιώσ-".',
+        example: "Νοιώθω -> Νιώθω",
+        cases: "Νοιώθω, νοιώσαμε και συγγενικές μορφές",
       },
       dechtika_family_normalize: {
         title: 'Κανονικοποίηση της οικογένειας "δέχτηκα"',

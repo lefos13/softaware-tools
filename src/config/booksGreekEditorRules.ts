@@ -61,6 +61,8 @@ export const BOOKS_GREEK_EDITOR_RULES: BooksGreekEditorRule[] = [
   { id: "prin_before_time_phrase", section: "literary" },
   { id: "question_pou_pos_toning", section: "literary" },
   { id: "quote_comma_trim", section: "literary" },
+  { id: "logo_genitive_normalize", section: "literary" },
+  { id: "vasei_genitive_normalize", section: "literary" },
   { id: "kyriarx_no_hyphen", section: "literary" },
   { id: "nobility_titles_lowercase", section: "literary" },
   { id: "mesa_sto_contract", section: "literary" },
