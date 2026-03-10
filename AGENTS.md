@@ -127,3 +127,13 @@ When completing work, include:
 1. What changed.
 2. Why the changes were necessary.
 3. What tests/checks were run and their outcome.
+
+## 8) Daily Workflow Commands (Repo-Verified)
+
+1. Install dependencies with `npm install` when `package.json`/`package-lock.json` changes.
+2. Use `npm run dev` for local development.
+3. Use `npm run test:watch` while iterating, and keep `npm test` for final verification.
+4. Use `npm run preview` after `npm run build` to validate production output locally.
+5. Use `npm run lint:fix` and `npm run format` for auto-fixable issues; use `npm run format:check` when you only need validation.
+6. Use `VITE_ENABLE_BOOKS_SERVICES=true` and `VITE_ENABLE_JSON_SERVICES=true` locally when validating gated service flows.
+7. Keep commits compatible with Husky + `lint-staged` pre-commit checks configured in this repo.

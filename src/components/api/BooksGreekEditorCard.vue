@@ -16,8 +16,7 @@ const props = defineProps({
 
 const portalAccess = inject("portalAccess");
 const serviceFlowShell = inject("serviceFlowShell", null);
-const { t, locale } = usePortalI18n();
-const tr = (en, el) => (locale.value === "el" ? el : en);
+const { t } = usePortalI18n();
 const {
   inputMode,
   file,
@@ -206,16 +205,11 @@ const clearCompletedExecution = () => {
     <div class="tool-card books-editor-card">
       <div v-if="!hasAnyResult" class="books-panel">
         <p class="merge-step__title">
-          {{
-            tr(
-              "Step 2 · Upload document and choose rules",
-              "Βήμα 2 · Ανέβασμα εγγράφου και επιλογή κανόνων"
-            )
-          }}
+          {{ t("tools.booksGreekEditor.ui.step2Title") }}
         </p>
 
         <div class="panel-card">
-          <p class="panel-card__title">{{ tr("Choose input", "Επιλογή εισόδου") }}</p>
+          <p class="panel-card__title">{{ t("tools.booksGreekEditor.ui.chooseInput") }}</p>
           <div
             class="mode-toggle"
             role="radiogroup"
@@ -257,12 +251,7 @@ const clearCompletedExecution = () => {
               {{ t("tools.common.selected", { value: file ? file.name : t("app.none") }) }}
             </p>
             <p v-if="estimatedWordCountLoading" class="tool-card__description">
-              {{
-                tr(
-                  "Calculating billed word count from the uploaded DOCX...",
-                  "Υπολογίζεται το χρεώσιμο πλήθος λέξεων από το DOCX..."
-                )
-              }}
+              {{ t("tools.booksGreekEditor.ui.countingWordsDocx") }}
             </p>
             <p
               v-else-if="estimatedWordCountError"
@@ -272,10 +261,9 @@ const clearCompletedExecution = () => {
             </p>
             <p v-else-if="file" class="tool-card__description">
               {{
-                tr(
-                  `Estimated billed words: ${estimatedWordCount.toLocaleString()}`,
-                  `Εκτιμώμενες χρεώσιμες λέξεις: ${estimatedWordCount.toLocaleString()}`
-                )
+                t("tools.booksGreekEditor.ui.estimatedWords", {
+                  count: estimatedWordCount.toLocaleString(),
+                })
               }}
             </p>
             <p class="tool-card__description">{{ t("tools.booksGreekEditor.scopeNote") }}</p>
@@ -292,10 +280,9 @@ const clearCompletedExecution = () => {
             />
             <p class="tool-card__description">
               {{
-                tr(
-                  `Estimated billed words: ${estimatedWordCount.toLocaleString()}`,
-                  `Εκτιμώμενες χρεώσιμες λέξεις: ${estimatedWordCount.toLocaleString()}`
-                )
+                t("tools.booksGreekEditor.ui.estimatedWords", {
+                  count: estimatedWordCount.toLocaleString(),
+                })
               }}
             </p>
             <p class="tool-card__description">{{ t("tools.booksGreekEditor.textModeNote") }}</p>
@@ -303,15 +290,10 @@ const clearCompletedExecution = () => {
         </div>
 
         <div class="panel-card">
-          <p class="panel-card__title">{{ tr("Choose rules", "Επιλογή κανόνων") }}</p>
+          <p class="panel-card__title">{{ t("tools.booksGreekEditor.ui.chooseRules") }}</p>
           <div class="panel-card__header">
             <p class="panel-card__subtitle">
-              {{
-                tr(
-                  "Expand only the groups you need and keep the checklist easy to scan.",
-                  "Expand only the groups you need and keep the checklist easy to scan."
-                )
-              }}
+              {{ t("tools.booksGreekEditor.ui.rulesSubtitle") }}
             </p>
           </div>
           <div class="rules-toolbar">
@@ -417,7 +399,7 @@ const clearCompletedExecution = () => {
         </div>
 
         <div class="panel-card">
-          <p class="panel-card__title">{{ tr("Output options", "Επιλογές εξόδου") }}</p>
+          <p class="panel-card__title">{{ t("tools.booksGreekEditor.ui.outputOptions") }}</p>
           <label class="checkbox-row" for="books-include-report">
             <input
               id="books-include-report"
@@ -436,7 +418,7 @@ const clearCompletedExecution = () => {
         </div>
 
         <div class="panel-card">
-          <p class="panel-card__title">{{ tr("Run editor", "Εκτέλεση editor") }}</p>
+          <p class="panel-card__title">{{ t("tools.booksGreekEditor.ui.runEditor") }}</p>
           <button
             type="button"
             class="button button--primary"
@@ -462,12 +444,7 @@ const clearCompletedExecution = () => {
       <div v-if="loading || hasAnyResult" class="books-panel">
         <div class="books-panel__head">
           <p class="merge-step__title">
-            {{
-              tr(
-                "Step 3 · Download link and report results",
-                "Βήμα 3 · Σύνδεσμος λήψης και αποτελέσματα report"
-              )
-            }}
+            {{ t("tools.booksGreekEditor.ui.step3Title") }}
           </p>
           <button
             v-if="hasAnyResult && !loading"
@@ -475,19 +452,14 @@ const clearCompletedExecution = () => {
             class="button button--secondary"
             @click="clearCompletedExecution"
           >
-            {{ tr("Clear", "Καθαρισμός") }}
+            {{ t("tools.booksGreekEditor.ui.clear") }}
           </button>
         </div>
 
         <div v-if="loading" class="books-result-panel books-result-panel--pending">
-          <strong>{{ tr("Processing document", "Γίνεται επεξεργασία εγγράφου") }}</strong>
+          <strong>{{ t("tools.booksGreekEditor.ui.processingDocument") }}</strong>
           <p class="tool-card__description">
-            {{
-              tr(
-                "The editor is running. The download link and report appear here when the request completes.",
-                "Ο editor εκτελείται. Ο σύνδεσμος λήψης και το report θα εμφανιστούν εδώ όταν ολοκληρωθεί το αίτημα."
-              )
-            }}
+            {{ t("tools.booksGreekEditor.ui.processingDescription") }}
           </p>
         </div>
 
@@ -495,7 +467,7 @@ const clearCompletedExecution = () => {
           <div v-if="hasDownloadResult" class="books-result-panel">
             <div class="books-result-panel__header">
               <h3 class="books-result-panel__title">
-                {{ tr("Download output", "Λήψη αποτελέσματος") }}
+                {{ t("tools.booksGreekEditor.ui.downloadOutput") }}
               </h3>
               <div class="books-result-panel__actions">
                 <a
@@ -504,7 +476,7 @@ const clearCompletedExecution = () => {
                   :href="resultUrl"
                   :download="resultName"
                 >
-                  {{ tr("Download corrected DOCX", "Λήψη διορθωμένου DOCX") }}
+                  {{ t("tools.booksGreekEditor.ui.downloadCorrectedDocx") }}
                 </a>
                 <a
                   v-if="resultTextUrl"
@@ -519,23 +491,12 @@ const clearCompletedExecution = () => {
             <p class="tool-card__description">
               {{
                 resultUrl
-                  ? tr(
-                      "The corrected DOCX is ready to download from the link above.",
-                      "Το διορθωμένο DOCX είναι έτοιμο για λήψη από τον παραπάνω σύνδεσμο."
-                    )
-                  : tr(
-                      "The corrected text is ready and can also be downloaded from the link above.",
-                      "Το διορθωμένο κείμενο είναι έτοιμο και μπορεί επίσης να ληφθεί από τον παραπάνω σύνδεσμο."
-                    )
+                  ? t("tools.booksGreekEditor.ui.downloadDocxReady")
+                  : t("tools.booksGreekEditor.ui.downloadTextReady")
               }}
             </p>
             <p v-if="includeReport && resultUrl" class="tool-card__description">
-              {{
-                tr(
-                  "The detailed report is included inside the downloaded ZIP package to avoid consuming quota twice.",
-                  "Το αναλυτικό report περιλαμβάνεται μέσα στο ZIP λήψης ώστε να μην καταναλώνεται το quota δύο φορές."
-                )
-              }}
+              {{ t("tools.booksGreekEditor.ui.reportIncludedInZip") }}
             </p>
           </div>
 

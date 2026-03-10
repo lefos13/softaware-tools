@@ -17,14 +17,13 @@ import {
 } from "../services/adminTokenService";
 
 const portalContext = inject("portalContext");
-const { locale } = usePortalI18n();
+const { locale, t } = usePortalI18n();
 const SUPERADMIN_TOKEN_STORAGE_KEY = "admin_tokens_superadmin_token";
 const DEFAULT_TTL = "30d";
-const tr = (en, el) => (locale.value === "el" ? el : en);
-const formatDateTime = (value, fallbackEn = "n/a", fallbackEl = "δ/υ") =>
+const formatDateTime = (value, fallbackKey = "adminTokens.notAvailable") =>
   value
     ? new Date(value).toLocaleString(locale.value === "el" ? "el-GR" : "en-US")
-    : tr(fallbackEn, fallbackEl);
+    : t(fallbackKey);
 
 const tokenInput = ref(sessionStorage.getItem(SUPERADMIN_TOKEN_STORAGE_KEY) || "");
 const activeToken = ref(sessionStorage.getItem(SUPERADMIN_TOKEN_STORAGE_KEY) || "");
@@ -73,24 +72,38 @@ const formatUsageSummary = (serviceItem) => {
 
   if (requestQuota?.limit !== null) {
     parts.push(
-      tr(
-        `${requestQuota.used}/${requestQuota.limit} req used`,
-        `${requestQuota.used}/${requestQuota.limit} αιτήματα`
-      )
+      t("adminTokens.usage.requestsUsed", {
+        used: requestQuota.used,
+        limit: requestQuota.limit,
+      })
     );
   }
 
   if (wordQuota?.limit !== null) {
-    const usedLabel = tr(
-      `${wordQuota.used}/${wordQuota.limit} words used`,
-      `${wordQuota.used}/${wordQuota.limit} λέξεις`
-    );
-    const remainingLabel = tr(`${wordQuota.remaining} left`, `${wordQuota.remaining} υπόλοιπο`);
+    const usedLabel = t("adminTokens.usage.wordsUsed", {
+      used: wordQuota.used,
+      limit: wordQuota.limit,
+    });
+    const remainingLabel = t("adminTokens.usage.remaining", { remaining: wordQuota.remaining });
     parts.push(`${usedLabel} (${remainingLabel})`);
   }
 
-  return `${serviceItem.serviceKey}: ${parts.join(" · ") || tr("unlimited", "απεριόριστο")}`;
+  return `${serviceItem.serviceKey}: ${parts.join(" · ") || t("adminTokens.usage.unlimited")}`;
 };
+
+/*
+  Token rows expose many independent fields, so these helpers normalize policy
+  and usage blocks into arrays for structured card rendering in the template.
+*/
+const listPolicyEntries = (tokenItem) =>
+  tokenItem?.servicePolicies && Object.keys(tokenItem.servicePolicies).length > 0
+    ? Object.entries(tokenItem.servicePolicies)
+    : [];
+
+const listUsageEntries = (tokenItem) =>
+  Array.isArray(tokenItem?.usageSummary) && tokenItem.usageSummary.length > 0
+    ? tokenItem.usageSummary
+    : [];
 
 const resetForm = () => {
   editingTokenId.value = "";
@@ -135,9 +148,7 @@ const loadTokens = async () => {
         : {};
   } catch (loadError) {
     const message =
-      loadError instanceof Error
-        ? loadError.message
-        : tr("Could not load access tokens.", "Δεν ήταν δυνατή η φόρτωση των access tokens.");
+      loadError instanceof Error ? loadError.message : t("adminTokens.errors.loadTokens");
     clearSuperadminToken();
     error.value = message;
   } finally {
@@ -148,7 +159,7 @@ const loadTokens = async () => {
 const authenticate = async () => {
   const nextToken = tokenInput.value.trim();
   if (!nextToken) {
-    error.value = tr("Enter a superadmin token first.", "Συμπληρώστε πρώτα ένα superadmin token.");
+    error.value = t("adminTokens.errors.enterSuperadminFirst");
     return;
   }
 
@@ -194,7 +205,7 @@ const submitForm = async () => {
         }
       );
 
-      success.value = tr("Access token updated.", "Το access token ενημερώθηκε.");
+      success.value = t("adminTokens.success.updated");
       accessTokens.value = accessTokens.value.map((tokenItem) =>
         tokenItem.tokenId === result?.record?.tokenId ? result.record : tokenItem
       );
@@ -208,16 +219,13 @@ const submitForm = async () => {
       ttl: form.value.ttl || DEFAULT_TTL,
     });
 
-    success.value = tr("Access token created.", "Το access token δημιουργήθηκε.");
+    success.value = t("adminTokens.success.created");
     revealedToken.value = result?.token || "";
     revealedTokenLabel.value = form.value.alias;
     resetForm();
     await loadTokens();
   } catch (runError) {
-    error.value =
-      runError instanceof Error
-        ? runError.message
-        : tr("Could not save the token.", "Δεν ήταν δυνατή η αποθήκευση του token.");
+    error.value = runError instanceof Error ? runError.message : t("adminTokens.errors.saveToken");
   } finally {
     saving.value = false;
   }
@@ -228,9 +236,7 @@ const runRevoke = async (tokenItem) => {
     return;
   }
 
-  const accepted = window.confirm(
-    tr(`Revoke token "${tokenItem.alias}" now?`, `Να ανακληθεί τώρα το token "${tokenItem.alias}";`)
-  );
+  const accepted = window.confirm(t("adminTokens.prompts.revoke", { alias: tokenItem.alias }));
   if (!accepted) {
     return;
   }
@@ -248,19 +254,17 @@ const runRevoke = async (tokenItem) => {
     accessTokens.value = accessTokens.value.map((item) =>
       item.tokenId === result?.record?.tokenId ? result.record : item
     );
-    success.value = tr("Access token revoked.", "Το access token ανακλήθηκε.");
+    success.value = t("adminTokens.success.revoked");
   } catch (runError) {
     error.value =
-      runError instanceof Error
-        ? runError.message
-        : tr("Could not revoke the token.", "Δεν ήταν δυνατή η ανάκληση του token.");
+      runError instanceof Error ? runError.message : t("adminTokens.errors.revokeToken");
   } finally {
     saving.value = false;
   }
 };
 
-const promptTtl = (titleEn, titleEl) => {
-  const nextValue = window.prompt(tr(titleEn, titleEl), DEFAULT_TTL);
+const promptTtl = (titleKey, params = {}) => {
+  const nextValue = window.prompt(t(titleKey, params), DEFAULT_TTL);
   return nextValue ? nextValue.trim() : "";
 };
 
@@ -269,10 +273,7 @@ const runRenew = async (tokenItem) => {
     return;
   }
 
-  const ttl = promptTtl(
-    `Renew "${tokenItem.alias}" for how long?`,
-    `Για πόσο να ανανεωθεί το "${tokenItem.alias}";`
-  );
+  const ttl = promptTtl("adminTokens.prompts.renew", { alias: tokenItem.alias });
   if (!ttl) {
     return;
   }
@@ -297,12 +298,9 @@ const runRenew = async (tokenItem) => {
     accessTokens.value = accessTokens.value.map((item) =>
       item.tokenId === result?.record?.tokenId ? result.record : item
     );
-    success.value = tr("Access token renewed.", "Το access token ανανεώθηκε.");
+    success.value = t("adminTokens.success.renewed");
   } catch (runError) {
-    error.value =
-      runError instanceof Error
-        ? runError.message
-        : tr("Could not renew the token.", "Δεν ήταν δυνατή η ανανέωση του token.");
+    error.value = runError instanceof Error ? runError.message : t("adminTokens.errors.renewToken");
   } finally {
     saving.value = false;
   }
@@ -313,10 +311,7 @@ const runExtend = async (tokenItem) => {
     return;
   }
 
-  const ttl = promptTtl(
-    `Extend "${tokenItem.alias}" by how much?`,
-    `Κατά πόσο να επεκταθεί το "${tokenItem.alias}";`
-  );
+  const ttl = promptTtl("adminTokens.prompts.extend", { alias: tokenItem.alias });
   if (!ttl) {
     return;
   }
@@ -335,12 +330,10 @@ const runExtend = async (tokenItem) => {
     accessTokens.value = accessTokens.value.map((item) =>
       item.tokenId === result?.record?.tokenId ? result.record : item
     );
-    success.value = tr("Access token extended.", "Το access token επεκτάθηκε.");
+    success.value = t("adminTokens.success.extended");
   } catch (runError) {
     error.value =
-      runError instanceof Error
-        ? runError.message
-        : tr("Could not extend the token.", "Δεν ήταν δυνατή η επέκταση του token.");
+      runError instanceof Error ? runError.message : t("adminTokens.errors.extendToken");
   } finally {
     saving.value = false;
   }
@@ -351,12 +344,7 @@ const runResetUsage = async (tokenItem) => {
     return;
   }
 
-  const accepted = window.confirm(
-    tr(
-      `Reset usage counters for "${tokenItem.alias}" to zero now?`,
-      `Να μηδενιστούν τώρα οι μετρητές χρήσης για το "${tokenItem.alias}";`
-    )
-  );
+  const accepted = window.confirm(t("adminTokens.prompts.resetUsage", { alias: tokenItem.alias }));
   if (!accepted) {
     return;
   }
@@ -371,13 +359,10 @@ const runResetUsage = async (tokenItem) => {
       activeToken.value,
       tokenItem.tokenId
     );
-    success.value = tr("Access token usage reset.", "Η χρήση του access token μηδενίστηκε.");
+    success.value = t("adminTokens.success.usageReset");
     await loadTokens();
   } catch (runError) {
-    error.value =
-      runError instanceof Error
-        ? runError.message
-        : tr("Could not reset token usage.", "Δεν ήταν δυνατός ο μηδενισμός χρήσης.");
+    error.value = runError instanceof Error ? runError.message : t("adminTokens.errors.resetUsage");
   } finally {
     saving.value = false;
   }
@@ -389,20 +374,15 @@ if (activeToken.value) {
 </script>
 
 <template>
-  <section class="flow-view" aria-label="Admin tokens">
+  <section class="flow-view" :aria-label="t('adminTokens.ariaLabel')">
     <div class="section-head section-head--spaced admin-head">
       <div>
-        <p class="admin-kicker">{{ tr("Restricted Area", "Περιορισμένη πρόσβαση") }}</p>
+        <p class="admin-kicker">{{ t("adminTokens.restrictedArea") }}</p>
         <h2 class="section-head__title">
-          {{ tr("Superadmin Token Management", "Διαχείριση tokens superadmin") }}
+          {{ t("adminTokens.title") }}
         </h2>
         <p class="section-head__subtitle">
-          {{
-            tr(
-              "Use a CLI-created superadmin token to manage access tokens for protected services.",
-              "Χρησιμοποιήστε superadmin token από το CLI για να διαχειριστείτε access tokens για προστατευμένες υπηρεσίες."
-            )
-          }}
+          {{ t("adminTokens.subtitle") }}
         </p>
       </div>
       <button
@@ -412,26 +392,21 @@ if (activeToken.value) {
         :disabled="loading || saving"
         @click="loadTokens"
       >
-        {{ loading ? tr("Refreshing...", "Ανανέωση...") : tr("Refresh", "Ανανέωση") }}
+        {{ loading ? t("adminTokens.refreshing") : t("adminTokens.refresh") }}
       </button>
     </div>
 
     <article class="tool-card admin-access admin-access--highlight">
-      <h3 class="tool-card__title">{{ tr("Superadmin Session", "Συνεδρία superadmin") }}</h3>
+      <h3 class="tool-card__title">{{ t("adminTokens.sessionTitle") }}</h3>
       <p class="tool-card__description">
-        {{
-          tr(
-            "Only CLI-created superadmin tokens can open this screen.",
-            "Μόνο superadmin tokens που δημιουργούνται από το CLI μπορούν να ανοίξουν αυτή την οθόνη."
-          )
-        }}
+        {{ t("adminTokens.sessionSubtitle") }}
       </p>
       <div class="admin-access__row">
         <input
           v-model="tokenInput"
           type="password"
           class="field"
-          :placeholder="tr('Enter superadmin token', 'Συμπληρώστε superadmin token')"
+          :placeholder="t('adminTokens.superadminPlaceholder')"
           autocomplete="off"
         />
         <button
@@ -440,7 +415,7 @@ if (activeToken.value) {
           :disabled="loading || saving"
           @click="authenticate"
         >
-          {{ tr("Enter", "Είσοδος") }}
+          {{ t("adminTokens.enter") }}
         </button>
         <button
           v-if="isAuthenticated"
@@ -449,7 +424,7 @@ if (activeToken.value) {
           :disabled="loading || saving"
           @click="clearSuperadminToken"
         >
-          {{ tr("Clear", "Καθαρισμός") }}
+          {{ t("adminTokens.clear") }}
         </button>
       </div>
     </article>
@@ -458,14 +433,9 @@ if (activeToken.value) {
     <p v-if="success" class="tool-card__description">{{ success }}</p>
 
     <article v-if="revealedToken" class="tool-card admin-reveal">
-      <h3 class="tool-card__title">{{ tr("Plaintext Token", "Token απλού κειμένου") }}</h3>
+      <h3 class="tool-card__title">{{ t("adminTokens.plaintextTitle") }}</h3>
       <p class="tool-card__description">
-        {{
-          tr(
-            `Store this token for "${revealedTokenLabel}" now. It is shown only once after create or renew.`,
-            `Αποθηκεύστε τώρα το token για "${revealedTokenLabel}". Εμφανίζεται μόνο μία φορά μετά από δημιουργία ή ανανέωση.`
-          )
-        }}
+        {{ t("adminTokens.plaintextDescription", { label: revealedTokenLabel }) }}
       </p>
       <pre class="admin-reveal__token">{{ revealedToken }}</pre>
     </article>
@@ -473,26 +443,22 @@ if (activeToken.value) {
     <div v-if="isAuthenticated" class="admin-layout">
       <article class="tool-card admin-list">
         <h3 class="tool-card__title">
-          {{
-            isEditing
-              ? tr("Edit Access Token", "Επεξεργασία access token")
-              : tr("Create Access Token", "Δημιουργία access token")
-          }}
+          {{ isEditing ? t("adminTokens.editAccessToken") : t("adminTokens.createAccessToken") }}
         </h3>
         <div class="admin-form">
           <label class="admin-form__field">
-            <span>{{ tr("Alias", "Alias") }}</span>
+            <span>{{ t("adminTokens.alias") }}</span>
             <input
               v-model="form.alias"
               type="text"
               class="field"
               :disabled="saving"
-              :placeholder="tr('Example: Books editor client', 'Παράδειγμα: Books editor client')"
+              :placeholder="t('adminTokens.aliasPlaceholder')"
             />
           </label>
 
           <label v-if="!isEditing" class="admin-form__field">
-            <span>{{ tr("TTL", "TTL") }}</span>
+            <span>{{ t("adminTokens.ttl") }}</span>
             <input
               v-model="form.ttl"
               type="text"
@@ -503,7 +469,7 @@ if (activeToken.value) {
           </label>
 
           <div class="admin-form__field">
-            <span>{{ tr("Service policies", "Πολιτικές υπηρεσιών") }}</span>
+            <span>{{ t("adminTokens.servicePolicies") }}</span>
             <div class="admin-policy-grid">
               <label
                 v-for="[serviceKey, presets] in sortedServicePolicies"
@@ -512,7 +478,7 @@ if (activeToken.value) {
               >
                 <span>{{ serviceKey }}</span>
                 <select v-model="form.servicePolicies[serviceKey]" class="field" :disabled="saving">
-                  <option value="">{{ tr("Disabled", "Απενεργοποιημένο") }}</option>
+                  <option value="">{{ t("adminTokens.disabled") }}</option>
                   <option v-for="preset in presets" :key="preset" :value="preset">
                     {{ preset }}
                   </option>
@@ -530,10 +496,10 @@ if (activeToken.value) {
             >
               {{
                 saving
-                  ? tr("Saving...", "Αποθήκευση...")
+                  ? t("adminTokens.saving")
                   : isEditing
-                    ? tr("Save changes", "Αποθήκευση αλλαγών")
-                    : tr("Create token", "Δημιουργία token")
+                    ? t("adminTokens.saveChanges")
+                    : t("adminTokens.createToken")
               }}
             </button>
             <button
@@ -542,18 +508,20 @@ if (activeToken.value) {
               :disabled="saving"
               @click="resetForm"
             >
-              {{ tr("Reset", "Επαναφορά") }}
+              {{ t("adminTokens.reset") }}
             </button>
           </div>
         </div>
       </article>
 
       <article class="tool-card admin-detail">
-        <h3 class="tool-card__title">{{ tr("Access Tokens", "Access tokens") }}</h3>
-        <p class="tool-card__description">{{ tr("Total", "Σύνολο") }}: {{ accessTokens.length }}</p>
+        <h3 class="tool-card__title">{{ t("adminTokens.accessTokens") }}</h3>
+        <p class="tool-card__description">
+          {{ t("adminTokens.total") }}: {{ accessTokens.length }}
+        </p>
 
         <p v-if="!loading && accessTokens.length === 0" class="tool-card__description">
-          {{ tr("No access tokens found.", "Δεν βρέθηκαν access tokens.") }}
+          {{ t("adminTokens.noAccessTokens") }}
         </p>
 
         <ul v-else class="admin-token-list" role="list">
@@ -562,46 +530,78 @@ if (activeToken.value) {
             :key="tokenItem.tokenId"
             class="admin-token-list__item"
           >
-            <div class="admin-token-list__meta">
-              <strong>{{ tokenItem.alias }}</strong>
-              <span>{{ tr("Type", "Τύπος") }}: {{ tokenItem.tokenType }}</span>
-              <span>id {{ tokenItem.tokenId }}</span>
-              <span>{{ tr("Expires", "Λήγει") }}: {{ formatDateTime(tokenItem.expiresAt) }}</span>
-              <span v-if="tokenItem.usageResetAt">
-                {{ tr("Usage reset", "Μηδενισμός χρήσης") }}:
-                {{ formatDateTime(tokenItem.usageResetAt) }}
-              </span>
-              <span>
-                {{ tr("Policies", "Πολιτικές") }}:
-                {{
-                  tokenItem.servicePolicies && Object.keys(tokenItem.servicePolicies).length > 0
-                    ? Object.entries(tokenItem.servicePolicies)
-                        .map(([serviceKey, preset]) => `${serviceKey}: ${preset}`)
-                        .join(", ")
-                    : tr("none", "κανένα")
-                }}
-              </span>
-              <span
-                v-if="Array.isArray(tokenItem.usageSummary) && tokenItem.usageSummary.length > 0"
-              >
-                {{ tokenItem.usageSummary.map((item) => formatUsageSummary(item)).join(" | ") }}
-              </span>
+            <div class="admin-token-list__head">
+              <strong class="admin-token-list__alias">{{ tokenItem.alias }}</strong>
+              <div class="admin-chip-row">
+                <span v-if="tokenItem.isActive" class="admin-chip admin-chip--active">{{
+                  t("adminTokens.active")
+                }}</span>
+                <span v-else-if="tokenItem.isRevoked" class="admin-chip admin-chip--revoked">{{
+                  t("adminTokens.revoked")
+                }}</span>
+                <span v-else-if="tokenItem.isExpired" class="admin-chip admin-chip--expired">{{
+                  t("adminTokens.expired")
+                }}</span>
+                <span v-if="tokenItem.renewedAt" class="admin-chip">
+                  {{ t("adminTokens.renewed") }} {{ formatDateTime(tokenItem.renewedAt) }}
+                </span>
+                <span v-if="tokenItem.extendedAt" class="admin-chip">
+                  {{ t("adminTokens.extended") }} {{ formatDateTime(tokenItem.extendedAt) }}
+                </span>
+              </div>
             </div>
 
-            <div class="admin-chip-row">
-              <span v-if="tokenItem.isActive" class="admin-chip">{{ tr("Active", "Ενεργό") }}</span>
-              <span v-else-if="tokenItem.isRevoked" class="admin-chip">{{
-                tr("Revoked", "Ανακλήθηκε")
-              }}</span>
-              <span v-else-if="tokenItem.isExpired" class="admin-chip">{{
-                tr("Expired", "Έληξε")
-              }}</span>
-              <span v-if="tokenItem.renewedAt" class="admin-chip">
-                {{ tr("Renewed", "Ανανεώθηκε") }} {{ formatDateTime(tokenItem.renewedAt) }}
-              </span>
-              <span v-if="tokenItem.extendedAt" class="admin-chip">
-                {{ tr("Extended", "Επεκτάθηκε") }} {{ formatDateTime(tokenItem.extendedAt) }}
-              </span>
+            <div class="admin-token-list__meta-grid">
+              <article class="admin-meta-item">
+                <span class="admin-meta-item__label">{{ t("adminTokens.type") }}</span>
+                <strong class="admin-meta-item__value">{{ tokenItem.tokenType }}</strong>
+              </article>
+              <article class="admin-meta-item">
+                <span class="admin-meta-item__label">{{ t("adminTokens.expires") }}</span>
+                <strong class="admin-meta-item__value">{{
+                  formatDateTime(tokenItem.expiresAt)
+                }}</strong>
+              </article>
+              <article class="admin-meta-item">
+                <span class="admin-meta-item__label">{{ t("adminTokens.id") }}</span>
+                <strong class="admin-meta-item__value admin-meta-item__value--mono">{{
+                  tokenItem.tokenId
+                }}</strong>
+              </article>
+              <article v-if="tokenItem.usageResetAt" class="admin-meta-item">
+                <span class="admin-meta-item__label">{{ t("adminTokens.usageReset") }}</span>
+                <strong class="admin-meta-item__value">{{
+                  formatDateTime(tokenItem.usageResetAt)
+                }}</strong>
+              </article>
+            </div>
+
+            <div class="admin-token-list__block">
+              <p class="admin-token-list__block-title">{{ t("adminTokens.policies") }}</p>
+              <div v-if="listPolicyEntries(tokenItem).length" class="admin-token-list__tags">
+                <span
+                  v-for="[serviceKey, preset] in listPolicyEntries(tokenItem)"
+                  :key="`${tokenItem.tokenId}-${serviceKey}`"
+                  class="admin-token-list__tag"
+                >
+                  <strong>{{ serviceKey }}</strong>
+                  <span>{{ preset }}</span>
+                </span>
+              </div>
+              <p v-else class="tool-card__description">{{ t("adminTokens.none") }}</p>
+            </div>
+
+            <div v-if="listUsageEntries(tokenItem).length" class="admin-token-list__block">
+              <p class="admin-token-list__block-title">{{ t("adminTokens.usageLabel") }}</p>
+              <div class="admin-token-list__usage-grid">
+                <article
+                  v-for="item in listUsageEntries(tokenItem)"
+                  :key="`${tokenItem.tokenId}-${item.serviceKey}`"
+                  class="admin-usage-item"
+                >
+                  {{ formatUsageSummary(item) }}
+                </article>
+              </div>
             </div>
 
             <div class="preview-card__actions">
@@ -611,7 +611,7 @@ if (activeToken.value) {
                 :disabled="saving || !tokenItem.isActive"
                 @click="runResetUsage(tokenItem)"
               >
-                {{ tr("Reset usage", "Μηδενισμός χρήσης") }}
+                {{ t("adminTokens.resetUsageAction") }}
               </button>
               <button
                 type="button"
@@ -619,7 +619,7 @@ if (activeToken.value) {
                 :disabled="saving"
                 @click="startEdit(tokenItem)"
               >
-                {{ tr("Edit", "Επεξεργασία") }}
+                {{ t("adminTokens.edit") }}
               </button>
               <button
                 type="button"
@@ -627,7 +627,7 @@ if (activeToken.value) {
                 :disabled="saving || tokenItem.isRevoked"
                 @click="runRevoke(tokenItem)"
               >
-                {{ tr("Revoke", "Ανάκληση") }}
+                {{ t("adminTokens.revoke") }}
               </button>
               <button
                 type="button"
@@ -635,7 +635,7 @@ if (activeToken.value) {
                 :disabled="saving || (!tokenItem.isRevoked && !tokenItem.isExpired)"
                 @click="runRenew(tokenItem)"
               >
-                {{ tr("Renew", "Ανανέωση") }}
+                {{ t("adminTokens.renew") }}
               </button>
               <button
                 type="button"
@@ -643,7 +643,7 @@ if (activeToken.value) {
                 :disabled="saving || tokenItem.isRevoked"
                 @click="runExtend(tokenItem)"
               >
-                {{ tr("Extend", "Επέκταση") }}
+                {{ t("adminTokens.extend") }}
               </button>
             </div>
           </li>
@@ -760,22 +760,112 @@ if (activeToken.value) {
 
 .admin-token-list__item {
   display: grid;
-  gap: 0.8rem;
-  padding: 0.85rem 0.95rem;
-  border: 1px solid var(--border);
-  border-radius: 0.95rem;
-  background: #ffffff;
+  gap: 0.95rem;
+  padding: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.05);
 }
 
-.admin-token-list__meta {
-  display: grid;
-  gap: 0.2rem;
-  font-size: 0.92rem;
-  color: var(--ink-soft);
+.admin-token-list__head {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
 }
 
-.admin-token-list__meta strong {
+.admin-token-list__alias {
+  font-size: 1rem;
+  line-height: 1.3;
   color: var(--ink);
+}
+
+.admin-token-list__meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.6rem;
+}
+
+/*
+  Metadata values are grouped into compact cards so admins can scan token type,
+  id, expiration, and reset timestamps without parsing long sentence lines.
+*/
+.admin-meta-item {
+  display: grid;
+  gap: 0.22rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 0.78rem;
+  padding: 0.55rem 0.65rem;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.admin-meta-item__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #0f766e;
+}
+
+.admin-meta-item__value {
+  font-size: 0.88rem;
+  color: var(--ink);
+}
+
+.admin-meta-item__value--mono {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
+.admin-token-list__block {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.admin-token-list__block-title {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #155e75;
+}
+
+.admin-token-list__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.admin-token-list__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(13, 148, 136, 0.28);
+  border-radius: 999px;
+  padding: 0.2rem 0.56rem;
+  background: rgba(20, 184, 166, 0.1);
+  font-size: 0.78rem;
+  color: #134e4a;
+}
+
+.admin-token-list__usage-grid {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.admin-usage-item {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 0.78rem;
+  padding: 0.5rem 0.62rem;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 0.84rem;
+  color: var(--ink-soft);
 }
 
 .admin-chip-row {
@@ -793,6 +883,24 @@ if (activeToken.value) {
   font-size: 0.78rem;
   color: #115e59;
   background: #ecfdf9;
+}
+
+.admin-chip--active {
+  border-color: #99f6e4;
+  background: #ccfbf1;
+  color: #115e59;
+}
+
+.admin-chip--revoked {
+  border-color: #fecaca;
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.admin-chip--expired {
+  border-color: #fde68a;
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .admin-reveal__token {
@@ -814,6 +922,10 @@ if (activeToken.value) {
 
 @media (max-width: 760px) {
   .admin-access__row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-token-list__meta-grid {
     grid-template-columns: 1fr;
   }
 }

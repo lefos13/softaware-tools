@@ -4,6 +4,7 @@
   work, and results appear as distinct phases across every service screen.
 */
 import { computed, inject, provide, ref, watch } from "vue";
+import { usePortalI18n } from "../../i18n";
 
 const props = defineProps({
   serviceKey: {
@@ -26,6 +27,7 @@ const props = defineProps({
 
 const portalAccess = inject("portalAccess");
 const portalRouter = inject("portalRouter");
+const { t } = usePortalI18n();
 const tokenInput = ref("");
 const submitError = ref("");
 const hasChosenAccess = ref(false);
@@ -63,25 +65,25 @@ const currentStep = computed(() => {
 const stepItems = computed(() => [
   {
     id: 1,
-    title: "Choose access",
-    description: "Use a token or continue with the free plan",
+    title: t("flowShell.steps.chooseAccess.title"),
+    description: t("flowShell.steps.chooseAccess.description"),
   },
   {
     id: 2,
-    title: "Configure request",
-    description: "Fill in the service form",
+    title: t("flowShell.steps.configureRequest.title"),
+    description: t("flowShell.steps.configureRequest.description"),
   },
   {
     id: 3,
-    title: "Review result",
-    description: "Download output and inspect usage",
+    title: t("flowShell.steps.reviewResult.title"),
+    description: t("flowShell.steps.reviewResult.description"),
   },
 ]);
 
 const quotaLabel = computed(() => {
   const service = currentService.value;
   if (!service?.enabled) {
-    return "Service disabled for current token";
+    return t("flowShell.quota.serviceDisabled");
   }
 
   const requests = service?.quota?.requests;
@@ -89,20 +91,28 @@ const quotaLabel = computed(() => {
   const parts = [];
 
   if (requests?.limit !== null) {
-    parts.push(`${requests.remaining}/${requests.limit} requests left`);
+    parts.push(
+      t("flowShell.quota.requestsLeft", {
+        remaining: requests.remaining,
+        limit: requests.limit,
+      })
+    );
   }
 
   if (words?.limit !== null) {
-    parts.push(`${words.remaining}/${words.limit} words left`);
+    parts.push(
+      t("flowShell.quota.wordsLeft", {
+        remaining: words.remaining,
+        limit: words.limit,
+      })
+    );
   }
 
-  return parts.length ? parts.join(" · ") : "Unlimited";
+  return parts.length ? parts.join(" · ") : t("flowShell.quota.unlimited");
 });
 
 const currentPlanLabel = computed(() =>
-  portalAccess?.planType?.value === "token"
-    ? "Paid token active for this browser session."
-    : "Free plan selected for this service."
+  portalAccess?.planType?.value === "token" ? t("flowShell.plan.token") : t("flowShell.plan.free")
 );
 
 watch(
@@ -124,7 +134,7 @@ const submitToken = async () => {
     tokenInput.value = "";
   } catch (caughtError) {
     submitError.value =
-      caughtError instanceof Error ? caughtError.message : "Token validation failed.";
+      caughtError instanceof Error ? caughtError.message : t("flowShell.errors.tokenValidation");
   }
 };
 
@@ -137,7 +147,7 @@ const continueWithFreePlan = async () => {
     tokenInput.value = "";
   } catch (caughtError) {
     submitError.value =
-      caughtError instanceof Error ? caughtError.message : "Could not continue with free plan.";
+      caughtError instanceof Error ? caughtError.message : t("flowShell.errors.freePlanContinue");
   }
 };
 
@@ -156,7 +166,7 @@ const openDashboard = () => {
 
 <template>
   <section class="service-flow-shell">
-    <ol class="service-flow-shell__steps" :aria-label="`${serviceKey} flow steps`">
+    <ol class="service-flow-shell__steps" :aria-label="t('flowShell.stepsAria', { serviceKey })">
       <li
         v-for="step in stepItems"
         :key="step.id"
@@ -176,10 +186,9 @@ const openDashboard = () => {
 
     <div v-if="!hasChosenAccess" class="tool-card service-flow-shell__entry">
       <div class="service-flow-shell__entry-copy">
-        <p class="merge-step__title">Step 1 · Token or free usage</p>
+        <p class="merge-step__title">{{ t("flowShell.entry.stepTitle") }}</p>
         <p class="tool-card__description">
-          Choose a paid token to unlock the owner dashboard and token limits, or continue with the
-          free plan for this service.
+          {{ t("flowShell.entry.description") }}
         </p>
       </div>
 
@@ -189,7 +198,7 @@ const openDashboard = () => {
           type="password"
           class="field"
           :disabled="portalAccess?.loading?.value || !apiHealthy"
-          placeholder="Enter access token"
+          :placeholder="t('flowShell.entry.tokenPlaceholder')"
           autocomplete="off"
         />
         <div class="service-flow-shell__buttons">
@@ -199,7 +208,11 @@ const openDashboard = () => {
             :disabled="portalAccess?.loading?.value || !apiHealthy"
             @click="submitToken"
           >
-            {{ portalAccess?.loading?.value ? "Checking..." : "Apply token" }}
+            {{
+              portalAccess?.loading?.value
+                ? t("flowShell.entry.checking")
+                : t("flowShell.entry.applyToken")
+            }}
           </button>
           <button
             type="button"
@@ -207,7 +220,7 @@ const openDashboard = () => {
             :disabled="portalAccess?.loading?.value"
             @click="continueWithFreePlan"
           >
-            Continue free
+            {{ t("flowShell.entry.continueFree") }}
           </button>
         </div>
       </div>
@@ -222,7 +235,9 @@ const openDashboard = () => {
 
     <div v-else class="tool-card service-flow-shell__status">
       <div class="service-flow-shell__entry-copy">
-        <p class="merge-step__title">Step {{ currentStep }} · Active plan</p>
+        <p class="merge-step__title">
+          {{ t("flowShell.activePlan.stepTitle", { step: currentStep }) }}
+        </p>
         <p class="tool-card__description">{{ currentPlanLabel }}</p>
         <p v-if="currentService" class="tool-card__description">{{ quotaLabel }}</p>
       </div>
@@ -233,10 +248,10 @@ const openDashboard = () => {
           class="button button--secondary"
           @click="openDashboard"
         >
-          Open dashboard
+          {{ t("flowShell.activePlan.openDashboard") }}
         </button>
         <button type="button" class="button button--secondary" @click="clearChosenAccess">
-          Change access
+          {{ t("flowShell.activePlan.changeAccess") }}
         </button>
       </div>
     </div>

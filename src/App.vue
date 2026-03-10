@@ -10,7 +10,25 @@ import { usePortalAccess } from "./composables/usePortalAccess";
 import { createPortalI18n, PORTAL_I18N_KEY } from "./i18n";
 import { createPortalRouter } from "./router/router";
 
-const apiBaseUrl = ref(import.meta.env.VITE_API_BASE_URL || "http://localhost:3000");
+/*
+  API calls must target the same host device that serves the UI when the app
+  is opened from another phone/laptop on the LAN, otherwise localhost points
+  to the visiting device and the backend becomes unreachable.
+*/
+const resolveApiBaseUrl = () => {
+  const configuredBaseUrl = String(import.meta.env.VITE_API_BASE_URL || "").trim();
+  if (configuredBaseUrl) {
+    return configuredBaseUrl;
+  }
+
+  if (typeof window === "undefined") {
+    return "http://localhost:3000";
+  }
+
+  return `http://${window.location.hostname || "localhost"}:3000`;
+};
+
+const apiBaseUrl = ref(resolveApiBaseUrl());
 const i18n = createPortalI18n();
 
 const { checking, hasChecked, isHealthy, status, message, requestId, error, lastCheckedAt } =
@@ -38,6 +56,10 @@ const showGuardOverlay = computed(() => hasChecked.value && !isHealthy.value);
 const activeRouteName = computed(() => router.currentRoute.value.name);
 const currentPath = computed(() => router.currentPath.value);
 const currentComponent = computed(() => router.currentComponent.value);
+/*
+  Dashboard remains a contextual owner action near language controls, so the
+  top navigation excludes it to prevent duplicate entry points in the header.
+*/
 const navigationRoutes = computed(() =>
   router.routes.filter((route) => {
     if (
@@ -64,7 +86,7 @@ const navigationRoutes = computed(() =>
     }
 
     if (route.name === "dashboard") {
-      return portalAccess.planType.value === "token" || activeRouteName.value === "dashboard";
+      return false;
     }
 
     return true;
@@ -72,11 +94,15 @@ const navigationRoutes = computed(() =>
 );
 const pageTitle = computed(() => i18n.t(`routes.${activeRouteName.value}`, {}, "Softaware Tools"));
 const statusLabel = computed(() => (checking.value ? i18n.t("app.checking") : status.value));
-const localeToggleLabel = computed(() =>
-  i18n.locale.value === "en" ? i18n.t("languages.el") : i18n.t("languages.en")
-);
-const currentLanguage = computed(() => i18n.t(`languages.${i18n.locale.value}`));
 const toRouteLabel = (routeName) => i18n.t(`routes.${routeName}`, {}, routeName);
+const currentPlanType = computed(() => portalAccess?.planType?.value || "free");
+const hasResolvedPlan = computed(() => Boolean(portalAccess?.plan?.value));
+const setLocale = (locale) => {
+  if (locale === i18n.locale.value) {
+    return;
+  }
+  i18n.locale.value = locale;
+};
 
 /*
   Breadcrumbs provide one-click upward navigation from inner routes while
@@ -212,11 +238,11 @@ onBeforeUnmount(() => {
                 · {{ i18n.t("app.timeNow", { time: i18n.formatTime(lastCheckedAt) }) }}
               </span>
             </p>
-            <p v-if="portalAccess.plan" class="hero__status">
-              Plan: {{ portalAccess.planType === "token" ? "Token" : "Free" }}
+            <p v-if="hasResolvedPlan" class="hero__status">
+              Plan: {{ currentPlanType === "token" ? "Token" : "Free" }}
             </p>
             <button
-              v-if="portalAccess.planType === 'token'"
+              v-if="currentPlanType === 'token'"
               type="button"
               class="button button--secondary"
               @click="openDashboard"
@@ -224,15 +250,30 @@ onBeforeUnmount(() => {
               {{ i18n.t("routes.dashboard", {}, "Dashboard") }}
             </button>
             <div class="language-toggle" :aria-label="i18n.t('app.languageLabel')">
-              <span class="language-toggle__label">{{ currentLanguage }}</span>
-              <button
-                type="button"
-                class="button button--secondary language-toggle__button"
-                :aria-label="i18n.t('app.languageToggle')"
-                @click="i18n.toggleLocale"
+              <div
+                class="language-segmented"
+                role="group"
+                :aria-label="i18n.t('app.languageLabel')"
               >
-                {{ localeToggleLabel }}
-              </button>
+                <button
+                  type="button"
+                  class="language-segmented__item"
+                  :class="{ 'language-segmented__item--active': i18n.locale === 'en' }"
+                  :aria-pressed="i18n.locale === 'en'"
+                  @click="setLocale('en')"
+                >
+                  {{ i18n.t("languages.en") }}
+                </button>
+                <button
+                  type="button"
+                  class="language-segmented__item"
+                  :class="{ 'language-segmented__item--active': i18n.locale === 'el' }"
+                  :aria-pressed="i18n.locale === 'el'"
+                  @click="setLocale('el')"
+                >
+                  {{ i18n.t("languages.el") }}
+                </button>
+              </div>
             </div>
           </div>
         </div>

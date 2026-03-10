@@ -9,8 +9,7 @@ import { fetchAccessDashboard } from "../services/accessPlanService";
 
 const portalContext = inject("portalContext");
 const portalAccess = inject("portalAccess");
-const { locale } = usePortalI18n();
-const tr = (en, el) => (locale.value === "el" ? el : en);
+const { locale, t } = usePortalI18n();
 
 const loading = ref(false);
 const error = ref("");
@@ -59,9 +58,7 @@ const loadDashboard = async () => {
     );
   } catch (caughtError) {
     error.value =
-      caughtError instanceof Error
-        ? caughtError.message
-        : tr("Could not load the dashboard.", "Δεν ήταν δυνατή η φόρτωση του dashboard.");
+      caughtError instanceof Error ? caughtError.message : t("accessDashboard.errors.loadFailed");
   } finally {
     loading.value = false;
   }
@@ -73,15 +70,25 @@ const formatQuota = (serviceItem) => {
   const parts = [];
 
   if (requests?.limit !== null) {
-    parts.push(`${requests.remaining}/${requests.limit} requests`);
+    parts.push(
+      t("accessDashboard.quota.requests", {
+        remaining: requests.remaining,
+        limit: requests.limit,
+      })
+    );
   }
 
   if (words?.limit !== null) {
-    parts.push(`${words.remaining}/${words.limit} words`);
+    parts.push(
+      t("accessDashboard.quota.words", {
+        remaining: words.remaining,
+        limit: words.limit,
+      })
+    );
   }
 
   if (parts.length === 0) {
-    return tr("Unlimited", "Απεριόριστο");
+    return t("accessDashboard.unlimited");
   }
 
   return parts.join(" · ");
@@ -98,13 +105,18 @@ const canGoNext = computed(() => currentPage.value < totalPages.value);
 const formatDateTime = (value) =>
   value
     ? new Date(value).toLocaleString(locale.value === "el" ? "el-GR" : "en-US")
-    : tr("n/a", "δ/υ");
+    : t("accessDashboard.notAvailable");
 
 const formatNumber = (value) =>
   new Intl.NumberFormat(locale.value === "el" ? "el-GR" : "en-US").format(Number(value || 0));
 
 const formatStatus = (value) =>
-  value === "success" ? tr("Success", "Επιτυχία") : tr("Failed", "Αποτυχία");
+  value === "success" ? t("accessDashboard.status.success") : t("accessDashboard.status.failed");
+
+const formatServiceFlags = (flags) => {
+  const list = Array.isArray(flags) ? flags.filter(Boolean) : [];
+  return list.length ? list.join(", ") : t("accessDashboard.notAvailable");
+};
 
 const toggleSort = (columnKey) => {
   if (!historySortColumns.includes(columnKey)) {
@@ -164,50 +176,50 @@ onMounted(() => {
 <template>
   <section class="flow-view">
     <div class="section-head section-head--spaced">
-      <h2 class="section-head__title">{{ tr("Owner dashboard", "Dashboard κατόχου") }}</h2>
+      <h2 class="section-head__title">{{ t("accessDashboard.title") }}</h2>
       <p class="section-head__subtitle">
-        {{
-          tr(
-            "See your token limits, remaining usage, and recent service actions.",
-            "Δείτε τα όρια του token, το υπόλοιπο χρήσης και τις πρόσφατες ενέργειες υπηρεσιών."
-          )
-        }}
+        {{ t("accessDashboard.subtitle") }}
       </p>
     </div>
 
     <div v-if="portalAccess?.planType?.value !== 'token'" class="tool-card">
       <p class="tool-card__description">
-        {{
-          tr(
-            "Apply a paid token from any service screen to unlock the owner dashboard.",
-            "Εφαρμόστε paid token από οποιαδήποτε οθόνη υπηρεσίας για να ξεκλειδώσετε το owner dashboard."
-          )
-        }}
+        {{ t("accessDashboard.tokenOnlyMessage") }}
       </p>
     </div>
 
     <div v-else class="dashboard-grid">
-      <div class="tool-card">
-        <p class="merge-step__title">{{ tr("Token overview", "Επισκόπηση token") }}</p>
-        <p class="tool-card__description">
+      <div class="tool-card dashboard-token-overview">
+        <p class="merge-step__title">{{ t("accessDashboard.overviewTitle") }}</p>
+        <p class="tool-card__description dashboard-token-overview__row">
           <strong>{{ dashboard?.token?.alias || portalAccess?.plan?.token?.alias }}</strong>
         </p>
-        <p class="tool-card__description">
-          {{ tr("Expires", "Λήξη") }}:
-          <strong>{{ dashboard?.token?.expiresAt || portalAccess?.plan?.token?.expiresAt }}</strong>
+        <p class="tool-card__description dashboard-token-overview__row">
+          <span class="dashboard-token-overview__label">{{ t("accessDashboard.expires") }}</span>
+          <strong class="dashboard-token-overview__value">
+            {{
+              formatDateTime(
+                dashboard?.token?.expiresAt || portalAccess?.plan?.token?.expiresAt || ""
+              )
+            }}
+          </strong>
         </p>
-        <p class="tool-card__description">
-          {{ tr("Enabled services", "Ενεργές υπηρεσίες") }}:
-          {{
-            (dashboard?.token?.serviceFlags || portalAccess?.plan?.token?.serviceFlags || []).join(
-              ", "
-            )
-          }}
+        <p class="tool-card__description dashboard-token-overview__row">
+          <span class="dashboard-token-overview__label">{{
+            t("accessDashboard.enabledServices")
+          }}</span>
+          <strong class="dashboard-token-overview__value">
+            {{
+              formatServiceFlags(
+                dashboard?.token?.serviceFlags || portalAccess?.plan?.token?.serviceFlags || []
+              )
+            }}
+          </strong>
         </p>
       </div>
 
       <div class="tool-card">
-        <p class="merge-step__title">{{ tr("Usage by service", "Χρήση ανά υπηρεσία") }}</p>
+        <p class="merge-step__title">{{ t("accessDashboard.usageByService") }}</p>
         <div class="dashboard-service-list">
           <article
             v-for="service in services"
@@ -222,10 +234,10 @@ onMounted(() => {
 
       <div class="tool-card dashboard-history">
         <div class="dashboard-history__head">
-          <p class="merge-step__title">{{ tr("Recent activity", "Πρόσφατη δραστηριότητα") }}</p>
+          <p class="merge-step__title">{{ t("accessDashboard.recentActivity") }}</p>
           <div class="dashboard-history__filters">
             <select v-model="selectedService" class="rotation-select">
-              <option value="">{{ tr("All services", "Όλες οι υπηρεσίες") }}</option>
+              <option value="">{{ t("accessDashboard.filters.allServices") }}</option>
               <option
                 v-for="service in services"
                 :key="service.serviceKey"
@@ -235,9 +247,9 @@ onMounted(() => {
               </option>
             </select>
             <select v-model="selectedStatus" class="rotation-select">
-              <option value="">{{ tr("All statuses", "Όλες οι καταστάσεις") }}</option>
-              <option value="success">{{ tr("Success", "Επιτυχία") }}</option>
-              <option value="failed">{{ tr("Failed", "Αποτυχία") }}</option>
+              <option value="">{{ t("accessDashboard.filters.allStatuses") }}</option>
+              <option value="success">{{ t("accessDashboard.status.success") }}</option>
+              <option value="failed">{{ t("accessDashboard.status.failed") }}</option>
             </select>
             <select v-model.number="pageSize" class="rotation-select">
               <option :value="10">10</option>
@@ -248,7 +260,7 @@ onMounted(() => {
         </div>
 
         <p v-if="loading" class="tool-card__description">
-          {{ tr("Loading dashboard...", "Φόρτωση dashboard...") }}
+          {{ t("accessDashboard.loading") }}
         </p>
         <p v-else-if="error" class="tool-card__description tool-card__description--error">
           {{ error }}
@@ -263,7 +275,7 @@ onMounted(() => {
                     class="dashboard-history__sort-btn"
                     @click="toggleSort('createdAt')"
                   >
-                    {{ tr("Date", "Ημερομηνία") }} {{ sortIndicator("createdAt") }}
+                    {{ t("accessDashboard.table.date") }} {{ sortIndicator("createdAt") }}
                   </button>
                 </th>
                 <th>
@@ -272,7 +284,7 @@ onMounted(() => {
                     class="dashboard-history__sort-btn"
                     @click="toggleSort('operationName')"
                   >
-                    {{ tr("Operation", "Ενέργεια") }} {{ sortIndicator("operationName") }}
+                    {{ t("accessDashboard.table.operation") }} {{ sortIndicator("operationName") }}
                   </button>
                 </th>
                 <th>
@@ -281,7 +293,7 @@ onMounted(() => {
                     class="dashboard-history__sort-btn"
                     @click="toggleSort('serviceKey')"
                   >
-                    {{ tr("Service", "Υπηρεσία") }} {{ sortIndicator("serviceKey") }}
+                    {{ t("accessDashboard.table.service") }} {{ sortIndicator("serviceKey") }}
                   </button>
                 </th>
                 <th>
@@ -290,7 +302,7 @@ onMounted(() => {
                     class="dashboard-history__sort-btn"
                     @click="toggleSort('status')"
                   >
-                    {{ tr("Status", "Κατάσταση") }} {{ sortIndicator("status") }}
+                    {{ t("accessDashboard.table.status") }} {{ sortIndicator("status") }}
                   </button>
                 </th>
                 <th class="dashboard-history__table-number">
@@ -299,7 +311,8 @@ onMounted(() => {
                     class="dashboard-history__sort-btn"
                     @click="toggleSort('consumedRequests')"
                   >
-                    {{ tr("Requests", "Αιτήματα") }} {{ sortIndicator("consumedRequests") }}
+                    {{ t("accessDashboard.table.requests") }}
+                    {{ sortIndicator("consumedRequests") }}
                   </button>
                 </th>
                 <th class="dashboard-history__table-number">
@@ -308,7 +321,7 @@ onMounted(() => {
                     class="dashboard-history__sort-btn"
                     @click="toggleSort('consumedWords')"
                   >
-                    {{ tr("Words", "Λέξεις") }} {{ sortIndicator("consumedWords") }}
+                    {{ t("accessDashboard.table.words") }} {{ sortIndicator("consumedWords") }}
                   </button>
                 </th>
               </tr>
@@ -330,7 +343,7 @@ onMounted(() => {
           </table>
 
           <p v-else class="tool-card__description">
-            {{ tr("No activity yet.", "Δεν υπάρχει δραστηριότητα ακόμα.") }}
+            {{ t("accessDashboard.empty") }}
           </p>
 
           <div v-if="historyItems.length" class="dashboard-history__pagination">
@@ -340,14 +353,15 @@ onMounted(() => {
               :disabled="!canGoPrev"
               @click="goToPage(currentPage - 1)"
             >
-              {{ tr("Previous", "Προηγούμενο") }}
+              {{ t("accessDashboard.pagination.previous") }}
             </button>
             <span>
               {{
-                tr(
-                  `Page ${currentPage} of ${totalPages} (${formatNumber(totalHistoryItems)} total)`,
-                  `Σελίδα ${currentPage} από ${totalPages} (${formatNumber(totalHistoryItems)} σύνολο)`
-                )
+                t("accessDashboard.pagination.summary", {
+                  page: currentPage,
+                  totalPages,
+                  totalItems: formatNumber(totalHistoryItems),
+                })
               }}
             </span>
             <button
@@ -356,7 +370,7 @@ onMounted(() => {
               :disabled="!canGoNext"
               @click="goToPage(currentPage + 1)"
             >
-              {{ tr("Next", "Επόμενο") }}
+              {{ t("accessDashboard.pagination.next") }}
             </button>
           </div>
         </div>
@@ -388,6 +402,29 @@ onMounted(() => {
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.84);
+}
+
+.dashboard-token-overview {
+  background: linear-gradient(180deg, rgba(240, 249, 255, 0.95), rgba(248, 250, 252, 0.98));
+  border-color: rgba(14, 116, 144, 0.2);
+}
+
+.dashboard-token-overview__row {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.dashboard-token-overview__label {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.dashboard-token-overview__value {
+  color: #0f172a;
 }
 
 .dashboard-history__head,
