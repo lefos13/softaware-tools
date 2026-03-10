@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   Images-to-PDF UI follows the existing flow pattern with multi-file upload and
   direct download, covering a frequent admin/document assembly use case.
@@ -6,15 +6,17 @@
 import { computed, inject, ref, watch } from "vue";
 import { usePortalI18n } from "../../i18n";
 import { pdfFromImages } from "../../services/pdfService";
+import type { PortalI18n } from "../../types/shared";
+import type { ServiceFlowShellContext } from "../../types/services";
 
-const props = defineProps({
-  apiBaseUrl: { type: String, required: true },
-  apiHealthy: { type: Boolean, required: true },
-});
-const { t } = usePortalI18n();
-const serviceFlowShell = inject("serviceFlowShell", null);
+const props = defineProps<{
+  apiBaseUrl: string;
+  apiHealthy: boolean;
+}>();
+const { t } = usePortalI18n() as PortalI18n;
+const serviceFlowShell = inject<ServiceFlowShellContext | null>("serviceFlowShell", null);
 
-const files = ref([]);
+const files = ref<File[]>([]);
 const loading = ref(false);
 const error = ref("");
 const message = ref("");
@@ -44,12 +46,13 @@ watch(
 
 const canRun = computed(() => props.apiHealthy && files.value.length > 0 && !loading.value);
 
-const onFilesSelected = (event) => {
-  files.value = Array.from(event.target.files || []);
+const onFilesSelected = (event: Event): void => {
+  const input = event.target as HTMLInputElement | null;
+  files.value = Array.from(input?.files || []);
   error.value = "";
 };
 
-const clearPreviousResult = () => {
+const clearPreviousResult = (): void => {
   if (outputUrl.value) {
     URL.revokeObjectURL(outputUrl.value);
   }
@@ -60,7 +63,7 @@ const clearPreviousResult = () => {
   requestId.value = "";
 };
 
-const run = async () => {
+const run = async (): Promise<void> => {
   clearPreviousResult();
   error.value = "";
 

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   Service metadata is now resolved through the shared translation store so the
   PDF hub stays easy to maintain while showing localized, plain-language copy.
@@ -6,11 +6,24 @@
 import { inject } from "vue";
 import ToolCard from "../components/ToolCard.vue";
 import { usePortalI18n } from "../i18n";
+import type { PortalI18n, PortalRouter } from "../types/shared";
+import { portalRouterKey } from "../types/shared";
 
-const portalRouter = inject("portalRouter");
-const { t } = usePortalI18n();
+interface LauncherService {
+  title: () => string;
+  graphic: string;
+  description: () => string;
+  route: string;
+}
 
-const pdfServices = [
+const portalRouter = inject(portalRouterKey) as PortalRouter | undefined;
+const { t } = usePortalI18n() as PortalI18n;
+
+if (!portalRouter) {
+  throw new Error("Portal router is not available.");
+}
+
+const pdfServices: LauncherService[] = [
   {
     title: () => t("services.pdfMerge.title"),
     graphic: "pdf-merge",
@@ -61,7 +74,7 @@ const pdfServices = [
   },
 ];
 
-const openService = (route) => {
+const openService = (route: string) => {
   portalRouter.navigate(route);
 };
 </script>

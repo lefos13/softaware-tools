@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   The superadmin screen is now dedicated to access-token lifecycle management
   so browser admins can create, edit, revoke, renew, and extend service tokens
@@ -15,12 +15,24 @@ import {
   revokeAccessToken,
   updateAccessToken,
 } from "../services/adminTokenService";
+import type { PortalContext, PortalI18n } from "../types/shared";
+import { portalContextKey } from "../types/shared";
+import type { AccessTokenRecord } from "../types/services";
 
-const portalContext = inject("portalContext");
-const { locale, t } = usePortalI18n();
+type AdminServicePoliciesForm = Record<string, string>;
+
+interface AdminPolicyPresetMap {
+  [serviceKey: string]: string[];
+}
+
+const portalContext = inject(portalContextKey) as PortalContext | undefined;
+const { locale, t } = usePortalI18n() as PortalI18n;
+if (!portalContext) {
+  throw new Error("Portal context is not available.");
+}
 const SUPERADMIN_TOKEN_STORAGE_KEY = "admin_tokens_superadmin_token";
 const DEFAULT_TTL = "30d";
-const formatDateTime = (value, fallbackKey = "adminTokens.notAvailable") =>
+const formatDateTime = (value?: string, fallbackKey = "adminTokens.notAvailable"): string =>
   value
     ? new Date(value).toLocaleString(locale.value === "el" ? "el-GR" : "en-US")
     : t(fallbackKey);
@@ -31,12 +43,12 @@ const loading = ref(false);
 const saving = ref(false);
 const error = ref("");
 const success = ref("");
-const accessTokens = ref([]);
-const availableServicePolicies = ref({});
+const accessTokens = ref<AccessTokenRecord[]>([]);
+const availableServicePolicies = ref<AdminPolicyPresetMap>({});
 const revealedToken = ref("");
 const revealedTokenLabel = ref("");
 const editingTokenId = ref("");
-const buildEmptyPolicies = () => ({
+const buildEmptyPolicies = (): AdminServicePoliciesForm => ({
   books_greek_editor: "",
   image: "",
   pdf: "",
@@ -56,7 +68,7 @@ const sortedServicePolicies = computed(() =>
   )
 );
 
-const normalizeSelectedPolicies = (policies) =>
+const normalizeSelectedPolicies = (policies: AdminServicePoliciesForm): Record<string, string> =>
   Object.fromEntries(
     Object.entries(policies || {}).filter(([, preset]) => String(preset || "").trim())
   );
@@ -65,12 +77,14 @@ const normalizeSelectedPolicies = (policies) =>
   Usage summaries must distinguish consumed versus remaining quota, otherwise
   word-based plans can look healthy while the backend has already exhausted them.
 */
-const formatUsageSummary = (serviceItem) => {
+const formatUsageSummary = (
+  serviceItem: NonNullable<AccessTokenRecord["usageSummary"]>[number]
+): string => {
   const requestQuota = serviceItem?.quota?.requests;
   const wordQuota = serviceItem?.quota?.words;
   const parts = [];
 
-  if (requestQuota?.limit !== null) {
+  if (requestQuota && requestQuota.limit !== null) {
     parts.push(
       t("adminTokens.usage.requestsUsed", {
         used: requestQuota.used,
@@ -79,7 +93,7 @@ const formatUsageSummary = (serviceItem) => {
     );
   }
 
-  if (wordQuota?.limit !== null) {
+  if (wordQuota && wordQuota.limit !== null) {
     const usedLabel = t("adminTokens.usage.wordsUsed", {
       used: wordQuota.used,
       limit: wordQuota.limit,
@@ -95,17 +109,19 @@ const formatUsageSummary = (serviceItem) => {
   Token rows expose many independent fields, so these helpers normalize policy
   and usage blocks into arrays for structured card rendering in the template.
 */
-const listPolicyEntries = (tokenItem) =>
+const listPolicyEntries = (tokenItem: AccessTokenRecord): Array<[string, string]> =>
   tokenItem?.servicePolicies && Object.keys(tokenItem.servicePolicies).length > 0
-    ? Object.entries(tokenItem.servicePolicies)
+    ? (Object.entries(tokenItem.servicePolicies) as Array<[string, string]>)
     : [];
 
-const listUsageEntries = (tokenItem) =>
+const listUsageEntries = (
+  tokenItem: AccessTokenRecord
+): NonNullable<AccessTokenRecord["usageSummary"]> =>
   Array.isArray(tokenItem?.usageSummary) && tokenItem.usageSummary.length > 0
     ? tokenItem.usageSummary
     : [];
 
-const resetForm = () => {
+const resetForm = (): void => {
   editingTokenId.value = "";
   form.value = {
     alias: "",
@@ -114,12 +130,12 @@ const resetForm = () => {
   };
 };
 
-const clearReveal = () => {
+const clearReveal = (): void => {
   revealedToken.value = "";
   revealedTokenLabel.value = "";
 };
 
-const clearSuperadminToken = () => {
+const clearSuperadminToken = (): void => {
   activeToken.value = "";
   tokenInput.value = "";
   sessionStorage.removeItem(SUPERADMIN_TOKEN_STORAGE_KEY);
@@ -131,7 +147,7 @@ const clearSuperadminToken = () => {
   success.value = "";
 };
 
-const loadTokens = async () => {
+const loadTokens = async (): Promise<void> => {
   if (!activeToken.value) {
     return;
   }
@@ -144,7 +160,12 @@ const loadTokens = async () => {
     accessTokens.value = Array.isArray(data.tokens) ? data.tokens : [];
     availableServicePolicies.value =
       data?.availableServicePolicies && typeof data.availableServicePolicies === "object"
-        ? data.availableServicePolicies
+        ? Object.fromEntries(
+            Object.entries(data.availableServicePolicies).map(([serviceKey, presets]) => [
+              serviceKey,
+              Array.isArray(presets) ? presets.map((preset) => String(preset)) : [],
+            ])
+          )
         : {};
   } catch (loadError) {
     const message =
@@ -156,7 +177,7 @@ const loadTokens = async () => {
   }
 };
 
-const authenticate = async () => {
+const authenticate = async (): Promise<void> => {
   const nextToken = tokenInput.value.trim();
   if (!nextToken) {
     error.value = t("adminTokens.errors.enterSuperadminFirst");
@@ -168,7 +189,7 @@ const authenticate = async () => {
   await loadTokens();
 };
 
-const startEdit = (tokenItem) => {
+const startEdit = (tokenItem: AccessTokenRecord): void => {
   editingTokenId.value = tokenItem.tokenId;
   form.value = {
     alias: tokenItem.alias || "",
@@ -183,7 +204,7 @@ const startEdit = (tokenItem) => {
   success.value = "";
 };
 
-const submitForm = async () => {
+const submitForm = async (): Promise<void> => {
   if (!activeToken.value) {
     return;
   }
@@ -231,7 +252,7 @@ const submitForm = async () => {
   }
 };
 
-const runRevoke = async (tokenItem) => {
+const runRevoke = async (tokenItem: AccessTokenRecord): Promise<void> => {
   if (!activeToken.value) {
     return;
   }
@@ -263,12 +284,12 @@ const runRevoke = async (tokenItem) => {
   }
 };
 
-const promptTtl = (titleKey, params = {}) => {
+const promptTtl = (titleKey: string, params: Record<string, unknown> = {}): string => {
   const nextValue = window.prompt(t(titleKey, params), DEFAULT_TTL);
   return nextValue ? nextValue.trim() : "";
 };
 
-const runRenew = async (tokenItem) => {
+const runRenew = async (tokenItem: AccessTokenRecord): Promise<void> => {
   if (!activeToken.value) {
     return;
   }
@@ -294,7 +315,7 @@ const runRenew = async (tokenItem) => {
       }
     );
     revealedToken.value = result?.token || "";
-    revealedTokenLabel.value = result?.record?.alias || tokenItem.alias;
+    revealedTokenLabel.value = result?.record?.alias || tokenItem.alias || "";
     accessTokens.value = accessTokens.value.map((item) =>
       item.tokenId === result?.record?.tokenId ? result.record : item
     );
@@ -306,7 +327,7 @@ const runRenew = async (tokenItem) => {
   }
 };
 
-const runExtend = async (tokenItem) => {
+const runExtend = async (tokenItem: AccessTokenRecord): Promise<void> => {
   if (!activeToken.value) {
     return;
   }
@@ -339,7 +360,7 @@ const runExtend = async (tokenItem) => {
   }
 };
 
-const runResetUsage = async (tokenItem) => {
+const runResetUsage = async (tokenItem: AccessTokenRecord): Promise<void> => {
   if (!activeToken.value) {
     return;
   }
@@ -653,280 +674,4 @@ if (activeToken.value) {
   </section>
 </template>
 
-<style scoped>
-/*
-  The token manager keeps authentication, token creation, and token catalog
-  actions on one screen so superadmins can operate without extra route hops.
-*/
-.admin-access,
-.admin-list,
-.admin-detail,
-.admin-reveal {
-  color: var(--ink);
-  background: var(--surface);
-}
-
-.admin-access .tool-card__title,
-.admin-list .tool-card__title,
-.admin-detail .tool-card__title,
-.admin-reveal .tool-card__title {
-  color: var(--ink);
-}
-
-.admin-access .tool-card__description,
-.admin-list .tool-card__description,
-.admin-detail .tool-card__description,
-.admin-reveal .tool-card__description {
-  color: var(--ink-soft);
-}
-
-.admin-list .tool-card__description--error,
-.admin-detail .tool-card__description--error,
-.admin-access .tool-card__description--error,
-.admin-reveal .tool-card__description--error {
-  color: var(--error);
-}
-
-.admin-kicker {
-  margin: 0 0 0.35rem;
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #0f766e;
-  font-weight: 700;
-}
-
-.admin-access--highlight {
-  border-color: #8fd4cd;
-  background: linear-gradient(180deg, #f7fffd, #ffffff);
-}
-
-.admin-access__row {
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto auto;
-  gap: 0.6rem;
-  align-items: center;
-}
-
-.field {
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 0.68rem 0.78rem;
-  font-size: 0.94rem;
-  background: #ffffff;
-  color: var(--ink);
-}
-
-.field:focus {
-  outline: 2px solid rgba(13, 148, 136, 0.26);
-  outline-offset: 1px;
-}
-
-.admin-layout {
-  display: grid;
-  grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
-  gap: 1rem;
-}
-
-.admin-form {
-  display: grid;
-  gap: 0.9rem;
-}
-
-.admin-form__field {
-  display: grid;
-  gap: 0.45rem;
-  color: var(--ink-soft);
-}
-
-.admin-form__field > span {
-  color: var(--ink);
-  font-weight: 700;
-}
-
-.admin-policy-grid {
-  display: grid;
-  gap: 0.55rem;
-}
-
-.admin-token-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.75rem;
-}
-
-.admin-token-list__item {
-  display: grid;
-  gap: 0.95rem;
-  padding: 1rem;
-  border: 1px solid rgba(148, 163, 184, 0.32);
-  border-radius: 1rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.05);
-}
-
-.admin-token-list__head {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-}
-
-.admin-token-list__alias {
-  font-size: 1rem;
-  line-height: 1.3;
-  color: var(--ink);
-}
-
-.admin-token-list__meta-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.6rem;
-}
-
-/*
-  Metadata values are grouped into compact cards so admins can scan token type,
-  id, expiration, and reset timestamps without parsing long sentence lines.
-*/
-.admin-meta-item {
-  display: grid;
-  gap: 0.22rem;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 0.78rem;
-  padding: 0.55rem 0.65rem;
-  background: rgba(255, 255, 255, 0.88);
-}
-
-.admin-meta-item__label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #0f766e;
-}
-
-.admin-meta-item__value {
-  font-size: 0.88rem;
-  color: var(--ink);
-}
-
-.admin-meta-item__value--mono {
-  font-family:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
-    monospace;
-  font-size: 0.8rem;
-  word-break: break-all;
-}
-
-.admin-token-list__block {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.admin-token-list__block-title {
-  margin: 0;
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #155e75;
-}
-
-.admin-token-list__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.admin-token-list__tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: 1px solid rgba(13, 148, 136, 0.28);
-  border-radius: 999px;
-  padding: 0.2rem 0.56rem;
-  background: rgba(20, 184, 166, 0.1);
-  font-size: 0.78rem;
-  color: #134e4a;
-}
-
-.admin-token-list__usage-grid {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.admin-usage-item {
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 0.78rem;
-  padding: 0.5rem 0.62rem;
-  background: rgba(255, 255, 255, 0.92);
-  font-size: 0.84rem;
-  color: var(--ink-soft);
-}
-
-.admin-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.admin-chip {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid #b9e5df;
-  border-radius: 999px;
-  padding: 0.22rem 0.58rem;
-  font-size: 0.78rem;
-  color: #115e59;
-  background: #ecfdf9;
-}
-
-.admin-chip--active {
-  border-color: #99f6e4;
-  background: #ccfbf1;
-  color: #115e59;
-}
-
-.admin-chip--revoked {
-  border-color: #fecaca;
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.admin-chip--expired {
-  border-color: #fde68a;
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.admin-reveal__token {
-  margin: 0;
-  padding: 0.9rem 1rem;
-  border-radius: 0.95rem;
-  background: rgba(15, 23, 42, 0.05);
-  color: var(--ink);
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-@media (max-width: 860px) {
-  .admin-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 760px) {
-  .admin-access__row {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-token-list__meta-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
+<style src="./AdminTokensView.scss" lang="scss"></style>

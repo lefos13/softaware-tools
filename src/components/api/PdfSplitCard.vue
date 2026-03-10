@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   Split flow now shares the same completion overlay with other services.
   Result download and donation prompt are shown through one reusable modal component.
@@ -8,19 +8,15 @@ import SuccessThankYouModal from "../SuccessThankYouModal.vue";
 import { MAX_FILE_SIZE_MB, MAX_TOTAL_UPLOAD_MB, MAX_UPLOAD_FILES } from "../../config/uploadLimits";
 import { usePortalI18n } from "../../i18n";
 import { usePdfSplit } from "../../composables/usePdfSplit";
+import type { PortalI18n } from "../../types/shared";
+import type { ServiceFlowShellContext } from "../../types/services";
 
-const props = defineProps({
-  apiBaseUrl: {
-    type: String,
-    required: true,
-  },
-  apiHealthy: {
-    type: Boolean,
-    required: true,
-  },
-});
-const { t } = usePortalI18n();
-const serviceFlowShell = inject("serviceFlowShell", null);
+const props = defineProps<{
+  apiBaseUrl: string;
+  apiHealthy: boolean;
+}>();
+const { t } = usePortalI18n() as PortalI18n;
+const serviceFlowShell = inject<ServiceFlowShellContext | null>("serviceFlowShell", null);
 
 const {
   file,
@@ -79,11 +75,12 @@ watch(
   { immediate: true }
 );
 
-const onFilesSelected = (event) => {
-  selectFiles(Array.from(event.target.files || []));
+const onFilesSelected = (event: Event): void => {
+  const input = event.target as HTMLInputElement | null;
+  selectFiles(Array.from(input?.files || []));
 };
 
-const closeSuccessModal = () => {
+const closeSuccessModal = (): void => {
   showSuccessModal.value = false;
 };
 </script>

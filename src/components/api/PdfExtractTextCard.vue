@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   Text extraction UI exposes merged TXT output by default with an explicit
   per-page ZIP option for workflows needing page-level separation.
@@ -6,15 +6,17 @@
 import { computed, inject, ref, watch } from "vue";
 import { usePortalI18n } from "../../i18n";
 import { extractPdfText } from "../../services/pdfService";
+import type { PortalI18n } from "../../types/shared";
+import type { ServiceFlowShellContext } from "../../types/services";
 
-const props = defineProps({
-  apiBaseUrl: { type: String, required: true },
-  apiHealthy: { type: Boolean, required: true },
-});
-const { t } = usePortalI18n();
-const serviceFlowShell = inject("serviceFlowShell", null);
+const props = defineProps<{
+  apiBaseUrl: string;
+  apiHealthy: boolean;
+}>();
+const { t } = usePortalI18n() as PortalI18n;
+const serviceFlowShell = inject<ServiceFlowShellContext | null>("serviceFlowShell", null);
 
-const file = ref(null);
+const file = ref<File | null>(null);
 const perPageZip = ref(false);
 const includePageHeaders = ref(true);
 const loading = ref(false);
@@ -46,13 +48,14 @@ watch(
 
 const canRun = computed(() => props.apiHealthy && file.value && !loading.value);
 
-const onFileSelected = (event) => {
-  const [selected] = Array.from(event.target.files || []);
+const onFileSelected = (event: Event): void => {
+  const input = event.target as HTMLInputElement | null;
+  const [selected] = Array.from(input?.files || []);
   file.value = selected || null;
   error.value = "";
 };
 
-const clearPreviousResult = () => {
+const clearPreviousResult = (): void => {
   if (outputUrl.value) {
     URL.revokeObjectURL(outputUrl.value);
   }
@@ -63,7 +66,7 @@ const clearPreviousResult = () => {
   requestId.value = "";
 };
 
-const run = async () => {
+const run = async (): Promise<void> => {
   clearPreviousResult();
   error.value = "";
 
@@ -136,10 +139,4 @@ const run = async () => {
   </section>
 </template>
 
-<style scoped>
-.checkbox-row {
-  display: flex;
-  gap: 0.45rem;
-  align-items: center;
-}
-</style>
+<style src="./PdfExtractTextCard.scss" lang="scss"></style>

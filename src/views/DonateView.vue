@@ -1,12 +1,13 @@
-<script setup>
+<script setup lang="ts">
 /*
   The donation page now uses the shared translation store so support messaging
   stays friendly and localized without duplicating copy inside the prompt card.
 */
 import DonationPrompt from "../components/DonationPrompt.vue";
 import { usePortalI18n } from "../i18n";
+import type { PortalI18n } from "../types/shared";
 
-const { t } = usePortalI18n();
+const { t } = usePortalI18n() as PortalI18n;
 </script>
 
 <template>

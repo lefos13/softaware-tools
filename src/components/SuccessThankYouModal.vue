@@ -1,37 +1,25 @@
-<script setup>
+<script setup lang="ts">
 /*
   Success modal labels now come from the shared translation store so completion
   messaging stays localized while individual tools still control the result copy.
 */
 import DonationPrompt from "./DonationPrompt.vue";
 import { usePortalI18n } from "../i18n";
+import type { PortalI18n } from "../types/shared";
 
-const { t } = usePortalI18n();
+const { t } = usePortalI18n() as PortalI18n;
 
-defineProps({
-  visible: {
-    type: Boolean,
-    required: true,
-  },
-  title: {
-    type: String,
-    default: "",
-  },
-  downloadUrl: {
-    type: String,
-    default: "",
-  },
-  downloadName: {
-    type: String,
-    default: "result-file",
-  },
-  description: {
-    type: String,
-    default: "",
-  },
-});
+defineProps<{
+  visible: boolean;
+  title?: string;
+  downloadUrl?: string;
+  downloadName?: string;
+  description?: string;
+}>();
 
-const emit = defineEmits(["close"]);
+const emit = defineEmits<{
+  close: [];
+}>();
 </script>
 
 <template>

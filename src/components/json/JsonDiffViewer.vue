@@ -1,22 +1,17 @@
-<script setup>
+<script setup lang="ts">
 /*
   Comparison pane headings now use the shared translation store so the JSON
   workspace reads naturally in both supported languages.
 */
 import { usePortalI18n } from "../../i18n";
+import type { PortalI18n } from "../../types/shared";
 
-defineProps({
-  primaryInput: {
-    type: String,
-    default: "",
-  },
-  secondaryInput: {
-    type: String,
-    default: "",
-  },
-});
+defineProps<{
+  primaryInput?: string;
+  secondaryInput?: string;
+}>();
 
-const { t } = usePortalI18n();
+const { t } = usePortalI18n() as PortalI18n;
 </script>
 
 <template>

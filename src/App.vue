@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   Route labels, breadcrumb text, and the header toggle now read from one
   shared i18n store so English and Greek can switch instantly without
@@ -9,13 +9,15 @@ import { useHealthCheck } from "./composables/useHealthCheck";
 import { usePortalAccess } from "./composables/usePortalAccess";
 import { createPortalI18n, PORTAL_I18N_KEY } from "./i18n";
 import { createPortalRouter } from "./router/router";
+import type { PortalContext, RouteName } from "./types/shared";
+import { portalAccessKey, portalContextKey, portalRouterKey } from "./types/shared";
 
 /*
   API calls must target the same host device that serves the UI when the app
   is opened from another phone/laptop on the LAN, otherwise localhost points
   to the visiting device and the backend becomes unreachable.
 */
-const resolveApiBaseUrl = () => {
+const resolveApiBaseUrl = (): string => {
   const configuredBaseUrl = String(import.meta.env.VITE_API_BASE_URL || "").trim();
   if (configuredBaseUrl) {
     return configuredBaseUrl;
@@ -37,7 +39,7 @@ const portalAccess = usePortalAccess(apiBaseUrl);
 
 const router = createPortalRouter();
 
-provide("portalContext", {
+const portalContext: PortalContext = {
   apiBaseUrl,
   checking,
   hasChecked,
@@ -47,15 +49,18 @@ provide("portalContext", {
   requestId,
   error,
   lastCheckedAt,
-});
-provide("portalRouter", router);
-provide("portalAccess", portalAccess);
+};
+
+provide(portalContextKey, portalContext);
+provide(portalRouterKey, router);
+provide(portalAccessKey, portalAccess);
 provide(PORTAL_I18N_KEY, i18n);
 
 const showGuardOverlay = computed(() => hasChecked.value && !isHealthy.value);
 const activeRouteName = computed(() => router.currentRoute.value.name);
 const currentPath = computed(() => router.currentPath.value);
 const currentComponent = computed(() => router.currentComponent.value);
+const currentLocale = computed(() => i18n.locale.value);
 /*
   Dashboard remains a contextual owner action near language controls, so the
   top navigation excludes it to prevent duplicate entry points in the header.
@@ -94,10 +99,10 @@ const navigationRoutes = computed(() =>
 );
 const pageTitle = computed(() => i18n.t(`routes.${activeRouteName.value}`, {}, "Softaware Tools"));
 const statusLabel = computed(() => (checking.value ? i18n.t("app.checking") : status.value));
-const toRouteLabel = (routeName) => i18n.t(`routes.${routeName}`, {}, routeName);
+const toRouteLabel = (routeName: RouteName): string => i18n.t(`routes.${routeName}`, {}, routeName);
 const currentPlanType = computed(() => portalAccess?.planType?.value || "free");
 const hasResolvedPlan = computed(() => Boolean(portalAccess?.plan?.value));
-const setLocale = (locale) => {
+const setLocale = (locale: "en" | "el"): void => {
   if (locale === i18n.locale.value) {
     return;
   }
@@ -109,7 +114,7 @@ const setLocale = (locale) => {
   keeping the top header minimal and visually stable.
 */
 const breadcrumbs = computed(() => {
-  const byName = {
+  const byName: Partial<Record<RouteName, Array<{ label: string; path: string }>>> = {
     home: [{ label: toRouteLabel("home"), path: "/" }],
     "pdf-services": [
       { label: toRouteLabel("home"), path: "/" },
@@ -208,12 +213,14 @@ const breadcrumbs = computed(() => {
   return byName[activeRouteName.value] || [{ label: toRouteLabel("home"), path: "/" }];
 });
 
-const onNavigate = (path, event) => {
+const isLocaleActive = (locale: "en" | "el"): boolean => currentLocale.value === locale;
+
+const onNavigate = (path: string, event: Event): void => {
   event.preventDefault();
   router.navigate(path);
 };
 
-const openDashboard = () => {
+const openDashboard = (): void => {
   router.navigate("/dashboard");
 };
 
@@ -258,8 +265,8 @@ onBeforeUnmount(() => {
                 <button
                   type="button"
                   class="language-segmented__item"
-                  :class="{ 'language-segmented__item--active': i18n.locale === 'en' }"
-                  :aria-pressed="i18n.locale === 'en'"
+                  :class="{ 'language-segmented__item--active': isLocaleActive('en') }"
+                  :aria-pressed="isLocaleActive('en')"
                   @click="setLocale('en')"
                 >
                   {{ i18n.t("languages.en") }}
@@ -267,8 +274,8 @@ onBeforeUnmount(() => {
                 <button
                   type="button"
                   class="language-segmented__item"
-                  :class="{ 'language-segmented__item--active': i18n.locale === 'el' }"
-                  :aria-pressed="i18n.locale === 'el'"
+                  :class="{ 'language-segmented__item--active': isLocaleActive('el') }"
+                  :aria-pressed="isLocaleActive('el')"
                   @click="setLocale('el')"
                 >
                   {{ i18n.t("languages.el") }}
@@ -334,3 +341,5 @@ onBeforeUnmount(() => {
     </div>
   </div>
 </template>
+
+<style src="./styles/app.scss" lang="scss"></style>

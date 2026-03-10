@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   Shared JSON workspace now uses the portal translation store so generic
   controls, placeholders, and output actions can switch languages centrally.
@@ -8,15 +8,14 @@ import JsonDiffViewer from "./JsonDiffViewer.vue";
 import JsonOutputDownloadBar from "./JsonOutputDownloadBar.vue";
 import { usePortalI18n } from "../../i18n";
 import { useJsonToolRunner } from "../../composables/useJsonToolRunner";
+import type { PortalI18n } from "../../types/shared";
+import type { JsonToolDefinition, JsonToolError } from "../../types/jsonTools";
 
-const props = defineProps({
-  tool: {
-    type: Object,
-    required: true,
-  },
-});
+const props = defineProps<{
+  tool: JsonToolDefinition;
+}>();
 const toolRef = computed(() => props.tool);
-const { t } = usePortalI18n();
+const { t } = usePortalI18n() as PortalI18n;
 
 const {
   primaryInput,
@@ -40,8 +39,9 @@ const {
 
 const hasSecondaryInput = computed(() => Boolean(toolRef.value.secondaryInputMode));
 
-const onFileUpload = async (event, target = "primary") => {
-  const file = event.target.files?.[0];
+const onFileUpload = async (event: Event, target: "primary" | "secondary" = "primary") => {
+  const input = event.target as HTMLInputElement | null;
+  const file = input?.files?.[0] || null;
   if (!file) {
     return;
   }
@@ -52,7 +52,9 @@ const onFileUpload = async (event, target = "primary") => {
     await onPrimaryFileSelected(file);
   }
 
-  event.target.value = "";
+  if (input) {
+    input.value = "";
+  }
 };
 
 const onCopy = async () => {
@@ -169,7 +171,7 @@ const onCopy = async () => {
     <div class="merge-step">
       <p class="merge-step__title">{{ t("json.workspace.output") }}</p>
       <p v-if="error" class="tool-card__description tool-card__description--error">
-        <strong>{{ error.code }}</strong
+        <strong>{{ (error as JsonToolError).code }}</strong
         >: {{ error.message }}
       </p>
       <p v-if="message && !error" class="tool-card__description">{{ message }}</p>

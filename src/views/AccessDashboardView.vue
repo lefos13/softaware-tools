@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   The owner dashboard combines token status, remaining service usage, and the
   recent action log on one route so token holders have a single self-serve hub.
@@ -6,14 +6,21 @@
 import { computed, inject, onMounted, ref, watch } from "vue";
 import { usePortalI18n } from "../i18n";
 import { fetchAccessDashboard } from "../services/accessPlanService";
+import type { PortalAccessStore, PortalContext, PortalI18n, ServiceKey } from "../types/shared";
+import { portalAccessKey, portalContextKey } from "../types/shared";
+import type { AccessDashboardHistoryRow, AccessDashboardResult } from "../types/services";
 
-const portalContext = inject("portalContext");
-const portalAccess = inject("portalAccess");
-const { locale, t } = usePortalI18n();
+const portalContext = inject(portalContextKey) as PortalContext | undefined;
+const portalAccess = inject(portalAccessKey) as PortalAccessStore | undefined;
+const { locale, t } = usePortalI18n() as PortalI18n;
+
+if (!portalContext || !portalAccess) {
+  throw new Error("Portal context is not available.");
+}
 
 const loading = ref(false);
 const error = ref("");
-const dashboard = ref(null);
+const dashboard = ref<AccessDashboardResult | null>(null);
 const selectedService = ref("");
 const selectedStatus = ref("");
 const currentPage = ref(1);
@@ -32,9 +39,9 @@ const historySortColumns = [
   "status",
   "consumedRequests",
   "consumedWords",
-];
+] as const;
 
-const loadDashboard = async () => {
+const loadDashboard = async (): Promise<void> => {
   if (portalAccess?.planType?.value !== "token" || !portalAccess?.activeToken?.value) {
     dashboard.value = null;
     return;
@@ -50,7 +57,7 @@ const loadDashboard = async () => {
       {
         page: currentPage.value,
         limit: pageSize.value,
-        serviceKey: selectedService.value,
+        serviceKey: selectedService.value as ServiceKey,
         status: selectedStatus.value,
         sortBy: sortBy.value,
         sortDirection: sortDirection.value,
@@ -64,12 +71,14 @@ const loadDashboard = async () => {
   }
 };
 
-const formatQuota = (serviceItem) => {
+const formatQuota = (
+  serviceItem: NonNullable<AccessDashboardResult["services"]>[number]
+): string => {
   const requests = serviceItem?.quota?.requests;
   const words = serviceItem?.quota?.words;
   const parts = [];
 
-  if (requests?.limit !== null) {
+  if (requests && requests.limit !== null) {
     parts.push(
       t("accessDashboard.quota.requests", {
         remaining: requests.remaining,
@@ -78,7 +87,7 @@ const formatQuota = (serviceItem) => {
     );
   }
 
-  if (words?.limit !== null) {
+  if (words && words.limit !== null) {
     parts.push(
       t("accessDashboard.quota.words", {
         remaining: words.remaining,
@@ -96,29 +105,29 @@ const formatQuota = (serviceItem) => {
 
 const services = computed(() => dashboard.value?.services || []);
 const history = computed(() => dashboard.value?.history || null);
-const historyItems = computed(() => history.value?.items || []);
+const historyItems = computed<AccessDashboardHistoryRow[]>(() => history.value?.items || []);
 const totalHistoryItems = computed(() => Number(history.value?.total || 0));
 const totalPages = computed(() => Math.max(1, Math.ceil(totalHistoryItems.value / pageSize.value)));
 const canGoPrev = computed(() => currentPage.value > 1);
 const canGoNext = computed(() => currentPage.value < totalPages.value);
 
-const formatDateTime = (value) =>
+const formatDateTime = (value?: string, fallbackKey = "accessDashboard.notAvailable"): string =>
   value
     ? new Date(value).toLocaleString(locale.value === "el" ? "el-GR" : "en-US")
-    : t("accessDashboard.notAvailable");
+    : t(fallbackKey);
 
-const formatNumber = (value) =>
+const formatNumber = (value?: number | string): string =>
   new Intl.NumberFormat(locale.value === "el" ? "el-GR" : "en-US").format(Number(value || 0));
 
-const formatStatus = (value) =>
+const formatStatus = (value?: string): string =>
   value === "success" ? t("accessDashboard.status.success") : t("accessDashboard.status.failed");
 
-const formatServiceFlags = (flags) => {
+const formatServiceFlags = (flags?: string[]): string => {
   const list = Array.isArray(flags) ? flags.filter(Boolean) : [];
   return list.length ? list.join(", ") : t("accessDashboard.notAvailable");
 };
 
-const toggleSort = (columnKey) => {
+const toggleSort = (columnKey: (typeof historySortColumns)[number]): void => {
   if (!historySortColumns.includes(columnKey)) {
     return;
   }
@@ -133,14 +142,14 @@ const toggleSort = (columnKey) => {
   currentPage.value = 1;
 };
 
-const sortIndicator = (columnKey) => {
+const sortIndicator = (columnKey: (typeof historySortColumns)[number]): string => {
   if (sortBy.value !== columnKey) {
     return "";
   }
   return sortDirection.value === "asc" ? "▲" : "▼";
 };
 
-const goToPage = (nextPage) => {
+const goToPage = (nextPage: number): void => {
   const boundedPage = Math.min(totalPages.value, Math.max(1, Number(nextPage) || 1));
   if (boundedPage === currentPage.value) {
     return;
@@ -192,14 +201,14 @@ onMounted(() => {
       <div class="tool-card dashboard-token-overview">
         <p class="merge-step__title">{{ t("accessDashboard.overviewTitle") }}</p>
         <p class="tool-card__description dashboard-token-overview__row">
-          <strong>{{ dashboard?.token?.alias || portalAccess?.plan?.token?.alias }}</strong>
+          <strong>{{ dashboard?.token?.alias || portalAccess.plan.value?.token?.alias }}</strong>
         </p>
         <p class="tool-card__description dashboard-token-overview__row">
           <span class="dashboard-token-overview__label">{{ t("accessDashboard.expires") }}</span>
           <strong class="dashboard-token-overview__value">
             {{
               formatDateTime(
-                dashboard?.token?.expiresAt || portalAccess?.plan?.token?.expiresAt || ""
+                dashboard?.token?.expiresAt || portalAccess.plan.value?.token?.expiresAt || ""
               )
             }}
           </strong>
@@ -211,7 +220,7 @@ onMounted(() => {
           <strong class="dashboard-token-overview__value">
             {{
               formatServiceFlags(
-                dashboard?.token?.serviceFlags || portalAccess?.plan?.token?.serviceFlags || []
+                dashboard?.token?.serviceFlags || portalAccess.plan.value?.token?.serviceFlags || []
               )
             }}
           </strong>
@@ -379,115 +388,4 @@ onMounted(() => {
   </section>
 </template>
 
-<style scoped>
-/*
-  The dashboard layout favors compact cards first so token owners can scan
-  quota status quickly before dropping into the larger history section.
-*/
-.dashboard-grid {
-  display: grid;
-  gap: 1rem;
-}
-
-.dashboard-service-list {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.dashboard-service-item {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem 0.95rem;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.84);
-}
-
-.dashboard-token-overview {
-  background: linear-gradient(180deg, rgba(240, 249, 255, 0.95), rgba(248, 250, 252, 0.98));
-  border-color: rgba(14, 116, 144, 0.2);
-}
-
-.dashboard-token-overview__row {
-  display: grid;
-  gap: 0.25rem;
-  margin: 0;
-}
-
-.dashboard-token-overview__label {
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #0f766e;
-  font-weight: 700;
-}
-
-.dashboard-token-overview__value {
-  color: #0f172a;
-}
-
-.dashboard-history__head,
-.dashboard-history__filters {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.dashboard-history__head {
-  justify-content: space-between;
-  align-items: center;
-}
-
-.dashboard-history__table-wrap {
-  display: grid;
-  gap: 0.85rem;
-}
-
-.dashboard-history__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.92rem;
-}
-
-.dashboard-history__table th,
-.dashboard-history__table td {
-  padding: 0.65rem 0.7rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.24);
-  text-align: left;
-  vertical-align: middle;
-}
-
-.dashboard-history__table-number {
-  text-align: right;
-}
-
-.dashboard-history__sort-btn {
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  padding: 0;
-  cursor: pointer;
-}
-
-.dashboard-history__pagination {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.65rem;
-  flex-wrap: wrap;
-}
-
-@media (max-width: 720px) {
-  .dashboard-service-item,
-  .dashboard-history__head {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .dashboard-history__table-wrap {
-    overflow-x: auto;
-  }
-}
-</style>
+<style src="./AccessDashboardView.scss" lang="scss"></style>

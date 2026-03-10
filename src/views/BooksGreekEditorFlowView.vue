@@ -1,10 +1,19 @@
-<script setup>
-// Why this exists: the Greek literature editor gets its own route so users can focus on one manuscript correction flow at a time.
+<script setup lang="ts">
+/*
+  The route wrapper forwards shared portal state into one focused service card
+  so each flow view stays declarative and avoids duplicating health/base-url
+  wiring across all dedicated tool routes.
+*/
 import { inject } from "vue";
 import ServiceFlowShell from "../components/api/ServiceFlowShell.vue";
 import BooksGreekEditorCard from "../components/api/BooksGreekEditorCard.vue";
+import { portalContextKey } from "../types/shared";
 
-const portalContext = inject("portalContext");
+const portalContext = inject(portalContextKey);
+
+if (!portalContext) {
+  throw new Error("Portal context is not available.");
+}
 </script>
 
 <template>

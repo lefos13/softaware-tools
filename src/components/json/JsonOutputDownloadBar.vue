@@ -1,35 +1,28 @@
-<script setup>
+<script setup lang="ts">
 /*
   JSON output actions now use shared translated labels so the workspace controls
   remain consistent with the selected language.
 */
 import { usePortalI18n } from "../../i18n";
-const props = defineProps({
-  disabled: {
-    type: Boolean,
-    default: false,
-  },
-  outputUrl: {
-    type: String,
-    default: "",
-  },
-  downloadFileName: {
-    type: String,
-    default: "json-output.txt",
-  },
-});
+import type { PortalI18n } from "../../types/shared";
 
-const emit = defineEmits(["copy", "clear"]);
-const { t } = usePortalI18n();
+const props = defineProps<{
+  disabled?: boolean;
+  outputUrl?: string;
+  downloadFileName?: string;
+}>();
+
+const emit = defineEmits<{
+  copy: [];
+  clear: [];
+}>();
+const { t } = usePortalI18n() as PortalI18n;
 
 /*
   Download clicks should only be blocked when there is no generated output.
   Preventing all anchor clicks stops browser downloads even when a file is ready.
 */
-const onDownloadClick = (event) => {
-  if (!event) {
-    return;
-  }
+const onDownloadClick = (event: MouseEvent) => {
   if (props.disabled || !props.outputUrl) {
     event.preventDefault();
   }

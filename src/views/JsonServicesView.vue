@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   JSON Services hub groups all mini tools by category and routes each card to
   the shared workspace while keeping discovery fast on desktop and mobile.
@@ -7,18 +7,38 @@ import { computed, inject, ref } from "vue";
 import JsonToolCard from "../components/json/JsonToolCard.vue";
 import { localizeJsonTool, usePortalI18n } from "../i18n";
 import { JSON_TOOLS, JSON_TOOL_CATEGORIES } from "../services/jsonTools/registry";
+import type { JsonToolDefinition, LocalizedJsonToolDefinition } from "../types/jsonTools";
+import type { LocaleCode, PortalI18n, PortalRouter } from "../types/shared";
+import { portalRouterKey } from "../types/shared";
 
-const portalRouter = inject("portalRouter");
-const { t, locale } = usePortalI18n();
+interface LocalizedCategory {
+  source: string;
+  label: string;
+}
+
+const portalRouter = inject(portalRouterKey) as PortalRouter | undefined;
+const { t, locale } = usePortalI18n() as PortalI18n;
 const searchTerm = ref("");
+
+if (!portalRouter) {
+  throw new Error("Portal router is not available.");
+}
+
 const localizedTools = computed(() =>
-  JSON_TOOLS.map((tool) => localizeJsonTool(tool, { t, locale: locale.value }))
+  (JSON_TOOLS as JsonToolDefinition[]).map(
+    (tool) =>
+      localizeJsonTool(tool, {
+        t,
+        locale: locale.value as LocaleCode,
+      }) as LocalizedJsonToolDefinition
+  )
 );
-const localizedCategories = computed(() =>
-  JSON_TOOL_CATEGORIES.map((category) => ({
-    source: category,
-    label: t(`json.categories.${category}`, {}, category),
-  }))
+const localizedCategories = computed(
+  () =>
+    (JSON_TOOL_CATEGORIES as string[]).map((category) => ({
+      source: category,
+      label: t(`json.categories.${category}`, {}, category),
+    })) as LocalizedCategory[]
 );
 
 const groupedTools = computed(() => {
@@ -43,7 +63,7 @@ const groupedTools = computed(() => {
     .filter((group) => group.items.length > 0);
 });
 
-const openTool = (toolId) => {
+const openTool = (toolId: string) => {
   portalRouter.navigate(`/flows/json/${toolId}`);
 };
 </script>

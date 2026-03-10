@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   Image service cards use the shared translation store so the hub can present
   simpler, localized copy without changing route or card behavior.
@@ -6,11 +6,24 @@
 import { inject } from "vue";
 import ToolCard from "../components/ToolCard.vue";
 import { usePortalI18n } from "../i18n";
+import type { PortalI18n, PortalRouter } from "../types/shared";
+import { portalRouterKey } from "../types/shared";
 
-const portalRouter = inject("portalRouter");
-const { t } = usePortalI18n();
+interface LauncherService {
+  title: () => string;
+  graphic: string;
+  description: () => string;
+  route: string;
+}
 
-const imageServices = [
+const portalRouter = inject(portalRouterKey) as PortalRouter | undefined;
+const { t } = usePortalI18n() as PortalI18n;
+
+if (!portalRouter) {
+  throw new Error("Portal router is not available.");
+}
+
+const imageServices: LauncherService[] = [
   {
     title: () => t("services.imageCompression.title"),
     graphic: "image-compress",
@@ -25,7 +38,7 @@ const imageServices = [
   },
 ];
 
-const openService = (route) => {
+const openService = (route: string) => {
   portalRouter.navigate(route);
 };
 </script>

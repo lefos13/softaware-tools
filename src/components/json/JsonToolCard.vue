@@ -1,18 +1,24 @@
-<script setup>
+<script setup lang="ts">
 /*
   JSON hub cards now include deterministic per-tool graphics so each subservice
   is visually distinct while still following one shared card component.
 */
 import { computed } from "vue";
 
-const props = defineProps({
-  tool: {
-    type: Object,
-    required: true,
-  },
-});
+interface JsonToolCardData {
+  id: string;
+  category: string;
+  title: string;
+  description: string;
+}
 
-const emit = defineEmits(["open"]);
+const props = defineProps<{
+  tool: JsonToolCardData;
+}>();
+
+const emit = defineEmits<{
+  open: [toolId: string];
+}>();
 
 const seed = computed(() => {
   const source = `${props.tool.id}:${props.tool.category}`;
@@ -40,7 +46,9 @@ const categoryGlyph = computed(() => {
     Visual: "M46 54l10-10 8 8 12-14 10 16H46z",
   };
 
-  return glyphByCategory[props.tool.category] || glyphByCategory.Format;
+  return (
+    glyphByCategory[props.tool.category as keyof typeof glyphByCategory] || glyphByCategory.Format
+  );
 });
 </script>
 

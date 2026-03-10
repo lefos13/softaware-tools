@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   Numbering UI supports both standard page labels and Bates numbering with one
   concise form so legal/admin workflows can be tested quickly.
@@ -6,16 +6,27 @@
 import { computed, inject, ref, watch } from "vue";
 import { usePortalI18n } from "../../i18n";
 import { addPdfPageNumbers } from "../../services/pdfService";
+import type { PortalI18n } from "../../types/shared";
+import type { ServiceFlowShellContext } from "../../types/services";
 
-const props = defineProps({
-  apiBaseUrl: { type: String, required: true },
-  apiHealthy: { type: Boolean, required: true },
-});
-const { t } = usePortalI18n();
-const serviceFlowShell = inject("serviceFlowShell", null);
+interface PdfPageNumbersPayload extends Record<string, unknown> {
+  mode: "page_numbers" | "bates";
+  format?: string;
+  prefix?: string;
+  startNumber?: number;
+  padding?: number;
+  position: string;
+}
 
-const file = ref(null);
-const mode = ref("page_numbers");
+const props = defineProps<{
+  apiBaseUrl: string;
+  apiHealthy: boolean;
+}>();
+const { t } = usePortalI18n() as PortalI18n;
+const serviceFlowShell = inject<ServiceFlowShellContext | null>("serviceFlowShell", null);
+
+const file = ref<File | null>(null);
+const mode = ref<"page_numbers" | "bates">("page_numbers");
 const format = ref("Page {page} of {total}");
 const prefix = ref("CASE-");
 const startNumber = ref(1);
@@ -50,13 +61,14 @@ watch(
 
 const canRun = computed(() => props.apiHealthy && file.value && !loading.value);
 
-const onFileSelected = (event) => {
-  const [selected] = Array.from(event.target.files || []);
+const onFileSelected = (event: Event): void => {
+  const input = event.target as HTMLInputElement | null;
+  const [selected] = Array.from(input?.files || []);
   file.value = selected || null;
   error.value = "";
 };
 
-const clearPreviousResult = () => {
+const clearPreviousResult = (): void => {
   if (outputUrl.value) {
     URL.revokeObjectURL(outputUrl.value);
   }
@@ -67,7 +79,7 @@ const clearPreviousResult = () => {
   requestId.value = "";
 };
 
-const run = async () => {
+const run = async (): Promise<void> => {
   clearPreviousResult();
   error.value = "";
 
@@ -78,7 +90,7 @@ const run = async () => {
 
   loading.value = true;
   try {
-    const payload =
+    const payload: PdfPageNumbersPayload =
       mode.value === "bates"
         ? {
             mode: "bates",

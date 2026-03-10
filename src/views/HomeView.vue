@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   Home cards now read from the shared i18n store so the launcher keeps the
   same routing behavior while presenting friendly English and Greek copy.
@@ -6,13 +6,19 @@
 import { inject } from "vue";
 import ToolCard from "../components/ToolCard.vue";
 import { usePortalI18n } from "../i18n";
+import type { PortalI18n, PortalRouter } from "../types/shared";
+import { portalRouterKey } from "../types/shared";
 
-const router = inject("portalRouter");
-const { t } = usePortalI18n();
+const router = inject(portalRouterKey) as PortalRouter | undefined;
+const { t } = usePortalI18n() as PortalI18n;
 const jsonServicesEnabled = import.meta.env.VITE_ENABLE_JSON_SERVICES === "true";
 const booksServicesEnabled = import.meta.env.VITE_ENABLE_BOOKS_SERVICES === "true";
 
-const goTo = (path) => {
+if (!router) {
+  throw new Error("Portal router is not available.");
+}
+
+const goTo = (path: string) => {
   router.navigate(path);
 };
 </script>

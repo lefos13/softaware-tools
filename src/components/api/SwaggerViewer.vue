@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   Swagger viewer labels and fallback errors now use the shared locale store so
   the contract explorer matches the selected portal language.
@@ -6,33 +6,53 @@
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { usePortalI18n } from "../../i18n";
 import { buildUrl } from "../../services/apiClient";
+import type { PortalI18n, TemplateRef } from "../../types/shared";
 
-const props = defineProps({
-  apiBaseUrl: {
-    type: String,
-    required: true,
-  },
-});
+interface SwaggerUiInstance {
+  destroy?: () => void;
+}
 
-const mountNode = ref(null);
+interface SwaggerUiModule {
+  (config: {
+    domNode: HTMLElement;
+    url: string;
+    layout: string;
+    deepLinking: boolean;
+    docExpansion: string;
+    defaultModelsExpandDepth: number;
+    showExtensions: boolean;
+    showCommonExtensions: boolean;
+    presets: unknown[];
+    onFailure: () => void;
+  }): SwaggerUiInstance;
+  presets: {
+    apis: unknown;
+  };
+}
+
+const props = defineProps<{
+  apiBaseUrl: string;
+}>();
+
+const mountNode: TemplateRef<HTMLElement> = ref(null);
 const error = ref("");
-const { t } = usePortalI18n();
+const { t } = usePortalI18n() as PortalI18n;
 
-let swaggerInstance = null;
-let swaggerModulePromise = null;
+let swaggerInstance: SwaggerUiInstance | null = null;
+let swaggerModulePromise: Promise<SwaggerUiModule> | null = null;
 
-const loadSwaggerUiModule = async () => {
+const loadSwaggerUiModule = async (): Promise<SwaggerUiModule> => {
   if (!swaggerModulePromise) {
     swaggerModulePromise = Promise.all([
       import("swagger-ui-dist/swagger-ui-es-bundle"),
       import("swagger-ui-dist/swagger-ui.css"),
-    ]).then(([module]) => module.default);
+    ]).then(([module]) => module.default as SwaggerUiModule);
   }
 
   return swaggerModulePromise;
 };
 
-const renderSwagger = async () => {
+const renderSwagger = async (): Promise<void> => {
   if (!mountNode.value) {
     return;
   }
@@ -99,38 +119,4 @@ onBeforeUnmount(() => {
   </section>
 </template>
 
-<style scoped>
-/*
-  Swagger content can exceed narrow mobile widths.
-  The host now allows horizontal scrolling instead of clipping API operation details.
-*/
-.swagger-card {
-  padding: 1rem;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: var(--surface);
-}
-
-.swagger-host {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  background: #ffffff;
-}
-
-.swagger-host :deep(.swagger-ui) {
-  font-family: var(--font-sans);
-  min-width: 0;
-}
-
-.swagger-card .section-head__subtitle code {
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.swagger-host :deep(.topbar) {
-  display: none;
-}
-</style>
+<style src="./SwaggerViewer.scss" lang="scss"></style>

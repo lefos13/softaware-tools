@@ -1,32 +1,19 @@
-<script setup>
+<script setup lang="ts">
 /*
   Service cards now render service-specific graphics so users can quickly distinguish tools.
   Visual variants are chosen by a dedicated graphic key passed from the launcher.
 */
-defineProps({
-  title: {
-    type: String,
-    required: true,
-  },
-  description: {
-    type: String,
-    required: true,
-  },
-  tag: {
-    type: String,
-    required: true,
-  },
-  graphic: {
-    type: String,
-    default: "default",
-  },
-  variant: {
-    type: String,
-    default: "default",
-  },
-});
+defineProps<{
+  title: string;
+  description: string;
+  tag: string;
+  graphic?: string;
+  variant?: string;
+}>();
 
-const emit = defineEmits(["action"]);
+const emit = defineEmits<{
+  action: [];
+}>();
 </script>
 
 <template>

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   Books services get a dedicated launcher so manuscript-specific flows can be
   grouped separately from the broader PDF and image tool families.
@@ -6,11 +6,24 @@
 import { inject } from "vue";
 import ToolCard from "../components/ToolCard.vue";
 import { usePortalI18n } from "../i18n";
+import type { PortalI18n, PortalRouter } from "../types/shared";
+import { portalRouterKey } from "../types/shared";
 
-const portalRouter = inject("portalRouter");
-const { t } = usePortalI18n();
+interface LauncherService {
+  title: () => string;
+  graphic: string;
+  description: () => string;
+  route: string;
+}
 
-const bookServices = [
+const portalRouter = inject(portalRouterKey) as PortalRouter | undefined;
+const { t } = usePortalI18n() as PortalI18n;
+
+if (!portalRouter) {
+  throw new Error("Portal router is not available.");
+}
+
+const bookServices: LauncherService[] = [
   {
     title: () => t("services.booksGreekEditor.title"),
     graphic: "books-editor",
@@ -19,7 +32,7 @@ const bookServices = [
   },
 ];
 
-const openService = (route) => {
+const openService = (route: string) => {
   portalRouter.navigate(route);
 };
 </script>

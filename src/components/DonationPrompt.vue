@@ -1,19 +1,17 @@
-<script setup>
+<script setup lang="ts">
 /*
   Donation copy now comes from the shared translation store so the support CTA
   stays aligned with the selected language in both the page and success modal.
 */
 import { HAS_CUSTOM_PAYPAL_DONATE_URL, PAYPAL_DONATE_URL } from "../config/donation";
 import { usePortalI18n } from "../i18n";
+import type { PortalI18n } from "../types/shared";
 
-defineProps({
-  compact: {
-    type: Boolean,
-    default: false,
-  },
-});
+defineProps<{
+  compact?: boolean;
+}>();
 
-const { t } = usePortalI18n();
+const { t } = usePortalI18n() as PortalI18n;
 </script>
 
 <template>

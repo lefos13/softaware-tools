@@ -1,10 +1,18 @@
-<script setup>
-// Why this exists: image format conversion has a dedicated route so users can focus on conversion settings separately from compression.
+<script setup lang="ts">
+/*
+  Dedicated flow routes reuse one injected portal context so service wrappers
+  stay thin while each card receives the same health and API base-url state.
+*/
 import { inject } from "vue";
 import ServiceFlowShell from "../components/api/ServiceFlowShell.vue";
 import ImageConvertCard from "../components/api/ImageConvertCard.vue";
+import { portalContextKey } from "../types/shared";
 
-const portalContext = inject("portalContext");
+const portalContext = inject(portalContextKey);
+
+if (!portalContext) {
+  throw new Error("Portal context is not available.");
+}
 </script>
 
 <template>

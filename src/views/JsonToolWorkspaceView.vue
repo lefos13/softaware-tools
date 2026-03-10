@@ -1,15 +1,22 @@
-<script setup>
+<script setup lang="ts">
 /*
   Workspace view resolves tool id from dynamic route path and renders a single
   reusable runner component for all JSON mini tools.
 */
 import { computed, inject } from "vue";
 import JsonToolWorkspace from "../components/json/JsonToolWorkspace.vue";
-import { localizeJsonTool, usePortalI18n } from "../i18n";
+import { localizeJsonToolDefinition, usePortalI18n } from "../i18n";
 import { JSON_TOOL_BY_ID } from "../services/jsonTools/registry";
+import type { LocaleCode, PortalI18n, PortalRouter } from "../types/shared";
+import type { JsonToolDefinition } from "../types/jsonTools";
+import { portalRouterKey } from "../types/shared";
 
-const portalRouter = inject("portalRouter");
-const { t, locale } = usePortalI18n();
+const portalRouter = inject(portalRouterKey) as PortalRouter | undefined;
+const i18n = usePortalI18n() as PortalI18n;
+
+if (!portalRouter) {
+  throw new Error("Portal router is not available.");
+}
 
 const toolId = computed(() => {
   const path = portalRouter.currentPath.value;
@@ -18,8 +25,14 @@ const toolId = computed(() => {
 });
 
 const tool = computed(() => {
-  const source = JSON_TOOL_BY_ID[toolId.value];
-  return source ? localizeJsonTool(source, { t, locale: locale.value }) : null;
+  const source = (JSON_TOOL_BY_ID as Record<string, JsonToolDefinition | undefined>)[toolId.value];
+  return source
+    ? (localizeJsonToolDefinition(
+        source,
+        i18n.locale.value as LocaleCode,
+        i18n
+      ) as JsonToolDefinition)
+    : null;
 });
 
 const goBack = () => {
@@ -30,17 +43,19 @@ const goBack = () => {
 <template>
   <section class="flow-view" aria-label="JSON tool workspace">
     <div class="section-head section-head--spaced">
-      <h2 class="section-head__title">{{ tool ? tool.title : t("routes.json-tool") }}</h2>
-      <p class="section-head__subtitle">{{ tool ? tool.description : t("json.toolNotFound") }}</p>
+      <h2 class="section-head__title">{{ tool ? tool.title : i18n.t("routes.json-tool") }}</h2>
+      <p class="section-head__subtitle">
+        {{ tool ? tool.description : i18n.t("json.toolNotFound") }}
+      </p>
     </div>
 
     <button type="button" class="button button--secondary" @click="goBack">
-      {{ t("json.back") }}
+      {{ i18n.t("json.back") }}
     </button>
 
     <article v-if="!tool" class="tool-card">
       <p class="tool-card__description tool-card__description--error">
-        {{ t("json.toolNotFoundHelp") }}
+        {{ i18n.t("json.toolNotFoundHelp") }}
       </p>
     </article>
 

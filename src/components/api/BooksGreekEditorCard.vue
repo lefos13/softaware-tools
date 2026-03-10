@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   The books editor now follows the portal-wide access plan so free usage and
   shared paid-token sessions unlock the same workspace without a local token gate.
@@ -8,15 +8,46 @@ import SuccessThankYouModal from "../SuccessThankYouModal.vue";
 import { BOOKS_GREEK_EDITOR_PREFERENCES } from "../../config/booksGreekEditorRules";
 import { useGreekLiteratureEditor } from "../../composables/useGreekLiteratureEditor";
 import { usePortalI18n } from "../../i18n";
+import type { PortalAccessStore, PortalI18n } from "../../types/shared";
+import { portalAccessKey } from "../../types/shared";
+import type { GreekEditorReportChange, ServiceFlowShellContext } from "../../types/services";
 
-const props = defineProps({
-  apiBaseUrl: { type: String, required: true },
-  apiHealthy: { type: Boolean, required: true },
-});
+interface BooksRuleViewModel {
+  id: string;
+  title: string;
+  description: string;
+  example: string;
+  cases: string;
+  preferenceKey?: string;
+  preferenceLabel: string;
+  preferenceOptions: Array<{ value: string; label: string }>;
+}
 
-const portalAccess = inject("portalAccess");
-const serviceFlowShell = inject("serviceFlowShell", null);
-const { t } = usePortalI18n();
+interface BooksSectionViewModel {
+  id: string;
+  open: boolean;
+  title: string;
+  description: string;
+  rules: BooksRuleViewModel[];
+}
+
+interface ReportGroup {
+  ruleId: string;
+  title: string;
+  count: number;
+  changes: GreekEditorReportChange[];
+}
+
+const SECTION_IDS = ["literary", "orthography", "preferences"] as const;
+
+const props = defineProps<{
+  apiBaseUrl: string;
+  apiHealthy: boolean;
+}>();
+
+const portalAccess = inject(portalAccessKey) as PortalAccessStore | undefined;
+const serviceFlowShell = inject<ServiceFlowShellContext | null>("serviceFlowShell", null);
+const { t } = usePortalI18n() as PortalI18n;
 const {
   inputMode,
   file,
@@ -72,8 +103,8 @@ const canApply = computed(
     !loading.value
 );
 
-const sectionItems = computed(() =>
-  ["literary", "orthography", "preferences"].map((sectionId) => ({
+const sectionItems = computed<BooksSectionViewModel[]>(() =>
+  SECTION_IDS.map((sectionId) => ({
     id: sectionId,
     open: sectionId === "literary",
     title: t(`tools.booksGreekEditor.sections.${sectionId}.title`),
@@ -97,13 +128,13 @@ const sectionItems = computed(() =>
   }))
 );
 
-const reportGroups = computed(() => {
+const reportGroups = computed<ReportGroup[]>(() => {
   const report = reportData?.value;
   if (!report || !Array.isArray(report.changes) || report.changes.length === 0) {
     return [];
   }
 
-  const grouped = new Map();
+  const grouped = new Map<string, ReportGroup>();
   report.changes.forEach((change) => {
     if (!grouped.has(change.ruleId)) {
       grouped.set(change.ruleId, {
@@ -115,6 +146,9 @@ const reportGroups = computed(() => {
     }
 
     const entry = grouped.get(change.ruleId);
+    if (!entry) {
+      return;
+    }
     entry.count += 1;
     entry.changes.push(change);
   });
@@ -166,19 +200,34 @@ watch(
   { immediate: true }
 );
 
-const onFilesSelected = (event) => {
-  selectFiles(Array.from(event.target.files || []));
+const onFilesSelected = (event: Event): void => {
+  const input = event.target as HTMLInputElement | null;
+  selectFiles(Array.from(input?.files || []));
 };
-const onInputModeChange = (event) => {
-  setInputMode(event.target.value);
+const onSelectAllRulesChange = (event: Event): void => {
+  const input = event.target as HTMLInputElement | null;
+  setAllRules(input?.checked === true);
 };
-const onTextInput = (event) => {
-  setInputText(event.target.value);
+const onPreferenceChange = (preferenceKey: string, event: Event): void => {
+  const input = event.target as HTMLSelectElement | null;
+  setPreference(preferenceKey, input?.value || "");
 };
-const closeSuccessModal = () => {
+const onIncludeReportChange = (event: Event): void => {
+  const input = event.target as HTMLInputElement | null;
+  setIncludeReport(input?.checked === true);
+};
+const onInputModeChange = (event: Event): void => {
+  const input = event.target as HTMLInputElement | null;
+  setInputMode(input?.value || "docx");
+};
+const onTextInput = (event: Event): void => {
+  const input = event.target as HTMLTextAreaElement | null;
+  setInputText(input?.value || "");
+};
+const closeSuccessModal = (): void => {
   showSuccessModal.value = false;
 };
-const clearCompletedExecution = () => {
+const clearCompletedExecution = (): void => {
   showSuccessModal.value = false;
   clearExecution();
 };
@@ -303,7 +352,7 @@ const clearCompletedExecution = () => {
                 type="checkbox"
                 :checked="allRulesSelected"
                 :disabled="loading"
-                @change="setAllRules($event.target.checked)"
+                @change="onSelectAllRulesChange"
               />
               <span>
                 <strong>{{ t("tools.booksGreekEditor.selectAllRules") }}</strong>
@@ -367,7 +416,7 @@ const clearCompletedExecution = () => {
                           class="rule-checkbox__select"
                           :value="preferences[rule.preferenceKey]"
                           :disabled="loading"
-                          @change="setPreference(rule.preferenceKey, $event.target.value)"
+                          @change="onPreferenceChange(rule.preferenceKey, $event)"
                         >
                           <option
                             v-for="option in rule.preferenceOptions"
@@ -406,7 +455,7 @@ const clearCompletedExecution = () => {
               type="checkbox"
               :checked="includeReport"
               :disabled="loading"
-              @change="setIncludeReport($event.target.checked)"
+              @change="onIncludeReportChange"
             />
             <span>
               <strong>{{ t("tools.booksGreekEditor.includeReport") }}</strong>
@@ -600,600 +649,4 @@ const clearCompletedExecution = () => {
   </section>
 </template>
 
-<style scoped>
-/*
-  The editor uses the shared tool-card shell, so this stylesheet rebuilds the
-  page as a bright, high-contrast workspace with stronger section hierarchy,
-  stable checkbox alignment, and explicit scroll containers for dense content.
-*/
-.books-editor-card {
-  --books-bg: linear-gradient(180deg, #f9fbfd 0%, #f2f6fa 100%);
-  --books-surface: #ffffff;
-  --books-surface-alt: #f6f9fc;
-  --books-surface-strong: #eef6f5;
-  --books-ink: #132235;
-  --books-muted: #5e6f84;
-  --books-border: #d5e0eb;
-  --books-border-strong: #bccddd;
-  --books-accent: #0f766e;
-  --books-accent-soft: rgba(15, 118, 110, 0.1);
-  --books-shadow: 0 18px 34px rgba(20, 33, 47, 0.08);
-
-  display: grid;
-  gap: 1rem;
-  padding: 1rem;
-  border: 1px solid var(--books-border);
-  border-radius: 18px;
-  background: var(--books-bg);
-  box-shadow: var(--books-shadow);
-  color: var(--books-ink);
-}
-
-.books-editor-card,
-.books-editor-card p,
-.books-editor-card span,
-.books-editor-card strong,
-.books-editor-card summary,
-.books-editor-card label,
-.books-editor-card code {
-  color: inherit;
-}
-
-.section-head--spaced {
-  margin-top: 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.section-head__title {
-  margin: 0;
-  font-size: clamp(1.32rem, 2.2vw, 1.64rem);
-  color: var(--ink);
-}
-
-.section-head__subtitle {
-  margin: 0.3rem 0 0;
-  max-width: 62rem;
-  color: var(--ink-soft);
-}
-
-.books-panel,
-.panel-card,
-.books-result-panel {
-  display: grid;
-  gap: 0.85rem;
-  padding: 0.95rem;
-  border: 1px solid var(--books-border);
-  border-radius: 14px;
-  background: var(--books-surface);
-}
-
-.books-panel {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(246, 249, 252, 0.96));
-  border-color: var(--books-border-strong);
-}
-
-.books-panel__head,
-.books-result-panel__header,
-.report-group__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-  flex-wrap: wrap;
-}
-
-.report-example__tokens {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  flex-wrap: wrap;
-}
-
-.merge-step__title {
-  margin: 0;
-  font-size: 0.77rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--books-accent);
-}
-
-.panel-card__header {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.panel-card__title,
-.books-result-panel__title {
-  margin: 0;
-  font-size: 1.02rem;
-  font-weight: 800;
-  color: var(--books-ink);
-}
-
-.panel-card__subtitle,
-.books-editor-card .tool-card__description,
-.checkbox-row__description,
-.rule-section__description,
-.rule-checkbox__description,
-.rule-checkbox__details-line,
-.report-group__count,
-.report-example__sentence {
-  margin: 0;
-  color: var(--books-muted);
-  line-height: 1.5;
-}
-
-.mode-toggle {
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-.mode-toggle__option,
-.checkbox-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.7rem;
-  min-width: 0;
-}
-
-.mode-toggle__option {
-  padding: 0.72rem 0.8rem;
-  border: 1px solid var(--books-border);
-  border-radius: 12px;
-  background: var(--books-surface-alt);
-  color: var(--books-ink) !important;
-}
-
-.checkbox-row {
-  padding: 0.72rem 0.8rem;
-  border: 1px solid var(--books-border);
-  border-radius: 12px;
-  background: var(--books-surface-alt);
-  color: var(--books-ink) !important;
-}
-
-.checkbox-row--featured {
-  background: linear-gradient(180deg, #fbfefe 0%, #f4faf9 100%);
-}
-
-.checkbox-row > span,
-.rule-checkbox__copy,
-.rule-section__summary-copy,
-.report-group__summary-copy,
-.report-example__sentences {
-  display: grid;
-  gap: 0.18rem;
-  min-width: 0;
-}
-
-.books-editor-card input[type="text"],
-.books-editor-card input[type="password"],
-.books-editor-card input[type="file"],
-.books-editor-card select,
-.books-editor-card textarea {
-  width: 100%;
-  padding: 0.68rem 0.8rem;
-  border: 1px solid var(--books-border);
-  border-radius: 12px;
-  background: #ffffff;
-  color: var(--books-ink);
-  font: inherit;
-  transition:
-    border-color 140ms ease,
-    box-shadow 140ms ease,
-    background-color 140ms ease;
-}
-
-.books-editor-card input[type="checkbox"],
-.books-editor-card input[type="radio"] {
-  accent-color: var(--books-accent);
-}
-
-.books-editor-card input:focus,
-.books-editor-card select:focus,
-.books-editor-card textarea:focus {
-  outline: none;
-  border-color: rgba(15, 118, 110, 0.48);
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
-}
-
-.books-editor-card input::placeholder,
-.books-editor-card textarea::placeholder {
-  color: #8ea0b3;
-}
-
-.books-editor-card .button {
-  border-radius: 12px;
-}
-
-.books-editor-card .button--primary {
-  border-color: transparent;
-  background: linear-gradient(180deg, #149589 0%, #0f766e 100%);
-  box-shadow: 0 12px 22px rgba(15, 118, 110, 0.2);
-}
-
-.books-editor-card .button--secondary {
-  border-color: var(--books-border);
-  background: #ffffff;
-  color: var(--books-ink);
-}
-
-.rules-toolbar {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.selection-pill {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  margin: 0;
-  padding: 0.38rem 0.72rem;
-  border: 1px solid rgba(15, 118, 110, 0.22);
-  border-radius: 999px;
-  background: var(--books-accent-soft);
-  color: var(--books-accent);
-  font-size: 0.88rem;
-  font-weight: 800;
-}
-
-.rule-section {
-  display: grid;
-}
-
-.rule-section__details,
-.rule-checkbox,
-.report-group,
-.report-stat,
-.report-example {
-  border: 1px solid var(--books-border);
-  background: #ffffff;
-}
-
-.rule-section__summary,
-.report-group__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.9rem;
-  padding: 0.9rem 1rem;
-  cursor: pointer;
-  list-style: none;
-  background: linear-gradient(180deg, #ffffff 0%, #f7fafc 100%);
-}
-
-.rule-section__summary::-webkit-details-marker,
-.report-group__header::-webkit-details-marker {
-  display: none;
-}
-
-.rule-section__summary-side {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.7rem;
-  flex-shrink: 0;
-}
-
-.rule-section__title,
-.rule-checkbox__title {
-  font-weight: 800;
-  color: var(--books-ink);
-}
-
-.rule-section__count {
-  display: inline-flex;
-  min-width: 2rem;
-  justify-content: center;
-  padding: 0.2rem 0.48rem;
-  border-radius: 999px;
-  background: #edf4fb;
-  color: #4f647b;
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
-.rule-section__chevron {
-  width: 0.62rem;
-  height: 0.62rem;
-  border-right: 2px solid #6d7f92;
-  border-bottom: 2px solid #6d7f92;
-  transform: rotate(45deg);
-  transition: transform 140ms ease;
-}
-
-.rule-section__details[open] .rule-section__chevron,
-.report-group[open] .rule-section__chevron {
-  transform: rotate(225deg);
-}
-
-.rule-checkboxes {
-  display: grid;
-  gap: 0.8rem;
-  max-height: 26rem;
-  padding: 0.85rem;
-  overflow: auto;
-  border-top: 1px solid var(--books-border);
-  background: #f9fbfd;
-}
-
-.rule-checkbox {
-  padding: 0.85rem 0.9rem;
-  background: #ffffff;
-  box-shadow: 0 8px 16px rgba(20, 33, 47, 0.04);
-}
-
-.rule-checkbox__layout {
-  display: grid;
-  grid-template-columns: 1.3rem minmax(0, 1fr);
-  gap: 0.85rem;
-  align-items: start;
-}
-
-.rule-checkbox__control {
-  display: flex;
-  justify-content: center;
-  padding-top: 0.1rem;
-}
-
-.rule-checkbox__control input[type="checkbox"] {
-  width: 1rem;
-  height: 1rem;
-  margin: 0;
-}
-
-.rule-checkbox__body {
-  display: grid;
-  gap: 0.7rem;
-  min-width: 0;
-}
-
-.rule-checkbox__header {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.7rem;
-}
-
-.rule-checkbox__preference,
-.rule-checkbox__details {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.rule-checkbox__preference {
-  padding: 0.7rem;
-  border: 1px solid var(--books-border);
-  border-radius: 12px;
-  background: #f8fbff;
-}
-
-.rule-checkbox__preference-label {
-  color: var(--books-muted);
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.rule-checkbox__details {
-  padding: 0.65rem 0.75rem;
-  border: 1px solid var(--books-border);
-  border-radius: 12px;
-  background: #fbfdff;
-}
-
-.rule-checkbox__details summary {
-  cursor: pointer;
-  color: #51657c;
-  font-weight: 700;
-}
-
-.books-editor-card__textarea {
-  min-height: 12rem;
-  resize: vertical;
-}
-
-.books-editor-card__textarea--result {
-  background: #fbfdff;
-}
-
-.books-editor-card__inline-action {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.progress-panel {
-  padding: 0.8rem;
-  border: 1px solid var(--books-border);
-  border-radius: 12px;
-  background: #f7fbfb;
-}
-
-.progress-panel__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.progress-track {
-  width: 100%;
-  height: 0.55rem;
-  margin-top: 0.55rem;
-  border-radius: 999px;
-  overflow: hidden;
-  background: #d7e9e6;
-}
-
-.progress-track__bar {
-  height: 100%;
-  background: linear-gradient(90deg, #17a596 0%, #0f766e 100%);
-  transition: width 160ms ease;
-}
-
-.books-result-panel__report,
-.report-summary,
-.report-groups,
-.books-results-stack {
-  display: grid;
-  gap: 0.85rem;
-}
-
-.books-result-panel--empty,
-.books-result-panel--pending {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 250, 252, 0.95));
-}
-
-.books-result-panel__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  flex-wrap: wrap;
-}
-
-.report-summary__stats {
-  display: grid;
-  gap: 0.8rem;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-}
-
-.report-stat {
-  display: grid;
-  gap: 0.2rem;
-  padding: 0.85rem 0.9rem;
-  background: #f7fbff;
-}
-
-.report-stat strong {
-  font-size: 1.2rem;
-  font-weight: 800;
-}
-
-.report-group__summary-copy {
-  align-items: start;
-}
-
-.report-group__examples {
-  display: grid;
-  gap: 0.7rem;
-  max-height: 18rem;
-  padding: 0 0.85rem 0.85rem;
-  overflow: auto;
-}
-
-.report-example {
-  display: grid;
-  gap: 0.65rem;
-  padding: 0.85rem 0.9rem;
-  background: #f9fbfe;
-}
-
-.report-example__before,
-.report-example__after {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.24rem 0.5rem;
-  border: 1px solid var(--books-border);
-  border-radius: 999px;
-  background: #ffffff;
-}
-
-.report-example__arrow {
-  color: var(--books-muted);
-  font-weight: 800;
-}
-
-.books-result-panel__pre {
-  margin: 0;
-  padding: 0.85rem 0.9rem;
-  border: 1px solid var(--books-border);
-  border-radius: 12px;
-  background: #fbfdff;
-  color: var(--books-ink);
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.rule-checkboxes,
-.report-group__examples,
-.books-result-panel__pre,
-.books-editor-card__textarea {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(15, 118, 110, 0.55) rgba(148, 163, 184, 0.18);
-}
-
-.rule-checkboxes::-webkit-scrollbar,
-.report-group__examples::-webkit-scrollbar,
-.books-result-panel__pre::-webkit-scrollbar,
-.books-editor-card__textarea::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
-}
-
-.rule-checkboxes::-webkit-scrollbar-track,
-.report-group__examples::-webkit-scrollbar-track,
-.books-result-panel__pre::-webkit-scrollbar-track,
-.books-editor-card__textarea::-webkit-scrollbar-track {
-  background: rgba(148, 163, 184, 0.18);
-  border-radius: 999px;
-}
-
-.rule-checkboxes::-webkit-scrollbar-thumb,
-.report-group__examples::-webkit-scrollbar-thumb,
-.books-result-panel__pre::-webkit-scrollbar-thumb,
-.books-editor-card__textarea::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #1ab3a3, #0f766e);
-  border-radius: 999px;
-}
-
-.tool-card__description--error {
-  color: #b91c1c !important;
-}
-
-@media (max-width: 760px) {
-  .books-editor-card {
-    padding: 0.8rem;
-    border-radius: 14px;
-  }
-
-  .books-panel,
-  .panel-card,
-  .books-result-panel {
-    padding: 0.8rem;
-  }
-
-  .books-panel__head,
-  .books-result-panel__header,
-  .report-group__header {
-    align-items: stretch;
-  }
-
-  .books-panel__head > .button,
-  .panel-card > .button,
-  .books-result-panel__header > .button,
-  .books-result-panel__header > a,
-  .books-result-panel__actions > a {
-    width: 100%;
-  }
-
-  .rule-section__summary,
-  .report-group__header {
-    padding: 0.8rem;
-  }
-
-  .rule-checkboxes {
-    max-height: 20rem;
-    padding: 0.7rem;
-  }
-
-  .rule-checkbox {
-    padding: 0.75rem;
-  }
-
-  .rule-checkbox__layout {
-    gap: 0.72rem;
-  }
-}
-</style>
+<style src="./BooksGreekEditorCard.scss" lang="scss"></style>

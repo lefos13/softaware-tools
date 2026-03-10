@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   Watermark UI keeps the first release practical by exposing text/image modes
   with minimal controls while preserving the same upload-to-download pattern.
@@ -6,23 +6,26 @@
 import { computed, inject, ref, watch } from "vue";
 import { usePortalI18n } from "../../i18n";
 import { watermarkPdf } from "../../services/pdfService";
+import type { PortalI18n } from "../../types/shared";
+import type { ServiceFlowShellContext } from "../../types/services";
 
-const props = defineProps({
-  apiBaseUrl: {
-    type: String,
-    required: true,
-  },
-  apiHealthy: {
-    type: Boolean,
-    required: true,
-  },
-});
-const { t } = usePortalI18n();
-const serviceFlowShell = inject("serviceFlowShell", null);
+interface PdfWatermarkPayload extends Record<string, unknown> {
+  mode: "text" | "image";
+  text: string;
+  opacity: number;
+  position: string;
+}
 
-const sourceFile = ref(null);
-const watermarkImage = ref(null);
-const mode = ref("text");
+const props = defineProps<{
+  apiBaseUrl: string;
+  apiHealthy: boolean;
+}>();
+const { t } = usePortalI18n() as PortalI18n;
+const serviceFlowShell = inject<ServiceFlowShellContext | null>("serviceFlowShell", null);
+
+const sourceFile = ref<File | null>(null);
+const watermarkImage = ref<File | null>(null);
+const mode = ref<"text" | "image">("text");
 const text = ref("CONFIDENTIAL");
 const opacity = ref(0.24);
 const position = ref("center");
@@ -55,19 +58,21 @@ watch(
 
 const canRun = computed(() => props.apiHealthy && sourceFile.value && !loading.value);
 
-const onSourceFileSelected = (event) => {
-  const [file] = Array.from(event.target.files || []);
+const onSourceFileSelected = (event: Event): void => {
+  const input = event.target as HTMLInputElement | null;
+  const [file] = Array.from(input?.files || []);
   sourceFile.value = file || null;
   error.value = "";
 };
 
-const onWatermarkImageSelected = (event) => {
-  const [file] = Array.from(event.target.files || []);
+const onWatermarkImageSelected = (event: Event): void => {
+  const input = event.target as HTMLInputElement | null;
+  const [file] = Array.from(input?.files || []);
   watermarkImage.value = file || null;
   error.value = "";
 };
 
-const clearPreviousResult = () => {
+const clearPreviousResult = (): void => {
   if (outputUrl.value) {
     URL.revokeObjectURL(outputUrl.value);
   }
@@ -78,7 +83,7 @@ const clearPreviousResult = () => {
   requestId.value = "";
 };
 
-const run = async () => {
+const run = async (): Promise<void> => {
   clearPreviousResult();
   error.value = "";
 
@@ -95,15 +100,16 @@ const run = async () => {
   loading.value = true;
 
   try {
+    const payload: PdfWatermarkPayload = {
+      mode: mode.value,
+      text: text.value,
+      opacity: Number(opacity.value),
+      position: position.value,
+    };
     const result = await watermarkPdf(
       props.apiBaseUrl,
       sourceFile.value,
-      {
-        mode: mode.value,
-        text: text.value,
-        opacity: Number(opacity.value),
-        position: position.value,
-      },
+      payload,
       watermarkImage.value
     );
 

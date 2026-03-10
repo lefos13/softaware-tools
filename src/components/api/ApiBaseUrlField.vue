@@ -1,22 +1,23 @@
-<script setup>
+<script setup lang="ts">
 /*
   The API base URL label now uses the shared locale store so the connection
   field matches the selected language of the rest of the shell.
 */
 import { usePortalI18n } from "../../i18n";
+import type { PortalI18n } from "../../types/shared";
 
-defineProps({
-  modelValue: {
-    type: String,
-    required: true,
-  },
-});
+defineProps<{
+  modelValue: string;
+}>();
 
-const emit = defineEmits(["update:modelValue"]);
-const { t } = usePortalI18n();
+const emit = defineEmits<{
+  "update:modelValue": [value: string];
+}>();
+const { t } = usePortalI18n() as PortalI18n;
 
-const onInput = (event) => {
-  emit("update:modelValue", event.target.value.trim());
+const onInput = (event: Event) => {
+  const target = event.target as HTMLInputElement | null;
+  emit("update:modelValue", target?.value.trim() || "");
 };
 </script>
 

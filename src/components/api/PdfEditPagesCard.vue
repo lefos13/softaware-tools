@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /*
   Edit-pages UI now uses guided form inputs and converts them to backend
   editPlan JSON internally so non-technical users can run page operations.
@@ -6,19 +6,38 @@
 import { computed, inject, ref, watch } from "vue";
 import { usePortalI18n } from "../../i18n";
 import { editPdfPages } from "../../services/pdfService";
+import type { PortalI18n } from "../../types/shared";
+import type { ServiceFlowShellContext } from "../../types/services";
 
-const props = defineProps({
-  apiBaseUrl: { type: String, required: true },
-  apiHealthy: { type: Boolean, required: true },
-});
-const { t } = usePortalI18n();
-const serviceFlowShell = inject("serviceFlowShell", null);
+interface RotateRow {
+  page: string;
+  angle: number;
+}
 
-const file = ref(null);
+interface RotatePayloadItem {
+  page: number;
+  angle: number;
+}
+
+interface EditPagesPlan extends Record<string, unknown> {
+  keep?: number[];
+  delete?: number[];
+  reorder?: number[];
+  rotate?: RotatePayloadItem[];
+}
+
+const props = defineProps<{
+  apiBaseUrl: string;
+  apiHealthy: boolean;
+}>();
+const { t } = usePortalI18n() as PortalI18n;
+const serviceFlowShell = inject<ServiceFlowShellContext | null>("serviceFlowShell", null);
+
+const file = ref<File | null>(null);
 const keepPagesInput = ref("");
 const deletePagesInput = ref("");
 const reorderPagesInput = ref("");
-const rotateRows = ref([{ page: "", angle: 90 }]);
+const rotateRows = ref<RotateRow[]>([{ page: "", angle: 90 }]);
 const loading = ref(false);
 const error = ref("");
 const message = ref("");
@@ -48,8 +67,9 @@ watch(
 
 const canRun = computed(() => props.apiHealthy && file.value && !loading.value);
 
-const onFileSelected = (event) => {
-  const [selected] = Array.from(event.target.files || []);
+const onFileSelected = (event: Event): void => {
+  const input = event.target as HTMLInputElement | null;
+  const [selected] = Array.from(input?.files || []);
   file.value = selected || null;
   error.value = "";
 };
@@ -58,14 +78,14 @@ const onFileSelected = (event) => {
   List parsing accepts comma-separated page numbers and ignores duplicates so
   inputs remain forgiving while still producing deterministic payloads.
 */
-const parsePageList = (rawValue) => {
+const parsePageList = (rawValue: string): number[] => {
   const text = String(rawValue || "").trim();
   if (!text) {
     return [];
   }
 
-  const seen = new Set();
-  const out = [];
+  const seen = new Set<number>();
+  const out: number[] = [];
 
   text
     .split(",")
@@ -86,20 +106,20 @@ const parsePageList = (rawValue) => {
   return out;
 };
 
-const addRotateRow = () => {
+const addRotateRow = (): void => {
   rotateRows.value.push({ page: "", angle: 90 });
 };
 
-const removeRotateRow = (index) => {
+const removeRotateRow = (index: number): void => {
   rotateRows.value.splice(index, 1);
   if (rotateRows.value.length === 0) {
     rotateRows.value.push({ page: "", angle: 90 });
   }
 };
 
-const buildRotatePayload = () => {
+const buildRotatePayload = (): RotatePayloadItem[] => {
   const allowedAngles = new Set([0, 90, 180, 270]);
-  const out = [];
+  const out: RotatePayloadItem[] = [];
 
   rotateRows.value.forEach((row, index) => {
     const pageText = String(row.page || "").trim();
@@ -123,7 +143,7 @@ const buildRotatePayload = () => {
   return out;
 };
 
-const clearPreviousResult = () => {
+const clearPreviousResult = (): void => {
   if (outputUrl.value) {
     URL.revokeObjectURL(outputUrl.value);
   }
@@ -134,7 +154,7 @@ const clearPreviousResult = () => {
   requestId.value = "";
 };
 
-const run = async () => {
+const run = async (): Promise<void> => {
   clearPreviousResult();
   error.value = "";
 
@@ -143,33 +163,37 @@ const run = async () => {
     return;
   }
 
-  let keep;
-  let deletePages;
-  let reorder;
-  let rotate;
+  let parsedInputs: {
+    keep: number[];
+    deletePages: number[];
+    reorder: number[];
+    rotate: RotatePayloadItem[];
+  };
   try {
-    keep = parsePageList(keepPagesInput.value);
-    deletePages = parsePageList(deletePagesInput.value);
-    reorder = parsePageList(reorderPagesInput.value);
-    rotate = buildRotatePayload();
+    parsedInputs = {
+      keep: parsePageList(keepPagesInput.value),
+      deletePages: parsePageList(deletePagesInput.value),
+      reorder: parsePageList(reorderPagesInput.value),
+      rotate: buildRotatePayload(),
+    };
   } catch (parseError) {
     error.value =
       parseError instanceof Error ? parseError.message : t("tools.errors.invalidFormValues");
     return;
   }
 
-  const plan = {};
-  if (keep.length > 0) {
-    plan.keep = keep;
+  const plan: EditPagesPlan = {};
+  if (parsedInputs.keep.length > 0) {
+    plan.keep = parsedInputs.keep;
   }
-  if (deletePages.length > 0) {
-    plan.delete = deletePages;
+  if (parsedInputs.deletePages.length > 0) {
+    plan.delete = parsedInputs.deletePages;
   }
-  if (reorder.length > 0) {
-    plan.reorder = reorder;
+  if (parsedInputs.reorder.length > 0) {
+    plan.reorder = parsedInputs.reorder;
   }
-  if (rotate.length > 0) {
-    plan.rotate = rotate;
+  if (parsedInputs.rotate.length > 0) {
+    plan.rotate = parsedInputs.rotate;
   }
 
   loading.value = true;
@@ -280,22 +304,4 @@ const run = async () => {
   </section>
 </template>
 
-<style scoped>
-.rotate-grid {
-  display: grid;
-  gap: 0.55rem;
-}
-
-.rotate-grid__row {
-  display: grid;
-  grid-template-columns: 110px 130px auto;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-@media (max-width: 640px) {
-  .rotate-grid__row {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
+<style src="./PdfEditPagesCard.scss" lang="scss"></style>

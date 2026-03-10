@@ -1,42 +1,22 @@
-<script setup>
+<script setup lang="ts">
 /*
   Health status labels now use the shared locale store so the passive API
   guard card stays readable in both supported languages.
 */
 import { usePortalI18n } from "../../i18n";
+import type { PortalI18n } from "../../types/shared";
 
-defineProps({
-  checking: {
-    type: Boolean,
-    required: true,
-  },
-  isHealthy: {
-    type: Boolean,
-    required: true,
-  },
-  status: {
-    type: String,
-    required: true,
-  },
-  message: {
-    type: String,
-    required: true,
-  },
-  requestId: {
-    type: String,
-    required: true,
-  },
-  error: {
-    type: String,
-    required: true,
-  },
-  lastCheckedAt: {
-    type: String,
-    required: true,
-  },
-});
+defineProps<{
+  checking: boolean;
+  isHealthy: boolean;
+  status: string;
+  message: string;
+  requestId: string;
+  error: string;
+  lastCheckedAt: string;
+}>();
 
-const { t, formatTime } = usePortalI18n();
+const { t, formatTime } = usePortalI18n() as PortalI18n;
 </script>
 
 <template>
