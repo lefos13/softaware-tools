@@ -5,6 +5,8 @@
 */
 import { buildUrl, parseApiError } from "./apiClient";
 import type {
+  AccessDashboardQuery,
+  AccessHistoryResult,
   AccessTokenMutationPayload,
   AccessTokenMutationResult,
   ListAccessTokensData,
@@ -39,6 +41,50 @@ export const listAccessTokens = async (
   });
 
   return readJsonData(response, { count: 0, tokens: [], availableServiceFlags: [] });
+};
+
+/*
+  Superadmins need the same sortable usage history that token owners see, but
+  scoped to an arbitrary token id selected from the admin catalog.
+*/
+export const fetchAccessTokenHistory = async (
+  baseUrl: string,
+  token: string,
+  tokenId: string,
+  options: AccessDashboardQuery = {}
+): Promise<AccessHistoryResult | null> => {
+  const searchParams = new URLSearchParams();
+  if (options.page) {
+    searchParams.set("page", String(options.page));
+  }
+  if (options.limit) {
+    searchParams.set("limit", String(options.limit));
+  }
+  if (options.serviceKey) {
+    searchParams.set("serviceKey", String(options.serviceKey));
+  }
+  if (options.status) {
+    searchParams.set("status", String(options.status));
+  }
+  if (options.sortBy) {
+    searchParams.set("sortBy", String(options.sortBy));
+  }
+  if (options.sortDirection) {
+    searchParams.set("sortDirection", String(options.sortDirection));
+  }
+
+  const query = searchParams.toString();
+  const response = await fetch(
+    `${buildUrl(baseUrl, `/api/admin/tokens/${encodeURIComponent(tokenId)}/history`)}${
+      query ? `?${query}` : ""
+    }`,
+    {
+      method: "GET",
+      headers: buildAuthHeaders(token),
+    }
+  );
+
+  return readJsonData(response, null);
 };
 
 export const createAccessToken = async (

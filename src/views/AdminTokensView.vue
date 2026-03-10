@@ -1,23 +1,30 @@
 <script setup lang="ts">
 /*
-  The superadmin screen is now dedicated to access-token lifecycle management
-  so browser admins can create, edit, revoke, renew, and extend service tokens
-  without mixing that workflow with failure-report browsing.
+  Superadmin token management now keeps the catalog readable on the base page
+  while create/edit and per-token history move into focused modal workflows.
 */
-import { computed, inject, ref } from "vue";
+import { computed, inject, ref, watch } from "vue";
+import AccessHistoryTable from "../components/access/AccessHistoryTable.vue";
 import { usePortalI18n } from "../i18n";
 import {
   createAccessToken,
   extendAccessToken,
+  fetchAccessTokenHistory,
   listAccessTokens,
   resetAccessTokenUsage,
   renewAccessToken,
   revokeAccessToken,
   updateAccessToken,
 } from "../services/adminTokenService";
+import type {
+  AccessDashboardQuery,
+  AccessHistoryResult,
+  AccessHistorySortDirection,
+  AccessHistorySortKey,
+  AccessTokenRecord,
+} from "../types/services";
 import type { PortalContext, PortalI18n } from "../types/shared";
 import { portalContextKey } from "../types/shared";
-import type { AccessTokenRecord } from "../types/services";
 
 type AdminServicePoliciesForm = Record<string, string>;
 
@@ -30,12 +37,19 @@ const { locale, t } = usePortalI18n() as PortalI18n;
 if (!portalContext) {
   throw new Error("Portal context is not available.");
 }
+
 const SUPERADMIN_TOKEN_STORAGE_KEY = "admin_tokens_superadmin_token";
 const DEFAULT_TTL = "30d";
+const DEFAULT_LIST_PAGE_SIZE = 10;
+const DEFAULT_HISTORY_PAGE_SIZE = 10;
+
 const formatDateTime = (value?: string, fallbackKey = "adminTokens.notAvailable"): string =>
   value
     ? new Date(value).toLocaleString(locale.value === "el" ? "el-GR" : "en-US")
     : t(fallbackKey);
+
+const formatNumber = (value?: number | string): string =>
+  new Intl.NumberFormat(locale.value === "el" ? "el-GR" : "en-US").format(Number(value || 0));
 
 const tokenInput = ref(sessionStorage.getItem(SUPERADMIN_TOKEN_STORAGE_KEY) || "");
 const activeToken = ref(sessionStorage.getItem(SUPERADMIN_TOKEN_STORAGE_KEY) || "");
@@ -48,12 +62,39 @@ const availableServicePolicies = ref<AdminPolicyPresetMap>({});
 const revealedToken = ref("");
 const revealedTokenLabel = ref("");
 const editingTokenId = ref("");
-const buildEmptyPolicies = (): AdminServicePoliciesForm => ({
-  books_greek_editor: "",
-  image: "",
-  pdf: "",
-  tasks: "",
-});
+const showFormModal = ref(false);
+const showHistoryModal = ref(false);
+const listCurrentPage = ref(1);
+const listPageSize = ref(DEFAULT_LIST_PAGE_SIZE);
+const historyToken = ref<AccessTokenRecord | null>(null);
+const historyLoading = ref(false);
+const historyError = ref("");
+const historyState = ref<AccessHistoryResult | null>(null);
+const historySelectedService = ref("");
+const historySelectedStatus = ref("");
+const historyCurrentPage = ref(1);
+const historyPageSize = ref(DEFAULT_HISTORY_PAGE_SIZE);
+const historySortBy = ref<AccessHistorySortKey>("createdAt");
+const historySortDirection = ref<AccessHistorySortDirection>("desc");
+
+/*
+  Policy inputs are generated from the backend catalog so the form stays aligned
+  with whichever preset keys the API currently exposes for each service.
+*/
+const buildEmptyPolicies = (): AdminServicePoliciesForm => {
+  const serviceKeys = Object.keys(availableServicePolicies.value || {});
+  if (serviceKeys.length === 0) {
+    return {
+      books_greek_editor: "",
+      image: "",
+      pdf: "",
+      tasks: "",
+    };
+  }
+
+  return Object.fromEntries(serviceKeys.map((serviceKey) => [serviceKey, ""]));
+};
+
 const form = ref({
   alias: "",
   ttl: DEFAULT_TTL,
@@ -62,11 +103,37 @@ const form = ref({
 
 const isAuthenticated = computed(() => Boolean(activeToken.value));
 const isEditing = computed(() => Boolean(editingTokenId.value));
+const paginatedTokens = computed(() => {
+  const startIndex = (listCurrentPage.value - 1) * listPageSize.value;
+  return accessTokens.value.slice(startIndex, startIndex + listPageSize.value);
+});
+const listTotalPages = computed(() =>
+  Math.max(1, Math.ceil(accessTokens.value.length / Math.max(1, listPageSize.value)))
+);
+const listCanGoPrev = computed(() => listCurrentPage.value > 1);
+const listCanGoNext = computed(() => listCurrentPage.value < listTotalPages.value);
 const sortedServicePolicies = computed(() =>
   Object.entries(availableServicePolicies.value || {}).sort(([left], [right]) =>
     left.localeCompare(right)
   )
 );
+const historyItems = computed(() => historyState.value?.items || []);
+const historyTotalItems = computed(() => Number(historyState.value?.total || 0));
+const historyServiceOptions = computed(() => {
+  const tokenItem = historyToken.value;
+  if (!tokenItem) {
+    return [];
+  }
+
+  return Array.from(
+    new Set([
+      ...Object.keys(tokenItem.servicePolicies || {}),
+      ...(tokenItem.usageSummary || []).map((item) => String(item.serviceKey || "")),
+    ])
+  )
+    .filter(Boolean)
+    .sort((left, right) => left.localeCompare(right));
+});
 
 const normalizeSelectedPolicies = (policies: AdminServicePoliciesForm): Record<string, string> =>
   Object.fromEntries(
@@ -105,10 +172,6 @@ const formatUsageSummary = (
   return `${serviceItem.serviceKey}: ${parts.join(" · ") || t("adminTokens.usage.unlimited")}`;
 };
 
-/*
-  Token rows expose many independent fields, so these helpers normalize policy
-  and usage blocks into arrays for structured card rendering in the template.
-*/
 const listPolicyEntries = (tokenItem: AccessTokenRecord): Array<[string, string]> =>
   tokenItem?.servicePolicies && Object.keys(tokenItem.servicePolicies).length > 0
     ? (Object.entries(tokenItem.servicePolicies) as Array<[string, string]>)
@@ -135,16 +198,65 @@ const clearReveal = (): void => {
   revealedTokenLabel.value = "";
 };
 
+const resetHistoryState = (): void => {
+  historyToken.value = null;
+  historyState.value = null;
+  historyError.value = "";
+  historySelectedService.value = "";
+  historySelectedStatus.value = "";
+  historyCurrentPage.value = 1;
+  historyPageSize.value = DEFAULT_HISTORY_PAGE_SIZE;
+  historySortBy.value = "createdAt";
+  historySortDirection.value = "desc";
+};
+
+const closeFormModal = (): void => {
+  showFormModal.value = false;
+  resetForm();
+};
+
+const closeHistoryModal = (): void => {
+  showHistoryModal.value = false;
+  resetHistoryState();
+};
+
 const clearSuperadminToken = (): void => {
   activeToken.value = "";
   tokenInput.value = "";
   sessionStorage.removeItem(SUPERADMIN_TOKEN_STORAGE_KEY);
   accessTokens.value = [];
   availableServicePolicies.value = {};
+  listCurrentPage.value = 1;
   clearReveal();
-  resetForm();
+  closeFormModal();
+  closeHistoryModal();
   error.value = "";
   success.value = "";
+};
+
+const syncHistoryToken = (): void => {
+  if (!historyToken.value) {
+    return;
+  }
+
+  const nextToken = accessTokens.value.find((item) => item.tokenId === historyToken.value?.tokenId);
+  if (nextToken) {
+    historyToken.value = nextToken;
+  }
+};
+
+const replaceTokenRecord = (nextRecord?: AccessTokenRecord | null): void => {
+  if (!nextRecord?.tokenId) {
+    return;
+  }
+
+  accessTokens.value = accessTokens.value.map((tokenItem) =>
+    tokenItem.tokenId === nextRecord.tokenId ? nextRecord : tokenItem
+  );
+
+  if (historyToken.value?.tokenId === nextRecord.tokenId) {
+    historyToken.value = nextRecord;
+  }
 };
 
 const loadTokens = async (): Promise<void> => {
@@ -167,6 +279,7 @@ const loadTokens = async (): Promise<void> => {
             ])
           )
         : {};
+    syncHistoryToken();
   } catch (loadError) {
     const message =
       loadError instanceof Error ? loadError.message : t("adminTokens.errors.loadTokens");
@@ -174,6 +287,37 @@ const loadTokens = async (): Promise<void> => {
     error.value = message;
   } finally {
     loading.value = false;
+  }
+};
+
+const loadTokenHistory = async (): Promise<void> => {
+  if (!activeToken.value || !historyToken.value) {
+    return;
+  }
+
+  historyLoading.value = true;
+  historyError.value = "";
+
+  try {
+    const query: AccessDashboardQuery = {
+      page: historyCurrentPage.value,
+      limit: historyPageSize.value,
+      serviceKey: historySelectedService.value,
+      status: historySelectedStatus.value,
+      sortBy: historySortBy.value,
+      sortDirection: historySortDirection.value,
+    };
+    historyState.value = await fetchAccessTokenHistory(
+      portalContext.apiBaseUrl.value,
+      activeToken.value,
+      historyToken.value.tokenId,
+      query
+    );
+  } catch (loadError) {
+    historyError.value =
+      loadError instanceof Error ? loadError.message : t("adminTokens.errors.loadHistory");
+  } finally {
+    historyLoading.value = false;
   }
 };
 
@@ -189,6 +333,14 @@ const authenticate = async (): Promise<void> => {
   await loadTokens();
 };
 
+const openCreateModal = (): void => {
+  resetForm();
+  error.value = "";
+  success.value = "";
+  clearReveal();
+  showFormModal.value = true;
+};
+
 const startEdit = (tokenItem: AccessTokenRecord): void => {
   editingTokenId.value = tokenItem.tokenId;
   form.value = {
@@ -202,6 +354,20 @@ const startEdit = (tokenItem: AccessTokenRecord): void => {
   clearReveal();
   error.value = "";
   success.value = "";
+  showFormModal.value = true;
+};
+
+const openHistory = (tokenItem: AccessTokenRecord): void => {
+  historyToken.value = tokenItem;
+  historyState.value = null;
+  historyError.value = "";
+  historySelectedService.value = "";
+  historySelectedStatus.value = "";
+  historyCurrentPage.value = 1;
+  historyPageSize.value = DEFAULT_HISTORY_PAGE_SIZE;
+  historySortBy.value = "createdAt";
+  historySortDirection.value = "desc";
+  showHistoryModal.value = true;
 };
 
 const submitForm = async (): Promise<void> => {
@@ -226,24 +392,23 @@ const submitForm = async (): Promise<void> => {
         }
       );
 
+      replaceTokenRecord(result?.record);
       success.value = t("adminTokens.success.updated");
-      accessTokens.value = accessTokens.value.map((tokenItem) =>
-        tokenItem.tokenId === result?.record?.tokenId ? result.record : tokenItem
-      );
-      resetForm();
+      closeFormModal();
       return;
     }
 
+    const createdAlias = form.value.alias;
     const result = await createAccessToken(portalContext.apiBaseUrl.value, activeToken.value, {
-      alias: form.value.alias,
+      alias: createdAlias,
       servicePolicies: normalizeSelectedPolicies(form.value.servicePolicies),
       ttl: form.value.ttl || DEFAULT_TTL,
     });
 
     success.value = t("adminTokens.success.created");
     revealedToken.value = result?.token || "";
-    revealedTokenLabel.value = form.value.alias;
-    resetForm();
+    revealedTokenLabel.value = createdAlias;
+    closeFormModal();
     await loadTokens();
   } catch (runError) {
     error.value = runError instanceof Error ? runError.message : t("adminTokens.errors.saveToken");
@@ -272,9 +437,7 @@ const runRevoke = async (tokenItem: AccessTokenRecord): Promise<void> => {
       activeToken.value,
       tokenItem.tokenId
     );
-    accessTokens.value = accessTokens.value.map((item) =>
-      item.tokenId === result?.record?.tokenId ? result.record : item
-    );
+    replaceTokenRecord(result?.record);
     success.value = t("adminTokens.success.revoked");
   } catch (runError) {
     error.value =
@@ -316,9 +479,7 @@ const runRenew = async (tokenItem: AccessTokenRecord): Promise<void> => {
     );
     revealedToken.value = result?.token || "";
     revealedTokenLabel.value = result?.record?.alias || tokenItem.alias || "";
-    accessTokens.value = accessTokens.value.map((item) =>
-      item.tokenId === result?.record?.tokenId ? result.record : item
-    );
+    replaceTokenRecord(result?.record);
     success.value = t("adminTokens.success.renewed");
   } catch (runError) {
     error.value = runError instanceof Error ? runError.message : t("adminTokens.errors.renewToken");
@@ -348,9 +509,7 @@ const runExtend = async (tokenItem: AccessTokenRecord): Promise<void> => {
       tokenItem.tokenId,
       ttl
     );
-    accessTokens.value = accessTokens.value.map((item) =>
-      item.tokenId === result?.record?.tokenId ? result.record : item
-    );
+    replaceTokenRecord(result?.record);
     success.value = t("adminTokens.success.extended");
   } catch (runError) {
     error.value =
@@ -388,6 +547,50 @@ const runResetUsage = async (tokenItem: AccessTokenRecord): Promise<void> => {
     saving.value = false;
   }
 };
+
+const goToListPage = (nextPage: number): void => {
+  listCurrentPage.value = Math.min(listTotalPages.value, Math.max(1, Number(nextPage) || 1));
+};
+
+const updateListPageSize = (value: string): void => {
+  listPageSize.value = Math.max(1, Number(value) || DEFAULT_LIST_PAGE_SIZE);
+  listCurrentPage.value = 1;
+};
+
+const updateListPageSizeFromEvent = (event: Event): void => {
+  updateListPageSize(String((event.target as HTMLSelectElement)?.value || DEFAULT_LIST_PAGE_SIZE));
+};
+
+watch([accessTokens, listPageSize], () => {
+  if (listCurrentPage.value > listTotalPages.value) {
+    listCurrentPage.value = listTotalPages.value;
+  }
+});
+
+watch([historySelectedService, historySelectedStatus], () => {
+  historyCurrentPage.value = 1;
+});
+
+watch(
+  () => [
+    showHistoryModal.value,
+    activeToken.value,
+    historyToken.value?.tokenId || "",
+    historySelectedService.value,
+    historySelectedStatus.value,
+    historyCurrentPage.value,
+    historyPageSize.value,
+    historySortBy.value,
+    historySortDirection.value,
+  ],
+  ([isVisible, tokenValue, tokenId]) => {
+    if (!isVisible || !tokenValue || !tokenId) {
+      return;
+    }
+
+    void loadTokenHistory();
+  }
+);
 
 if (activeToken.value) {
   void loadTokens();
@@ -450,7 +653,9 @@ if (activeToken.value) {
       </div>
     </article>
 
-    <p v-if="error" class="tool-card__description tool-card__description--error">{{ error }}</p>
+    <p v-if="error && !showFormModal" class="tool-card__description tool-card__description--error">
+      {{ error }}
+    </p>
     <p v-if="success" class="tool-card__description">{{ success }}</p>
 
     <article v-if="revealedToken" class="tool-card admin-reveal">
@@ -461,93 +666,46 @@ if (activeToken.value) {
       <pre class="admin-reveal__token">{{ revealedToken }}</pre>
     </article>
 
-    <div v-if="isAuthenticated" class="admin-layout">
-      <article class="tool-card admin-list">
-        <h3 class="tool-card__title">
-          {{ isEditing ? t("adminTokens.editAccessToken") : t("adminTokens.createAccessToken") }}
-        </h3>
-        <div class="admin-form">
-          <label class="admin-form__field">
-            <span>{{ t("adminTokens.alias") }}</span>
-            <input
-              v-model="form.alias"
-              type="text"
-              class="field"
-              :disabled="saving"
-              :placeholder="t('adminTokens.aliasPlaceholder')"
-            />
-          </label>
-
-          <label v-if="!isEditing" class="admin-form__field">
-            <span>{{ t("adminTokens.ttl") }}</span>
-            <input
-              v-model="form.ttl"
-              type="text"
-              class="field"
-              :disabled="saving"
-              :placeholder="DEFAULT_TTL"
-            />
-          </label>
-
-          <div class="admin-form__field">
-            <span>{{ t("adminTokens.servicePolicies") }}</span>
-            <div class="admin-policy-grid">
-              <label
-                v-for="[serviceKey, presets] in sortedServicePolicies"
-                :key="serviceKey"
-                class="admin-form__field"
-              >
-                <span>{{ serviceKey }}</span>
-                <select v-model="form.servicePolicies[serviceKey]" class="field" :disabled="saving">
-                  <option value="">{{ t("adminTokens.disabled") }}</option>
-                  <option v-for="preset in presets" :key="preset" :value="preset">
-                    {{ preset }}
-                  </option>
-                </select>
-              </label>
-            </div>
-          </div>
-
-          <div class="preview-card__actions">
-            <button
-              type="button"
-              class="button button--primary"
-              :disabled="saving"
-              @click="submitForm"
-            >
-              {{
-                saving
-                  ? t("adminTokens.saving")
-                  : isEditing
-                    ? t("adminTokens.saveChanges")
-                    : t("adminTokens.createToken")
-              }}
-            </button>
-            <button
-              type="button"
-              class="button button--secondary"
-              :disabled="saving"
-              @click="resetForm"
-            >
-              {{ t("adminTokens.reset") }}
-            </button>
-          </div>
+    <article v-if="isAuthenticated" class="tool-card admin-list">
+      <div class="admin-list__head">
+        <div>
+          <h3 class="tool-card__title">{{ t("adminTokens.accessTokens") }}</h3>
+          <p class="tool-card__description">
+            {{ t("adminTokens.total") }}: {{ accessTokens.length }}
+          </p>
         </div>
-      </article>
+        <div class="admin-list__toolbar">
+          <select
+            :value="String(listPageSize)"
+            class="rotation-select"
+            :disabled="loading || saving"
+            @change="updateListPageSizeFromEvent"
+          >
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+            <option :value="50">50</option>
+          </select>
+          <button
+            type="button"
+            class="button button--primary"
+            :disabled="loading || saving"
+            @click="openCreateModal"
+          >
+            {{ t("adminTokens.createToken") }}
+          </button>
+        </div>
+      </div>
 
-      <article class="tool-card admin-detail">
-        <h3 class="tool-card__title">{{ t("adminTokens.accessTokens") }}</h3>
-        <p class="tool-card__description">
-          {{ t("adminTokens.total") }}: {{ accessTokens.length }}
-        </p>
-
-        <p v-if="!loading && accessTokens.length === 0" class="tool-card__description">
-          {{ t("adminTokens.noAccessTokens") }}
-        </p>
-
-        <ul v-else class="admin-token-list" role="list">
+      <p v-if="loading" class="tool-card__description">
+        {{ t("adminTokens.loadingList") }}
+      </p>
+      <p v-else-if="accessTokens.length === 0" class="tool-card__description">
+        {{ t("adminTokens.noAccessTokens") }}
+      </p>
+      <template v-else>
+        <ul class="admin-token-list" role="list">
           <li
-            v-for="tokenItem in accessTokens"
+            v-for="tokenItem in paginatedTokens"
             :key="tokenItem.tokenId"
             class="admin-token-list__item"
           >
@@ -629,6 +787,14 @@ if (activeToken.value) {
               <button
                 type="button"
                 class="button button--secondary"
+                :disabled="saving"
+                @click="openHistory(tokenItem)"
+              >
+                {{ t("adminTokens.history") }}
+              </button>
+              <button
+                type="button"
+                class="button button--secondary"
                 :disabled="saving || !tokenItem.isActive"
                 @click="runResetUsage(tokenItem)"
               >
@@ -669,6 +835,187 @@ if (activeToken.value) {
             </div>
           </li>
         </ul>
+
+        <div class="admin-pagination">
+          <button
+            type="button"
+            class="rotation-select"
+            :disabled="!listCanGoPrev"
+            @click="goToListPage(listCurrentPage - 1)"
+          >
+            {{ t("accessDashboard.pagination.previous") }}
+          </button>
+          <span>
+            {{
+              t("accessDashboard.pagination.summary", {
+                page: listCurrentPage,
+                totalPages: listTotalPages,
+                totalItems: formatNumber(accessTokens.length),
+              })
+            }}
+          </span>
+          <button
+            type="button"
+            class="rotation-select"
+            :disabled="!listCanGoNext"
+            @click="goToListPage(listCurrentPage + 1)"
+          >
+            {{ t("accessDashboard.pagination.next") }}
+          </button>
+        </div>
+      </template>
+    </article>
+
+    <div
+      v-if="showFormModal"
+      class="admin-modal"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="
+        isEditing ? t('adminTokens.editAccessToken') : t('adminTokens.createAccessToken')
+      "
+      @click.self="closeFormModal"
+    >
+      <article class="admin-modal__card">
+        <div class="admin-modal__head">
+          <div>
+            <h3 class="tool-card__title">
+              {{
+                isEditing ? t("adminTokens.editAccessToken") : t("adminTokens.createAccessToken")
+              }}
+            </h3>
+            <p class="tool-card__description">
+              {{
+                isEditing
+                  ? t("adminTokens.editModalDescription")
+                  : t("adminTokens.createModalDescription")
+              }}
+            </p>
+          </div>
+          <button type="button" class="button button--secondary" @click="closeFormModal">
+            {{ t("modal.close") }}
+          </button>
+        </div>
+
+        <p v-if="error" class="tool-card__description tool-card__description--error">{{ error }}</p>
+
+        <div class="admin-form">
+          <label class="admin-form__field">
+            <span>{{ t("adminTokens.alias") }}</span>
+            <input
+              v-model="form.alias"
+              type="text"
+              class="field"
+              :disabled="saving"
+              :placeholder="t('adminTokens.aliasPlaceholder')"
+            />
+          </label>
+
+          <label v-if="!isEditing" class="admin-form__field">
+            <span>{{ t("adminTokens.ttl") }}</span>
+            <input
+              v-model="form.ttl"
+              type="text"
+              class="field"
+              :disabled="saving"
+              :placeholder="DEFAULT_TTL"
+            />
+          </label>
+
+          <div class="admin-form__field">
+            <span>{{ t("adminTokens.servicePolicies") }}</span>
+            <div class="admin-policy-grid">
+              <label
+                v-for="[serviceKey, presets] in sortedServicePolicies"
+                :key="serviceKey"
+                class="admin-form__field"
+              >
+                <span>{{ serviceKey }}</span>
+                <select v-model="form.servicePolicies[serviceKey]" class="field" :disabled="saving">
+                  <option value="">{{ t("adminTokens.disabled") }}</option>
+                  <option v-for="preset in presets" :key="preset" :value="preset">
+                    {{ preset }}
+                  </option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div class="preview-card__actions">
+            <button
+              type="button"
+              class="button button--primary"
+              :disabled="saving"
+              @click="submitForm"
+            >
+              {{
+                saving
+                  ? t("adminTokens.saving")
+                  : isEditing
+                    ? t("adminTokens.saveChanges")
+                    : t("adminTokens.createToken")
+              }}
+            </button>
+            <button
+              type="button"
+              class="button button--secondary"
+              :disabled="saving"
+              @click="resetForm"
+            >
+              {{ t("adminTokens.reset") }}
+            </button>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <div
+      v-if="showHistoryModal"
+      class="admin-modal"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="t('adminTokens.history')"
+      @click.self="closeHistoryModal"
+    >
+      <article class="admin-modal__card admin-modal__card--history">
+        <div class="admin-modal__head">
+          <div>
+            <h3 class="tool-card__title">{{ t("adminTokens.history") }}</h3>
+            <p class="tool-card__description">
+              {{
+                t("adminTokens.historyDescription", {
+                  label:
+                    historyToken?.alias || historyToken?.tokenId || t("adminTokens.notAvailable"),
+                })
+              }}
+            </p>
+          </div>
+          <button type="button" class="button button--secondary" @click="closeHistoryModal">
+            {{ t("modal.close") }}
+          </button>
+        </div>
+
+        <AccessHistoryTable
+          :loading="historyLoading"
+          :error="historyError"
+          :items="historyItems"
+          :service-options="historyServiceOptions"
+          :selected-service="historySelectedService"
+          :selected-status="historySelectedStatus"
+          :page="historyCurrentPage"
+          :page-size="historyPageSize"
+          :total-items="historyTotalItems"
+          :sort-by="historySortBy"
+          :sort-direction="historySortDirection"
+          :loading-message="t('adminTokens.historyLoading')"
+          :empty-message="t('adminTokens.historyEmpty')"
+          @update:selected-service="historySelectedService = $event"
+          @update:selected-status="historySelectedStatus = $event"
+          @update:page-size="historyPageSize = $event"
+          @update:page="historyCurrentPage = $event"
+          @update:sort-by="historySortBy = $event"
+          @update:sort-direction="historySortDirection = $event"
+        />
       </article>
     </div>
   </section>

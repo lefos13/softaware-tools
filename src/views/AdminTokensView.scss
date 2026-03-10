@@ -1,10 +1,9 @@
 /*
-  The token manager keeps authentication, token creation, and token catalog
-  actions on one screen so superadmins can operate without extra route hops.
+  The admin page now prioritizes the token catalog first, with modal shells for
+  editing and history so dense management tasks do not compete on one surface.
 */
 .admin-access,
 .admin-list,
-.admin-detail,
 .admin-reveal {
   color: var(--ink);
   background: var(--surface);
@@ -12,22 +11,20 @@
 
 .admin-access .tool-card__title,
 .admin-list .tool-card__title,
-.admin-detail .tool-card__title,
 .admin-reveal .tool-card__title {
   color: var(--ink);
 }
 
 .admin-access .tool-card__description,
 .admin-list .tool-card__description,
-.admin-detail .tool-card__description,
 .admin-reveal .tool-card__description {
   color: var(--ink-soft);
 }
 
 .admin-list .tool-card__description--error,
-.admin-detail .tool-card__description--error,
 .admin-access .tool-card__description--error,
-.admin-reveal .tool-card__description--error {
+.admin-reveal .tool-card__description--error,
+.admin-modal .tool-card__description--error {
   color: var(--error);
 }
 
@@ -67,10 +64,20 @@
   outline-offset: 1px;
 }
 
-.admin-layout {
-  display: grid;
-  grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+.admin-list__head {
+  display: flex;
+  justify-content: space-between;
   gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
+.admin-list__toolbar {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .admin-form {
@@ -258,18 +265,66 @@
   word-break: break-all;
 }
 
-@media (max-width: 860px) {
-  .admin-layout {
-    grid-template-columns: 1fr;
-  }
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
 }
 
-@media (max-width: 760px) {
+/*
+  Modal cards isolate heavy forms and history tables so the main page remains a
+  fast scanning surface and actions can expand only when the admin requests it.
+*/
+.admin-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 24;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.62);
+}
+
+.admin-modal__card {
+  width: min(760px, 100%);
+  max-height: min(88vh, 960px);
+  overflow: auto;
+  border: 1px solid rgba(13, 148, 136, 0.28);
+  border-radius: 18px;
+  padding: 1rem;
+  background: #f8fcff;
+  box-shadow: 0 24px 40px rgba(15, 23, 42, 0.28);
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-modal__card--history {
+  width: min(1040px, 100%);
+}
+
+.admin-modal__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
   .admin-access__row {
     grid-template-columns: 1fr;
   }
 
-  .admin-token-list__meta-grid {
-    grid-template-columns: 1fr;
+  .admin-list__head,
+  .admin-modal__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-list__toolbar {
+    width: 100%;
   }
 }

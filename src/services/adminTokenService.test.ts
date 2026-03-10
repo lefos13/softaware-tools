@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createAccessToken,
   extendAccessToken,
+  fetchAccessTokenHistory,
   listAccessTokens,
   resetAccessTokenUsage,
   renewAccessToken,
@@ -69,6 +70,32 @@ describe("adminTokenService", () => {
           servicePolicies: { books_greek_editor: "100000_words" },
           ttl: "30d",
         }),
+      })
+    );
+  });
+
+  it("loads token history with paging, filters, and sorting", async () => {
+    const fetchSpy = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ data: { total: 1, items: [{ eventId: "evt-1" }] } }),
+    }));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await fetchAccessTokenHistory("http://localhost:3000", "super-token", "tok-9", {
+      page: 2,
+      limit: 10,
+      serviceKey: "pdf",
+      status: "success",
+      sortBy: "consumedRequests",
+      sortDirection: "asc",
+    });
+
+    expect(result).toEqual({ total: 1, items: [{ eventId: "evt-1" }] });
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://localhost:3000/api/admin/tokens/tok-9/history?page=2&limit=10&serviceKey=pdf&status=success&sortBy=consumedRequests&sortDirection=asc",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({ "x-admin-token": "super-token" }),
       })
     );
   });

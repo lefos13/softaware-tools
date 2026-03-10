@@ -19,13 +19,23 @@ export interface ServiceRequestOptions {
   onUploadProgress?: (event: UploadProgressEvent) => void;
 }
 
+export type AccessHistorySortKey =
+  | "createdAt"
+  | "operationName"
+  | "serviceKey"
+  | "status"
+  | "consumedRequests"
+  | "consumedWords";
+
+export type AccessHistorySortDirection = "asc" | "desc";
+
 export interface AccessDashboardQuery {
   page?: number;
   limit?: number;
   serviceKey?: ServiceKey;
   status?: string;
-  sortBy?: string;
-  sortDirection?: string;
+  sortBy?: AccessHistorySortKey;
+  sortDirection?: AccessHistorySortDirection;
 }
 
 export interface AccessTokenRecord {
@@ -157,13 +167,20 @@ export interface AccessDashboardHistoryRow {
   [key: string]: unknown;
 }
 
+export interface AccessHistoryResult {
+  page?: number;
+  limit?: number;
+  sortBy?: AccessHistorySortKey;
+  sortDirection?: AccessHistorySortDirection;
+  count?: number;
+  total?: number;
+  items?: AccessDashboardHistoryRow[];
+}
+
 export interface AccessDashboardResult extends AccessDashboardData {
   token?: AccessDashboardTokenSummary | null;
   services?: NonNullable<AccessDashboardData["services"]>;
-  history?: {
-    total?: number;
-    items?: AccessDashboardHistoryRow[];
-  } | null;
+  history?: AccessHistoryResult | null;
 }
 
 export type BinaryServiceResult = BinaryResponse;

@@ -278,11 +278,16 @@ const messages = {
       superadminPlaceholder: "Enter superadmin token",
       enter: "Enter",
       clear: "Clear",
+      loadingList: "Loading access tokens...",
       plaintextTitle: "Plaintext Token",
       plaintextDescription:
         'Store this token for "{label}" now. It is shown only once after create or renew.',
       editAccessToken: "Edit Access Token",
       createAccessToken: "Create Access Token",
+      createModalDescription:
+        "Create a token in a focused form, then return to the list once the secret is issued.",
+      editModalDescription:
+        "Update the alias and enabled service presets without crowding the token list.",
       alias: "Alias",
       aliasPlaceholder: "Example: Books editor client",
       ttl: "TTL",
@@ -307,6 +312,10 @@ const messages = {
       expired: "Expired",
       renewed: "Renewed",
       extended: "Extended",
+      history: "History",
+      historyDescription: 'Recent activity for "{label}".',
+      historyLoading: "Loading token activity...",
+      historyEmpty: "No activity recorded for this token yet.",
       resetUsageAction: "Reset usage",
       edit: "Edit",
       revoke: "Revoke",
@@ -334,6 +343,7 @@ const messages = {
       },
       errors: {
         loadTokens: "Could not load access tokens.",
+        loadHistory: "Could not load token activity.",
         enterSuperadminFirst: "Enter a superadmin token first.",
         saveToken: "Could not save the token.",
         revokeToken: "Could not revoke the token.",
@@ -979,11 +989,16 @@ const messages = {
       superadminPlaceholder: "Συμπληρώστε superadmin token",
       enter: "Είσοδος",
       clear: "Καθαρισμός",
+      loadingList: "Φόρτωση access tokens...",
       plaintextTitle: "Token απλού κειμένου",
       plaintextDescription:
         'Αποθηκεύστε τώρα το token για "{label}". Εμφανίζεται μόνο μία φορά μετά από δημιουργία ή ανανέωση.',
       editAccessToken: "Επεξεργασία access token",
       createAccessToken: "Δημιουργία access token",
+      createModalDescription:
+        "Δημιουργήστε token σε ξεχωριστή φόρμα και επιστρέψτε στη λίστα μόλις εκδοθεί το secret.",
+      editModalDescription:
+        "Ενημερώστε alias και presets υπηρεσιών χωρίς να φορτώνεται η λίστα με επιπλέον πεδία.",
       alias: "Alias",
       aliasPlaceholder: "Παράδειγμα: Books editor client",
       ttl: "TTL",
@@ -1008,6 +1023,10 @@ const messages = {
       expired: "Έληξε",
       renewed: "Ανανεώθηκε",
       extended: "Επεκτάθηκε",
+      history: "Ιστορικό",
+      historyDescription: 'Πρόσφατη δραστηριότητα για "{label}".',
+      historyLoading: "Φόρτωση δραστηριότητας token...",
+      historyEmpty: "Δεν έχει καταγραφεί δραστηριότητα για αυτό το token ακόμα.",
       resetUsageAction: "Μηδενισμός χρήσης",
       edit: "Επεξεργασία",
       revoke: "Ανάκληση",
@@ -1035,6 +1054,7 @@ const messages = {
       },
       errors: {
         loadTokens: "Δεν ήταν δυνατή η φόρτωση των access tokens.",
+        loadHistory: "Δεν ήταν δυνατή η φόρτωση της δραστηριότητας του token.",
         enterSuperadminFirst: "Συμπληρώστε πρώτα ένα superadmin token.",
         saveToken: "Δεν ήταν δυνατή η αποθήκευση του token.",
         revokeToken: "Δεν ήταν δυνατή η ανάκληση του token.",

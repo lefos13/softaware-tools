@@ -1,0 +1,60 @@
+/*
+  Shared history presentation keeps filter controls and table spacing aligned
+  anywhere token activity is shown, including full pages and modal surfaces.
+*/
+.access-history {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.access-history__filters {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.access-history__table-wrap {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.access-history__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.access-history__table th,
+.access-history__table td {
+  padding: 0.65rem 0.7rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.24);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.access-history__table-number {
+  text-align: right;
+}
+
+.access-history__sort-btn {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+
+.access-history__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+  .access-history__table-wrap {
+    overflow-x: auto;
+  }
+}
