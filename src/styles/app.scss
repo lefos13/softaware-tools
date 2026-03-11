@@ -838,7 +838,12 @@ textarea {
   margin-left: 0.4rem;
 }
 
+/*
+  Email inputs need the same base field treatment as the rest of the tool-card
+  controls so forms keep a consistent surface regardless of native input type.
+*/
 .tool-card input[type="text"],
+.tool-card input[type="email"],
 .tool-card input[type="number"],
 .tool-card input[type="file"],
 .tool-card select {

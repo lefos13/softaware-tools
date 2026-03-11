@@ -16,7 +16,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "prepare": "sh -c '[ \"$HUSKY\" = \"0\" ] || husky'"
+    "prepare": "node scripts/prepare-husky.cjs"
   },
   "dependencies": {
     "bson": "^7.2.0",

@@ -1,127 +1,878 @@
 /*
-  The plans page separates free defaults, paid presets, and the request form so
-  users can compare limits first and then submit only the token they actually need.
+  The page now reuses the hero's navy, blue, and gold language across every
+  section so comparison, catalog, request, and trust blocks feel like one
+  pricing narrative instead of separate tool-card layouts.
 */
 .plans-view {
-  display: grid;
-  gap: 1rem;
+  --plans-ink-strong: #17203a;
+  --plans-ink-soft: rgba(23, 32, 58, 0.72);
+  --plans-border: rgba(23, 32, 58, 0.14);
+  --plans-border-strong: rgba(31, 44, 100, 0.22);
+  --plans-surface: rgba(255, 255, 255, 0.96);
+  --plans-surface-soft: rgba(255, 248, 223, 0.72);
+  --plans-shadow: 0 28px 70px rgba(23, 32, 58, 0.12);
+  --plans-shadow-soft: 0 18px 40px rgba(23, 32, 58, 0.08);
+  --plans-navy: #1f2c64;
+  --plans-navy-strong: #16214e;
+  --plans-blue: #1f8fe4;
+  --plans-blue-soft: #e7f5ff;
+  --plans-gold: #ffb200;
+  --plans-gold-soft: #fff3c4;
+  --plans-teal: #16c6b2;
+  position: relative;
+  gap: 1.7rem;
+  padding-bottom: 1.2rem;
 }
 
-.plans-layout {
-  display: grid;
-  gap: 1rem;
+.plans-view::before,
+.plans-view::after {
+  content: "";
+  position: absolute;
+  inset: auto;
+  z-index: 0;
+  pointer-events: none;
+  filter: blur(14px);
 }
 
-.plans-panel {
-  display: grid;
-  gap: 1rem;
+.plans-view::before {
+  top: 1rem;
+  right: -3rem;
+  width: min(26rem, 46vw);
+  height: min(26rem, 46vw);
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(31, 143, 228, 0.2), rgba(31, 143, 228, 0));
 }
 
-.plans-panel--free {
+.plans-view::after {
+  top: 28rem;
+  left: -5rem;
+  width: min(30rem, 56vw);
+  height: min(30rem, 56vw);
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 178, 0, 0.18), rgba(255, 178, 0, 0));
+}
+
+.plans-view > * {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+/*
+  Section framing uses a shared shell with colored caps and soft geometric
+  overlays so the page keeps the hero card's bold structure even where content
+  is more data-heavy.
+*/
+.plans-hero,
+.plans-section {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 1.2rem;
+  padding: clamp(1.15rem, 2vw, 1.45rem);
+  border: 1px solid rgba(31, 44, 100, 0.1);
+  border-radius: 34px;
   background:
-    radial-gradient(circle at top left, rgba(34, 197, 94, 0.12), transparent 42%),
-    linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.98));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 250, 236, 0.96)),
+    var(--plans-surface);
+  box-shadow: var(--plans-shadow);
 }
 
-.plans-panel__head {
-  display: flex;
-  justify-content: space-between;
+.plans-hero::before,
+.plans-section::before,
+.plans-hero::after,
+.plans-section::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.plans-hero::before,
+.plans-section::before {
+  inset: 0 0 auto;
+  height: 5px;
+  background: linear-gradient(90deg, var(--plans-blue), var(--plans-gold));
+}
+
+.plans-hero::after,
+.plans-section::after {
+  right: -3.5rem;
+  bottom: -3.5rem;
+  width: 11rem;
+  height: 11rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(31, 143, 228, 0.1), rgba(31, 143, 228, 0));
+}
+
+.plans-hero__intro,
+.plans-comparison-intro,
+.plans-catalog,
+.plans-request-layout,
+.plans-trust__grid {
+  min-width: 0;
+}
+
+.plans-hero {
+  gap: 1.6rem;
+  padding-top: clamp(1.35rem, 2.2vw, 1.75rem);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(243, 248, 255, 0.94)),
+    var(--plans-surface);
+}
+
+.plans-hero__intro {
+  display: grid;
   gap: 1rem;
-  align-items: flex-start;
 }
 
-.plans-panel__eyebrow {
-  margin: 0 0 0.35rem;
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
+.plans-hero .section-head,
+.plans-section .section-head {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.plans-hero .section-head {
+  justify-items: center;
+  text-align: center;
+}
+
+.plans-hero .section-head::before,
+.plans-section .section-head::before {
+  content: "";
+  display: block;
+  width: 4.5rem;
+  height: 0.55rem;
+  border-radius: 999px;
+}
+
+.plans-hero .section-head::before {
+  background: linear-gradient(90deg, var(--plans-navy), var(--plans-blue));
+}
+
+.plans-section .section-head::before {
+  background: rgba(31, 44, 100, 0.08);
+}
+
+.plans-hero .section-head__title {
+  max-width: 13ch;
+  margin: 0;
+  font-size: clamp(2.4rem, 5.2vw, 4.25rem);
+  line-height: 0.96;
+  letter-spacing: -0.045em;
+  color: var(--plans-ink-strong);
+}
+
+.plans-section .section-head__title {
+  margin: 0;
+  color: var(--plans-ink-strong);
+  font-size: clamp(1.45rem, 2vw, 1.8rem);
+  letter-spacing: -0.03em;
+}
+
+.plans-hero .section-head__subtitle,
+.plans-hero__lead,
+.plans-comparison-table__value,
+.plans-service-card__summary,
+.plans-request__selection,
+.plans-status__message,
+.plans-request__field small,
+.plans-paid-group__head .tool-card__description,
+.plans-trust__item .tool-card__description,
+.plans-catalog__head .tool-card__description {
+  color: var(--plans-ink-soft);
+}
+
+.plans-hero__lead {
+  max-width: 42rem;
+  margin: 0 auto;
+  font-size: 1rem;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.plans-hero__actions {
+  display: flex;
+  justify-content: center;
+}
+
+.plans-hero__cta {
+  min-width: 12rem;
+  justify-content: center;
+  text-decoration: none;
+  box-shadow: 0 16px 28px rgba(31, 143, 228, 0.25);
+}
+
+.plans-comparison-intro,
+.plans-catalog,
+.plans-request-layout,
+.plans-trust__grid,
+.plans-paid-groups,
+.plans-service-grid,
+.plans-request__grid,
+.plans-request__services {
+  display: grid;
+  gap: 1rem;
+}
+
+/*
+  The spotlight cards stay as the visual reference point, but their surrounding
+  spacing and accents are tightened so the rest of the screen can echo them.
+*/
+.plans-spotlight {
+  display: grid;
+  gap: 20px;
+  justify-content: center;
+}
+
+.plans-spotlight--hero {
+  padding: 0 0 0.3rem;
+}
+
+.plans-spotlight-card {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  width: 522px;
+  height: 725px;
+  padding-top: 0.8rem;
+}
+
+.plans-spotlight-card::before,
+.plans-spotlight-card::after {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 0;
+  z-index: 0;
+  border-top: 56px solid transparent;
+}
+
+.plans-spotlight-card::before {
+  top: 9.15rem;
+  left: 21px;
+  border-right: 56px solid transparent;
+  rotate: -90deg;
+}
+
+.plans-spotlight-card::after {
+  top: 293px;
+  right: 21px;
+  border-left: 56px solid transparent;
+}
+
+.plans-spotlight-card--free::before,
+.plans-spotlight-card--free::after {
+  border-top-color: var(--plans-blue);
+}
+
+.plans-spotlight-card--paid::before,
+.plans-spotlight-card--paid::after {
+  border-top-color: var(--plans-gold);
+}
+
+.plans-spotlight-card__cap,
+.plans-spotlight-card__body,
+.plans-spotlight-card__price {
+  position: relative;
+  z-index: 1;
+}
+
+.plans-spotlight-card__cap {
+  width: min(100%, 26rem);
+  height: 234px;
+  padding: 2.4rem 1.2rem 5.1rem;
+  border-radius: 30px 30px 0 0;
+  background: var(--plans-navy);
+  color: #ffffff;
+  text-align: center;
+}
+
+.plans-spotlight-card__title {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 0.96;
+  letter-spacing: -0.03em;
   text-transform: uppercase;
-  color: #0f766e;
+}
+
+.plans-spotlight-card__subtitle {
+  margin: 0.45rem 0 0;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.plans-spotlight-card__price {
+  width: 480px;
+  height: 102px;
+  margin-top: -3.45rem;
+  padding: 1.1rem 1rem;
+  color: #fff8df;
+  font-size: 54px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.plans-spotlight-card--free .plans-spotlight-card__price {
+  background: var(--plans-blue);
+}
+
+.plans-spotlight-card--paid .plans-spotlight-card__price {
+  background: var(--plans-gold);
+}
+
+.plans-spotlight-card__body {
+  width: min(100%, 26rem);
+  min-height: 27rem;
+  display: grid;
+  gap: 1.4rem;
+  padding: 2rem 1.8rem 2.1rem;
+  border-radius: 0 0 30px 30px;
+  background: #ffffff;
+  box-shadow: 0 22px 50px rgba(23, 32, 58, 0.08);
+}
+
+.plans-spotlight-card__features {
+  display: grid;
+  gap: 0.95rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plans-spotlight-card__features li {
+  position: relative;
+  padding-left: 2rem;
+  color: #59627a;
+  line-height: 1.45;
+}
+
+.plans-spotlight-card__features li::before {
+  content: "\2713";
+  position: absolute;
+  left: 0;
+  top: -0.05rem;
+  color: var(--plans-teal);
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.plans-spotlight-card__cta {
+  align-self: end;
+  justify-self: center;
+  padding: 0.85rem 1.6rem;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.plans-spotlight-card--free .plans-spotlight-card__cta {
+  background: linear-gradient(90deg, #3879f2, #49b3f2);
+}
+
+.plans-spotlight-card--paid .plans-spotlight-card__cta {
+  background: linear-gradient(90deg, #ffb200, #ffd429);
+}
+
+/*
+  Each content cluster below the hero gets a matching top cap, stronger border,
+  and accent tint so dense plan data still carries the same visual hierarchy as
+  the large hero cards.
+*/
+.plans-highlight,
+.plans-comparison-table,
+.plans-catalog__rail,
+.plans-request-intro,
+.plans-request,
+.plans-trust__item,
+.plans-service-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  border: 1px solid var(--plans-border-strong);
+  box-shadow: var(--plans-shadow-soft);
+}
+
+.plans-highlight::before,
+.plans-comparison-table::before,
+.plans-catalog__rail::before,
+.plans-request-intro::before,
+.plans-request::before,
+.plans-trust__item::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+}
+
+.plans-highlight::after,
+.plans-catalog__rail::after,
+.plans-request-intro::after,
+.plans-request::after,
+.plans-trust__item::after {
+  content: "";
+  position: absolute;
+  right: -1.4rem;
+  bottom: -1.8rem;
+  width: 6.5rem;
+  height: 6.5rem;
+  border-radius: 999px;
+  opacity: 0.85;
+}
+
+.plans-highlight {
+  padding-top: 1.85rem;
+}
+
+.plans-highlight__eyebrow,
+.plans-catalog__eyebrow,
+.plans-request-intro__eyebrow,
+.plans-service-card__eyebrow {
+  margin: 0 0 0.45rem;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.plans-highlight--free,
+.plans-catalog__rail--free,
+.plans-service-grid--free .plans-service-card {
+  background:
+    linear-gradient(180deg, rgba(231, 245, 255, 0.9), rgba(255, 255, 255, 0.98)),
+    var(--plans-surface);
+}
+
+.plans-highlight--free::before,
+.plans-catalog__rail--free::before {
+  background: var(--plans-blue);
+}
+
+.plans-highlight--free::after,
+.plans-catalog__rail--free::after {
+  background: radial-gradient(circle, rgba(31, 143, 228, 0.18), rgba(31, 143, 228, 0));
+}
+
+.plans-highlight--free .plans-highlight__eyebrow,
+.plans-catalog__rail--free .plans-catalog__eyebrow,
+.plans-service-grid--free .plans-service-card__eyebrow {
+  color: var(--plans-blue);
+}
+
+.plans-highlight--paid,
+.plans-catalog__rail--paid,
+.plans-service-card--paid,
+.plans-request,
+.plans-request-intro,
+.plans-trust__item {
+  background:
+    linear-gradient(180deg, rgba(255, 248, 223, 0.92), rgba(255, 255, 255, 0.98)),
+    var(--plans-surface);
+}
+
+.plans-highlight--paid::before,
+.plans-catalog__rail--paid::before,
+.plans-request::before,
+.plans-request-intro::before,
+.plans-trust__item::before {
+  background: linear-gradient(90deg, var(--plans-gold), #ffd95b);
+}
+
+.plans-highlight--paid::after,
+.plans-catalog__rail--paid::after,
+.plans-request::after,
+.plans-request-intro::after,
+.plans-trust__item::after {
+  background: radial-gradient(circle, rgba(255, 178, 0, 0.18), rgba(255, 178, 0, 0));
+}
+
+.plans-highlight--paid .plans-highlight__eyebrow,
+.plans-catalog__rail--paid .plans-catalog__eyebrow,
+.plans-service-card--paid .plans-service-card__eyebrow,
+.plans-request-intro__eyebrow {
+  color: #c58400;
+}
+
+.plans-highlight .tool-card__title,
+.plans-catalog__rail .tool-card__title,
+.plans-request-intro .tool-card__title {
+  font-size: 1.35rem;
+  color: var(--plans-ink-strong);
+}
+
+.plans-comparison-table {
+  padding-top: 1.55rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 255, 0.98)),
+    var(--plans-surface);
+}
+
+.plans-comparison-table::before {
+  background: linear-gradient(90deg, var(--plans-navy), var(--plans-blue), var(--plans-gold));
+}
+
+.plans-comparison-table__head,
+.plans-comparison-table__row {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.plans-comparison-table__head {
+  padding: 0 0 1rem;
+  border-bottom: 1px solid rgba(31, 44, 100, 0.12);
+  color: var(--plans-navy);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.plans-comparison-table__body {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.plans-comparison-table__row {
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(23, 32, 58, 0.1);
+}
+
+.plans-comparison-table__row:last-child {
+  padding-bottom: 0.1rem;
+  border-bottom: 0;
+}
+
+.plans-comparison-table__service,
+.plans-paid-group__title,
+.plans-trust__title,
+.plans-service-card__title {
+  margin: 0;
+  color: var(--plans-ink-strong);
+}
+
+.plans-comparison-table__service {
+  font-size: 1.05rem;
+}
+
+.plans-comparison-table__value {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.plans-comparison-table__value--paid {
+  color: var(--plans-navy);
   font-weight: 700;
 }
 
-.plans-panel__ttl {
-  margin: 0;
-  padding: 0.75rem 0.85rem;
-  border-radius: 14px;
-  background: rgba(15, 118, 110, 0.08);
+.plans-catalog {
+  align-items: start;
+}
+
+.plans-catalog__rail {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+  padding-top: 1.8rem;
+}
+
+.plans-catalog__head,
+.plans-paid-group,
+.plans-request,
+.plans-request-intro {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.plans-paid-group {
+  padding-top: 1rem;
+  border-top: 1px solid rgba(23, 32, 58, 0.1);
+}
+
+.plans-paid-group:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.plans-paid-group__head {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.plans-paid-group__title {
+  font-size: 1.08rem;
 }
 
 .plans-service-grid {
-  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.plans-service-grid--free {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.85rem;
 }
 
 .plans-service-card {
   display: grid;
-  gap: 0.35rem;
-  padding: 0.95rem;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.92);
-}
-
-.plans-service-card--paid {
+  gap: 0.55rem;
+  padding: 1.1rem 1rem 1rem;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94)),
-    rgba(255, 255, 255, 0.92);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 249, 255, 0.94)),
+    var(--plans-surface);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
 }
 
-.plans-service-card__title,
-.plans-paid-group__title {
-  color: var(--ink);
+.plans-service-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, var(--plans-blue), #7ec7ff);
 }
 
-.plans-paid-groups {
-  display: grid;
-  gap: 1rem;
+.plans-service-card--paid::before {
+  background: linear-gradient(90deg, var(--plans-gold), #ffe17c);
 }
 
-.plans-paid-group {
-  display: grid;
-  gap: 0.75rem;
+.plans-service-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 24px 40px rgba(23, 32, 58, 0.12);
 }
 
-.plans-paid-group__title {
+.plans-service-card__title {
+  font-size: 1.03rem;
+}
+
+.plans-service-card__summary {
   margin: 0;
-  font-size: 0.95rem;
+  line-height: 1.55;
 }
 
+.plans-bullet-list,
+.plans-detail-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding-left: 1.05rem;
+  color: var(--plans-ink-strong);
+}
+
+.plans-bullet-list li,
+.plans-detail-list li {
+  line-height: 1.5;
+}
+
+/*
+  The request area is treated as the conversion endpoint of the page, with a
+  stronger split between the guidance rail and the interactive form and clearer
+  state styling on inputs and status feedback.
+*/
+.plans-request-layout {
+  align-items: start;
+}
+
+.plans-request-intro,
 .plans-request {
+  padding-top: 1.8rem;
+}
+
+.plans-status {
   display: grid;
-  gap: 1rem;
-  background:
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 38%),
-    linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.99));
+  gap: 0.35rem;
+  padding: 1rem 1rem 0.95rem;
+  border: 1px solid transparent;
+  border-radius: 20px;
 }
 
-.plans-request__grid,
-.plans-request__services {
-  display: grid;
-  gap: 0.85rem;
+.plans-status__label,
+.plans-request__field > span {
+  color: var(--plans-ink-strong);
+  font-weight: 800;
 }
 
-.plans-request__grid {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+.plans-status__message {
+  margin: 0;
 }
 
-.plans-request__services {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+.plans-status--error {
+  border-color: rgba(220, 38, 38, 0.18);
+  background: rgba(254, 242, 242, 0.95);
+}
+
+.plans-status--success {
+  border-color: rgba(22, 163, 74, 0.18);
+  background: rgba(240, 253, 244, 0.95);
+}
+
+.plans-status--loading {
+  border-color: rgba(31, 143, 228, 0.18);
+  background: rgba(231, 245, 255, 0.95);
 }
 
 .plans-request__field {
   display: grid;
   gap: 0.45rem;
-  color: var(--ink-soft);
+  min-width: 0;
 }
 
-.plans-request__field > span {
-  color: var(--ink);
-  font-weight: 700;
+.plans-request__field small {
+  font-size: 0.84rem;
+  line-height: 1.45;
 }
 
-@media (min-width: 960px) {
-  .plans-layout {
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+.plans-request__field--service {
+  padding: 1rem;
+  border: 1px solid rgba(31, 44, 100, 0.12);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.plans-request input,
+.plans-request select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  border-color: rgba(31, 44, 100, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.plans-request input:focus,
+.plans-request select:focus {
+  border-color: rgba(31, 143, 228, 0.45);
+  box-shadow:
+    0 0 0 3px rgba(31, 143, 228, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.plans-request select {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plans-request__footer {
+  display: grid;
+  gap: 0.9rem;
+  align-items: center;
+  padding-top: 0.4rem;
+}
+
+.plans-request__selection {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.plans-request .button--primary {
+  box-shadow: 0 16px 28px rgba(31, 143, 228, 0.24);
+}
+
+.plans-trust__title {
+  font-size: 1.02rem;
+}
+
+@media (min-width: 760px) {
+  .plans-spotlight {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .plans-comparison-intro,
+  .plans-trust__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .plans-request__grid,
+  .plans-request__services {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .plans-comparison-table__head,
+  .plans-comparison-table__row {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+/*
+  Wider breakpoints shift the page from a stacked mobile narrative into paired
+  rails so catalog and form sections echo the hero's side-by-side balance.
+*/
+@media (min-width: 980px) {
+  .plans-hero__intro {
+    max-width: 52rem;
+    margin: 0 auto;
+  }
+
+  .plans-catalog {
+    grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.22fr);
+  }
+
+  .plans-request-layout {
+    grid-template-columns: minmax(240px, 0.6fr) minmax(0, 1.4fr);
+  }
+
+  .plans-trust__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .plans-request__footer {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .plans-hero,
+  .plans-section,
+  .plans-highlight,
+  .plans-catalog__rail,
+  .plans-request-intro,
+  .plans-request,
+  .plans-trust__item {
+    animation: plans-rise 500ms ease both;
+  }
+
+  .plans-highlight--paid,
+  .plans-catalog__rail--paid,
+  .plans-request,
+  .plans-trust__item:nth-child(2) {
+    animation-delay: 80ms;
+  }
+
+  .plans-trust__item:nth-child(3) {
+    animation-delay: 140ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plans-service-card {
+    transition: none;
+  }
+
+  .plans-service-card:hover {
+    transform: none;
+  }
+}
+
+@keyframes plans-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
