@@ -5,6 +5,7 @@
 import { computed, ref } from "vue";
 import type { Component, ComputedRef, Ref } from "vue";
 import AdminTokensView from "../views/AdminTokensView.vue";
+import PlansView from "../views/PlansView.vue";
 import BooksGreekEditorFlowView from "../views/BooksGreekEditorFlowView.vue";
 import BooksServicesView from "../views/BooksServicesView.vue";
 import DonateView from "../views/DonateView.vue";
@@ -45,6 +46,12 @@ const staticRoutes: InternalPortalRoute[] = [
     name: "home",
     label: "Home",
     component: HomeView,
+  }),
+  createRoute({
+    path: "/plans",
+    name: "plans",
+    label: "Plans",
+    component: PlansView,
   }),
   createRoute({
     path: "/dashboard",

@@ -4,10 +4,13 @@
 */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  approveTokenRequest,
   createAccessToken,
   extendAccessToken,
   fetchAccessTokenHistory,
   listAccessTokens,
+  listTokenRequests,
+  rejectTokenRequest,
   resetAccessTokenUsage,
   renewAccessToken,
   revokeAccessToken,
@@ -96,6 +99,72 @@ describe("adminTokenService", () => {
       expect.objectContaining({
         method: "GET",
         headers: expect.objectContaining({ "x-admin-token": "super-token" }),
+      })
+    );
+  });
+
+  it("lists pending token requests", async () => {
+    const fetchSpy = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        data: { count: 1, pendingCount: 1, requests: [{ requestId: "req-1" }] },
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await listTokenRequests("http://localhost:3000", "super-token");
+    expect(result).toEqual({ count: 1, pendingCount: 1, requests: [{ requestId: "req-1" }] });
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://localhost:3000/api/admin/token-requests?status=pending",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({ "x-admin-token": "super-token" }),
+      })
+    );
+  });
+
+  it("approves a token request", async () => {
+    const fetchSpy = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ data: { request: { requestId: "req-2", status: "approved" } } }),
+    }));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await approveTokenRequest(
+      "http://localhost:3000",
+      "super-token",
+      "req-2",
+      "14d"
+    );
+    expect(result).toEqual({ request: { requestId: "req-2", status: "approved" } });
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://localhost:3000/api/admin/token-requests/req-2/approve",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ ttl: "14d" }),
+      })
+    );
+  });
+
+  it("rejects a token request", async () => {
+    const fetchSpy = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ data: { request: { requestId: "req-3", status: "rejected" } } }),
+    }));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await rejectTokenRequest(
+      "http://localhost:3000",
+      "super-token",
+      "req-3",
+      "Quota unavailable"
+    );
+    expect(result).toEqual({ request: { requestId: "req-3", status: "rejected" } });
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://localhost:3000/api/admin/token-requests/req-3/reject",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ reason: "Quota unavailable" }),
       })
     );
   });

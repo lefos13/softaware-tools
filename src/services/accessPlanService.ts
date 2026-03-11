@@ -5,9 +5,12 @@
 import { buildUrl, parseApiError } from "./apiClient";
 import { readActiveServiceToken } from "./accessClientState";
 import type {
+  AccessPlanCatalogResult,
   AccessDashboardQuery,
   AccessDashboardResult,
   AccessPlanResult,
+  AccessTokenRequestPayload,
+  AccessTokenRequestResult,
 } from "../types/services";
 
 const buildServiceHeaders = (serviceToken?: string): Record<string, string> => {
@@ -78,5 +81,46 @@ export const fetchAccessDashboard = async (
   }
 
   const payload = (await response.json()) as { data?: AccessDashboardResult | null };
+  return payload?.data || null;
+};
+
+/*
+  Public plan discovery and token-request submission share the access client so
+  the plans screen stays aligned with backend presets and request validation.
+*/
+export const fetchAccessPlanCatalog = async (
+  baseUrl: string
+): Promise<AccessPlanCatalogResult | null> => {
+  const response = await fetch(buildUrl(baseUrl, "/api/access/catalog"), {
+    method: "GET",
+    headers: buildServiceHeaders(""),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  const payload = (await response.json()) as { data?: AccessPlanCatalogResult | null };
+  return payload?.data || null;
+};
+
+export const submitTokenRequest = async (
+  baseUrl: string,
+  request: AccessTokenRequestPayload
+): Promise<AccessTokenRequestResult | null> => {
+  const response = await fetch(buildUrl(baseUrl, "/api/access/token-requests"), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  const payload = (await response.json()) as { data?: AccessTokenRequestResult | null };
   return payload?.data || null;
 };

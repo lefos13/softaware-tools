@@ -116,6 +116,10 @@ const setLocale = (locale: "en" | "el"): void => {
 const breadcrumbs = computed(() => {
   const byName: Partial<Record<RouteName, Array<{ label: string; path: string }>>> = {
     home: [{ label: toRouteLabel("home"), path: "/" }],
+    plans: [
+      { label: toRouteLabel("home"), path: "/" },
+      { label: toRouteLabel("plans"), path: "/plans" },
+    ],
     "pdf-services": [
       { label: toRouteLabel("home"), path: "/" },
       { label: toRouteLabel("pdf-services"), path: "/flows/pdf-services" },

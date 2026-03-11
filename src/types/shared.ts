@@ -152,6 +152,7 @@ export interface PortalI18n {
 
 export type RouteName =
   | "home"
+  | "plans"
   | "dashboard"
   | "pdf-services"
   | "pdf"

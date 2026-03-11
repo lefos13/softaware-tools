@@ -7,10 +7,13 @@ import { computed, inject, ref, watch } from "vue";
 import AccessHistoryTable from "../components/access/AccessHistoryTable.vue";
 import { usePortalI18n } from "../i18n";
 import {
+  approveTokenRequest,
   createAccessToken,
   extendAccessToken,
   fetchAccessTokenHistory,
   listAccessTokens,
+  listTokenRequests,
+  rejectTokenRequest,
   resetAccessTokenUsage,
   renewAccessToken,
   revokeAccessToken,
@@ -21,6 +24,7 @@ import type {
   AccessHistoryResult,
   AccessHistorySortDirection,
   AccessHistorySortKey,
+  AccessTokenRequestRecord,
   AccessTokenRecord,
 } from "../types/services";
 import type { PortalContext, PortalI18n } from "../types/shared";
@@ -58,6 +62,7 @@ const saving = ref(false);
 const error = ref("");
 const success = ref("");
 const accessTokens = ref<AccessTokenRecord[]>([]);
+const pendingRequests = ref<AccessTokenRequestRecord[]>([]);
 const availableServicePolicies = ref<AdminPolicyPresetMap>({});
 const revealedToken = ref("");
 const revealedTokenLabel = ref("");
@@ -225,6 +230,7 @@ const clearSuperadminToken = (): void => {
   tokenInput.value = "";
   sessionStorage.removeItem(SUPERADMIN_TOKEN_STORAGE_KEY);
   accessTokens.value = [];
+  pendingRequests.value = [];
   availableServicePolicies.value = {};
   listCurrentPage.value = 1;
   clearReveal();
@@ -264,25 +270,46 @@ const loadTokens = async (): Promise<void> => {
     return;
   }
 
+  const data = await listAccessTokens(portalContext.apiBaseUrl.value, activeToken.value);
+  accessTokens.value = Array.isArray(data.tokens) ? data.tokens : [];
+  availableServicePolicies.value =
+    data?.availableServicePolicies && typeof data.availableServicePolicies === "object"
+      ? Object.fromEntries(
+          Object.entries(data.availableServicePolicies).map(([serviceKey, presets]) => [
+            serviceKey,
+            Array.isArray(presets) ? presets.map((preset) => String(preset)) : [],
+          ])
+        )
+      : {};
+  syncHistoryToken();
+};
+
+const loadTokenRequests = async (): Promise<void> => {
+  if (!activeToken.value) {
+    return;
+  }
+
+  const data = await listTokenRequests(
+    portalContext.apiBaseUrl.value,
+    activeToken.value,
+    "pending"
+  );
+  pendingRequests.value = Array.isArray(data.requests) ? data.requests : [];
+};
+
+const loadAdminData = async (): Promise<void> => {
+  if (!activeToken.value) {
+    return;
+  }
+
   loading.value = true;
   error.value = "";
 
   try {
-    const data = await listAccessTokens(portalContext.apiBaseUrl.value, activeToken.value);
-    accessTokens.value = Array.isArray(data.tokens) ? data.tokens : [];
-    availableServicePolicies.value =
-      data?.availableServicePolicies && typeof data.availableServicePolicies === "object"
-        ? Object.fromEntries(
-            Object.entries(data.availableServicePolicies).map(([serviceKey, presets]) => [
-              serviceKey,
-              Array.isArray(presets) ? presets.map((preset) => String(preset)) : [],
-            ])
-          )
-        : {};
-    syncHistoryToken();
+    await Promise.all([loadTokens(), loadTokenRequests()]);
   } catch (loadError) {
     const message =
-      loadError instanceof Error ? loadError.message : t("adminTokens.errors.loadTokens");
+      loadError instanceof Error ? loadError.message : t("adminTokens.errors.loadRequests");
     clearSuperadminToken();
     error.value = message;
   } finally {
@@ -330,7 +357,7 @@ const authenticate = async (): Promise<void> => {
 
   activeToken.value = nextToken;
   sessionStorage.setItem(SUPERADMIN_TOKEN_STORAGE_KEY, nextToken);
-  await loadTokens();
+  await loadAdminData();
 };
 
 const openCreateModal = (): void => {
@@ -409,7 +436,7 @@ const submitForm = async (): Promise<void> => {
     revealedToken.value = result?.token || "";
     revealedTokenLabel.value = createdAlias;
     closeFormModal();
-    await loadTokens();
+    await loadAdminData();
   } catch (runError) {
     error.value = runError instanceof Error ? runError.message : t("adminTokens.errors.saveToken");
   } finally {
@@ -540,9 +567,68 @@ const runResetUsage = async (tokenItem: AccessTokenRecord): Promise<void> => {
       tokenItem.tokenId
     );
     success.value = t("adminTokens.success.usageReset");
-    await loadTokens();
+    await loadAdminData();
   } catch (runError) {
     error.value = runError instanceof Error ? runError.message : t("adminTokens.errors.resetUsage");
+  } finally {
+    saving.value = false;
+  }
+};
+
+const runApproveRequest = async (requestItem: AccessTokenRequestRecord): Promise<void> => {
+  if (!activeToken.value) {
+    return;
+  }
+
+  saving.value = true;
+  error.value = "";
+  success.value = "";
+
+  try {
+    await approveTokenRequest(
+      portalContext.apiBaseUrl.value,
+      activeToken.value,
+      requestItem.requestId
+    );
+    success.value = t("adminTokens.success.requestApproved");
+    await loadAdminData();
+  } catch (runError) {
+    error.value =
+      runError instanceof Error ? runError.message : t("adminTokens.errors.approveRequest");
+  } finally {
+    saving.value = false;
+  }
+};
+
+const runRejectRequest = async (requestItem: AccessTokenRequestRecord): Promise<void> => {
+  if (!activeToken.value) {
+    return;
+  }
+
+  const reason = window.prompt(
+    t("adminTokens.prompts.rejectRequest", { alias: requestItem.alias }),
+    requestItem.rejectionReason || ""
+  );
+  if (reason === null) {
+    return;
+  }
+
+  saving.value = true;
+  error.value = "";
+  success.value = "";
+
+  try {
+    await rejectTokenRequest(
+      portalContext.apiBaseUrl.value,
+      activeToken.value,
+      requestItem.requestId,
+      reason.trim()
+    );
+    success.value = t("adminTokens.success.requestRejected");
+    await loadAdminData();
+  } catch (runError) {
+    error.value =
+      runError instanceof Error ? runError.message : t("adminTokens.errors.rejectRequest");
   } finally {
     saving.value = false;
   }
@@ -593,7 +679,7 @@ watch(
 );
 
 if (activeToken.value) {
-  void loadTokens();
+  void loadAdminData();
 }
 </script>
 
@@ -614,7 +700,7 @@ if (activeToken.value) {
         type="button"
         class="button button--secondary"
         :disabled="loading || saving"
-        @click="loadTokens"
+        @click="loadAdminData"
       >
         {{ loading ? t("adminTokens.refreshing") : t("adminTokens.refresh") }}
       </button>
@@ -664,6 +750,87 @@ if (activeToken.value) {
         {{ t("adminTokens.plaintextDescription", { label: revealedTokenLabel }) }}
       </p>
       <pre class="admin-reveal__token">{{ revealedToken }}</pre>
+    </article>
+
+    <article v-if="isAuthenticated" class="tool-card admin-requests">
+      <div class="admin-list__head">
+        <div>
+          <h3 class="tool-card__title">{{ t("adminTokens.requestNotifications") }}</h3>
+          <p class="tool-card__description">{{ t("adminTokens.requestNotificationsSubtitle") }}</p>
+        </div>
+        <span class="admin-chip admin-chip--active">{{
+          formatNumber(pendingRequests.length)
+        }}</span>
+      </div>
+
+      <p v-if="!loading && pendingRequests.length === 0" class="tool-card__description">
+        {{ t("adminTokens.pendingRequestsEmpty") }}
+      </p>
+
+      <ul v-else class="admin-request-list" role="list">
+        <li
+          v-for="requestItem in pendingRequests"
+          :key="requestItem.requestId"
+          class="admin-request-list__item"
+        >
+          <div class="admin-token-list__head">
+            <strong class="admin-token-list__alias">{{ requestItem.alias }}</strong>
+            <span class="admin-chip">{{ requestItem.status }}</span>
+          </div>
+
+          <div class="admin-token-list__meta-grid">
+            <article class="admin-meta-item">
+              <span class="admin-meta-item__label">{{ t("adminTokens.requestedBy") }}</span>
+              <strong class="admin-meta-item__value">{{ requestItem.email }}</strong>
+            </article>
+            <article class="admin-meta-item">
+              <span class="admin-meta-item__label">{{ t("adminTokens.requestedAt") }}</span>
+              <strong class="admin-meta-item__value">{{
+                formatDateTime(requestItem.createdAt)
+              }}</strong>
+            </article>
+            <article v-if="requestItem.lastEmailError" class="admin-meta-item">
+              <span class="admin-meta-item__label">{{
+                t("adminTokens.requestDeliveryError")
+              }}</span>
+              <strong class="admin-meta-item__value">{{ requestItem.lastEmailError }}</strong>
+            </article>
+          </div>
+
+          <div class="admin-token-list__block">
+            <p class="admin-token-list__block-title">{{ t("adminTokens.requestedLimits") }}</p>
+            <div class="admin-token-list__tags">
+              <span
+                v-for="[serviceKey, preset] in Object.entries(requestItem.servicePolicies || {})"
+                :key="`${requestItem.requestId}-${serviceKey}`"
+                class="admin-token-list__tag"
+              >
+                <strong>{{ serviceKey }}</strong>
+                <span>{{ preset }}</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="preview-card__actions">
+            <button
+              type="button"
+              class="button button--primary"
+              :disabled="saving"
+              @click="runApproveRequest(requestItem)"
+            >
+              {{ t("adminTokens.approveRequest") }}
+            </button>
+            <button
+              type="button"
+              class="button button--secondary"
+              :disabled="saving"
+              @click="runRejectRequest(requestItem)"
+            >
+              {{ t("adminTokens.rejectRequest") }}
+            </button>
+          </div>
+        </li>
+      </ul>
     </article>
 
     <article v-if="isAuthenticated" class="tool-card admin-list">

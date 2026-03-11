@@ -297,6 +297,16 @@ const messages = {
       saveChanges: "Save changes",
       createToken: "Create token",
       reset: "Reset",
+      requestNotifications: "Pending token requests",
+      requestNotificationsSubtitle:
+        "These requests stay here until the superadmin rejects them or approves and emails a token.",
+      pendingRequestsEmpty: "No pending token requests.",
+      requestedBy: "Requested by",
+      requestedAt: "Requested at",
+      requestedLimits: "Requested limits",
+      requestDeliveryError: "Last delivery error",
+      approveRequest: "Approve and email token",
+      rejectRequest: "Reject and email user",
       accessTokens: "Access Tokens",
       total: "Total",
       noAccessTokens: "No access tokens found.",
@@ -332,6 +342,7 @@ const messages = {
         renew: 'Renew "{alias}" for how long?',
         extend: 'Extend "{alias}" by how much?',
         resetUsage: 'Reset usage counters for "{alias}" to zero now?',
+        rejectRequest: 'Optional rejection reason for "{alias}"',
       },
       success: {
         updated: "Access token updated.",
@@ -340,9 +351,12 @@ const messages = {
         renewed: "Access token renewed.",
         extended: "Access token extended.",
         usageReset: "Access token usage reset.",
+        requestApproved: "Token request approved and emailed.",
+        requestRejected: "Token request rejected and emailed.",
       },
       errors: {
         loadTokens: "Could not load access tokens.",
+        loadRequests: "Could not load token requests.",
         loadHistory: "Could not load token activity.",
         enterSuperadminFirst: "Enter a superadmin token first.",
         saveToken: "Could not save the token.",
@@ -350,10 +364,13 @@ const messages = {
         renewToken: "Could not renew the token.",
         extendToken: "Could not extend the token.",
         resetUsage: "Could not reset token usage.",
+        approveRequest: "Could not approve the token request.",
+        rejectRequest: "Could not reject the token request.",
       },
     },
     routes: {
       home: "Home",
+      plans: "Plans",
       "pdf-services": "PDF Services",
       pdf: "Merge PDF",
       "pdf-split": "Split PDF",
@@ -380,6 +397,9 @@ const messages = {
         title: "Choose a Service",
         subtitle:
           "Pick what you want to do. Each service opens a simple screen with clear steps from upload to download.",
+        plansTitle: "Plans and tokens",
+        plansDescription:
+          "Review free and paid usage limits, then request a token with the service presets you need.",
         pdfServicesTitle: "PDF Services",
         pdfServicesDescription:
           "Open PDF tools for merging, splitting, Word export, text export, and more.",
@@ -392,6 +412,11 @@ const messages = {
         jsonServicesTitle: "JSON Services",
         jsonServicesDescription:
           "Open JSON helper tools for formatting, conversion, checking, and visual output.",
+      },
+      plans: {
+        title: "Plans and token requests",
+        subtitle:
+          "Review the free limits, compare paid token presets, and request a token with the limits you need.",
       },
       pdfServices: {
         title: "PDF Services",
@@ -409,6 +434,36 @@ const messages = {
       donate: {
         title: "Support the Service",
         subtitle: "Small donations help keep the service online and updated for everyone.",
+      },
+    },
+    plans: {
+      freeTitle: "Free access",
+      freeSubtitle: "Default browser access limits before a paid token is applied.",
+      paidTitle: "Paid token presets",
+      paidSubtitle: "Each token request can combine one preset per enabled service.",
+      requestTitle: "Request a token",
+      requestSubtitle:
+        "Send the superadmin the alias, email, and service limits you need. Approval emails the token directly to you.",
+      defaultTtl: "Default approved token TTL: {ttl}",
+      alias: "Alias",
+      aliasPlaceholder: "Example: Editorial desk",
+      email: "Email",
+      emailPlaceholder: "name@example.com",
+      servicePolicies: "Requested service limits",
+      disabled: "Do not include",
+      submit: "Submit request",
+      submitting: "Submitting...",
+      submitted: "Your token request was submitted.",
+      errors: {
+        load: "Could not load plan catalog.",
+        submit: "Could not submit the token request.",
+      },
+      policyKinds: {
+        unlimited: "Unlimited",
+        requestsPerDay: "{value} requests/day",
+        wordsTotal: "{value} words total",
+        compositeRequests: "{value} requests/day",
+        compositeWords: "{value} words total",
       },
     },
     services: {
@@ -1008,6 +1063,16 @@ const messages = {
       saveChanges: "Αποθήκευση αλλαγών",
       createToken: "Δημιουργία token",
       reset: "Επαναφορά",
+      requestNotifications: "Εκκρεμή αιτήματα token",
+      requestNotificationsSubtitle:
+        "Αυτά τα αιτήματα μένουν εδώ μέχρι ο superadmin να τα απορρίψει ή να εγκρίνει και να στείλει token με email.",
+      pendingRequestsEmpty: "Δεν υπάρχουν εκκρεμή αιτήματα token.",
+      requestedBy: "Αιτήθηκε από",
+      requestedAt: "Ημερομηνία αιτήματος",
+      requestedLimits: "Ζητούμενα όρια",
+      requestDeliveryError: "Τελευταίο σφάλμα αποστολής",
+      approveRequest: "Έγκριση και αποστολή token",
+      rejectRequest: "Απόρριψη και email στον χρήστη",
       accessTokens: "Access tokens",
       total: "Σύνολο",
       noAccessTokens: "Δεν βρέθηκαν access tokens.",
@@ -1043,6 +1108,7 @@ const messages = {
         renew: 'Για πόσο να ανανεωθεί το "{alias}";',
         extend: 'Κατά πόσο να επεκταθεί το "{alias}";',
         resetUsage: 'Να μηδενιστούν τώρα οι μετρητές χρήσης για το "{alias}";',
+        rejectRequest: 'Προαιρετικός λόγος απόρριψης για το "{alias}"',
       },
       success: {
         updated: "Το access token ενημερώθηκε.",
@@ -1051,9 +1117,12 @@ const messages = {
         renewed: "Το access token ανανεώθηκε.",
         extended: "Το access token επεκτάθηκε.",
         usageReset: "Η χρήση του access token μηδενίστηκε.",
+        requestApproved: "Το αίτημα token εγκρίθηκε και στάλθηκε με email.",
+        requestRejected: "Το αίτημα token απορρίφθηκε και στάλθηκε με email.",
       },
       errors: {
         loadTokens: "Δεν ήταν δυνατή η φόρτωση των access tokens.",
+        loadRequests: "Δεν ήταν δυνατή η φόρτωση των αιτημάτων token.",
         loadHistory: "Δεν ήταν δυνατή η φόρτωση της δραστηριότητας του token.",
         enterSuperadminFirst: "Συμπληρώστε πρώτα ένα superadmin token.",
         saveToken: "Δεν ήταν δυνατή η αποθήκευση του token.",
@@ -1061,10 +1130,13 @@ const messages = {
         renewToken: "Δεν ήταν δυνατή η ανανέωση του token.",
         extendToken: "Δεν ήταν δυνατή η επέκταση του token.",
         resetUsage: "Δεν ήταν δυνατός ο μηδενισμός χρήσης.",
+        approveRequest: "Δεν ήταν δυνατή η έγκριση του αιτήματος token.",
+        rejectRequest: "Δεν ήταν δυνατή η απόρριψη του αιτήματος token.",
       },
     },
     routes: {
       home: "Αρχική",
+      plans: "Πλάνα",
       "pdf-services": "Υπηρεσίες PDF",
       pdf: "Ένωση PDF",
       "pdf-split": "Χωρισμός PDF",
@@ -1091,6 +1163,9 @@ const messages = {
         title: "Διαλέξτε υπηρεσία",
         subtitle:
           "Επιλέξτε τι θέλετε να κάνετε. Κάθε υπηρεσία ανοίγει μια απλή οθόνη με καθαρά βήματα από την αποστολή έως τη λήψη.",
+        plansTitle: "Πλάνα και tokens",
+        plansDescription:
+          "Δείτε free και paid όρια χρήσης και στείλτε αίτημα token με τα presets υπηρεσιών που χρειάζεστε.",
         pdfServicesTitle: "Υπηρεσίες PDF",
         pdfServicesDescription:
           "Άνοιγμα εργαλείων PDF για ένωση, χωρισμό, εξαγωγή σε Word, εξαγωγή κειμένου και άλλα.",
@@ -1103,6 +1178,11 @@ const messages = {
         jsonServicesTitle: "Υπηρεσίες JSON",
         jsonServicesDescription:
           "Άνοιγμα βοηθητικών εργαλείων JSON για μορφοποίηση, μετατροπή, έλεγχο και οπτικό αποτέλεσμα.",
+      },
+      plans: {
+        title: "Πλάνα και αιτήματα token",
+        subtitle:
+          "Δείτε τα free όρια, συγκρίνετε τα paid presets και στείλτε αίτημα token με τα όρια που χρειάζεστε.",
       },
       pdfServices: {
         title: "Υπηρεσίες PDF",
@@ -1122,6 +1202,36 @@ const messages = {
       donate: {
         title: "Υποστήριξη υπηρεσίας",
         subtitle: "Μικρές δωρεές βοηθούν να μένει η υπηρεσία online και ενημερωμένη για όλους.",
+      },
+    },
+    plans: {
+      freeTitle: "Free πρόσβαση",
+      freeSubtitle: "Τα προεπιλεγμένα όρια browser πριν εφαρμοστεί paid token.",
+      paidTitle: "Paid presets token",
+      paidSubtitle: "Κάθε αίτημα token μπορεί να συνδυάσει ένα preset για κάθε ενεργή υπηρεσία.",
+      requestTitle: "Αίτημα token",
+      requestSubtitle:
+        "Στείλτε στον superadmin το alias, το email και τα όρια υπηρεσιών που χρειάζεστε. Αν εγκριθεί, το token στέλνεται απευθείας με email.",
+      defaultTtl: "Προεπιλεγμένο TTL εγκεκριμένου token: {ttl}",
+      alias: "Alias",
+      aliasPlaceholder: "Παράδειγμα: Editorial desk",
+      email: "Email",
+      emailPlaceholder: "name@example.com",
+      servicePolicies: "Ζητούμενα όρια υπηρεσιών",
+      disabled: "Να μην περιληφθεί",
+      submit: "Υποβολή αιτήματος",
+      submitting: "Υποβολή...",
+      submitted: "Το αίτημα token υποβλήθηκε.",
+      errors: {
+        load: "Δεν ήταν δυνατή η φόρτωση του καταλόγου πλάνων.",
+        submit: "Δεν ήταν δυνατή η υποβολή του αιτήματος token.",
+      },
+      policyKinds: {
+        unlimited: "Απεριόριστο",
+        requestsPerDay: "{value} αιτήματα/ημέρα",
+        wordsTotal: "{value} λέξεις συνολικά",
+        compositeRequests: "{value} αιτήματα/ημέρα",
+        compositeWords: "{value} λέξεις συνολικά",
       },
     },
     services: {

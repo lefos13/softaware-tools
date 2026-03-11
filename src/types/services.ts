@@ -38,6 +38,64 @@ export interface AccessDashboardQuery {
   sortDirection?: AccessHistorySortDirection;
 }
 
+export interface AccessPlanCatalogPolicy {
+  preset: string;
+  kind: string;
+  requestsPerDay?: number | null;
+  wordsTotal?: number | null;
+}
+
+export interface AccessPlanCatalogService {
+  serviceKey: ServiceKey;
+  preset?: string;
+  kind?: string;
+  requestsPerDay?: number | null;
+  wordsTotal?: number | null;
+  presets?: AccessPlanCatalogPolicy[];
+}
+
+export interface AccessPlanCatalogResult {
+  freePlan: {
+    planType: "free";
+    services: AccessPlanCatalogService[];
+  };
+  paidPlans: AccessPlanCatalogService[];
+  requestDefaults?: {
+    ttl?: string;
+  };
+}
+
+export interface AccessTokenRequestPayload {
+  alias: string;
+  email: string;
+  servicePolicies: Record<string, string>;
+}
+
+export interface AccessTokenRequestRecord {
+  requestId: string;
+  alias: string;
+  email: string;
+  servicePolicies: Record<string, string>;
+  createdAt?: string;
+  status?: "pending" | "approved" | "rejected" | (string & {});
+  reviewedAt?: string | null;
+  reviewedByTokenId?: string | null;
+  resolvedTokenId?: string | null;
+  rejectionReason?: string | null;
+  lastEmailError?: string | null;
+  lastEmailAttemptAt?: string | null;
+}
+
+export interface AccessTokenRequestResult {
+  request?: AccessTokenRequestRecord | null;
+}
+
+export interface AccessTokenRequestListResult {
+  count: number;
+  pendingCount: number;
+  requests: AccessTokenRequestRecord[];
+}
+
 export interface AccessTokenRecord {
   tokenId: string;
   alias?: string;

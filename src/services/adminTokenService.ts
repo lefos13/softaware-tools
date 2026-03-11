@@ -7,6 +7,8 @@ import { buildUrl, parseApiError } from "./apiClient";
 import type {
   AccessDashboardQuery,
   AccessHistoryResult,
+  AccessTokenRequestListResult,
+  AccessTokenRequestResult,
   AccessTokenMutationPayload,
   AccessTokenMutationResult,
   ListAccessTokensData,
@@ -81,6 +83,60 @@ export const fetchAccessTokenHistory = async (
     {
       method: "GET",
       headers: buildAuthHeaders(token),
+    }
+  );
+
+  return readJsonData(response, null);
+};
+
+export const listTokenRequests = async (
+  baseUrl: string,
+  token: string,
+  status = "pending"
+): Promise<AccessTokenRequestListResult> => {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  const response = await fetch(buildUrl(baseUrl, `/api/admin/token-requests${query}`), {
+    method: "GET",
+    headers: buildAuthHeaders(token),
+  });
+
+  return readJsonData(response, { count: 0, pendingCount: 0, requests: [] });
+};
+
+/*
+  Request review actions stay in the admin service layer so the inbox and token
+  catalog screen use the same authenticated control-plane client.
+*/
+export const approveTokenRequest = async (
+  baseUrl: string,
+  token: string,
+  requestId: string,
+  ttl?: string
+): Promise<AccessTokenRequestResult | null> => {
+  const response = await fetch(
+    buildUrl(baseUrl, `/api/admin/token-requests/${encodeURIComponent(requestId)}/approve`),
+    {
+      method: "POST",
+      headers: buildJsonHeaders(token),
+      body: JSON.stringify(ttl ? { ttl } : {}),
+    }
+  );
+
+  return readJsonData(response, null);
+};
+
+export const rejectTokenRequest = async (
+  baseUrl: string,
+  token: string,
+  requestId: string,
+  reason?: string
+): Promise<AccessTokenRequestResult | null> => {
+  const response = await fetch(
+    buildUrl(baseUrl, `/api/admin/token-requests/${encodeURIComponent(requestId)}/reject`),
+    {
+      method: "POST",
+      headers: buildJsonHeaders(token),
+      body: JSON.stringify(reason ? { reason } : {}),
     }
   );
 

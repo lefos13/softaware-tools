@@ -32,6 +32,13 @@ const goTo = (path: string) => {
 
     <div class="launcher-grid">
       <ToolCard
+        :title="t('pages.home.plansTitle')"
+        tag="Access"
+        variant="image"
+        :description="t('pages.home.plansDescription')"
+        @action="goTo('/plans')"
+      />
+      <ToolCard
         :title="t('pages.home.pdfServicesTitle')"
         tag="PDF"
         graphic="pdf-merge"
