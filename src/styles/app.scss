@@ -114,6 +114,20 @@ textarea {
   position: relative;
 }
 
+/*
+  Dashboard full-bleed mode bypasses the shared content width and gutters so
+  the route-level layout can extend edge-to-edge beneath the app header.
+*/
+.portal-page.portal-page--fullbleed {
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.portal-page.portal-page--fullbleed.route-shell {
+  margin-top: 0;
+}
+
 .hero__badge {
   margin: 0;
   font-size: 0.72rem;
@@ -1364,6 +1378,10 @@ textarea {
 
   .portal-page {
     padding: 1.25rem 1.5rem 4rem;
+  }
+
+  .portal-page.portal-page--fullbleed {
+    padding: 0;
   }
 
   .preview-grid {

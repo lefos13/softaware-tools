@@ -2,6 +2,8 @@
 /*
   Home cards now read from the shared i18n store so the launcher keeps the
   same routing behavior while presenting friendly English and Greek copy.
+  The plans/tokens card is removed so the homepage service section lists only
+  direct tool categories.
 */
 import { inject } from "vue";
 import ToolCard from "../components/ToolCard.vue";
@@ -31,13 +33,6 @@ const goTo = (path: string) => {
     </div>
 
     <div class="launcher-grid">
-      <ToolCard
-        :title="t('pages.home.plansTitle')"
-        tag="Access"
-        variant="image"
-        :description="t('pages.home.plansDescription')"
-        @action="goTo('/plans')"
-      />
       <ToolCard
         :title="t('pages.home.pdfServicesTitle')"
         tag="PDF"

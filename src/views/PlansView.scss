@@ -732,6 +732,33 @@
   line-height: 1.45;
 }
 
+/*
+  Invalid form states use the same visual language as status banners so the
+  request form keeps a consistent error signal at field and group level.
+*/
+.plans-field-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.plans-request__field--invalid input,
+.plans-request__field--invalid select {
+  border-color: rgba(180, 35, 24, 0.48);
+  box-shadow:
+    0 0 0 1px rgba(180, 35, 24, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.plans-request__field--invalid input:focus,
+.plans-request__field--invalid select:focus {
+  border-color: rgba(180, 35, 24, 0.58);
+  box-shadow:
+    0 0 0 3px rgba(180, 35, 24, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
 .plans-request__field--service {
   padding: 1rem;
   border: 1px solid rgba(31, 44, 100, 0.12);

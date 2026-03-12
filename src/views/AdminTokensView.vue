@@ -4,6 +4,21 @@
   while create/edit and per-token history move into focused modal workflows.
 */
 import { computed, inject, ref, watch } from "vue";
+import {
+  FlexRender,
+  createColumnHelper,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useVueTable,
+  type ColumnDef,
+  type ColumnFiltersState,
+  type VisibilityState,
+  type PaginationState,
+  type SortingState,
+  type Updater,
+} from "@tanstack/vue-table";
 import AccessHistoryTable from "../components/access/AccessHistoryTable.vue";
 import { usePortalI18n } from "../i18n";
 import {
@@ -31,6 +46,8 @@ import type { PortalContext, PortalI18n } from "../types/shared";
 import { portalContextKey } from "../types/shared";
 
 type AdminServicePoliciesForm = Record<string, string>;
+type RequestDecisionAction = "approve" | "reject";
+type AdminTokenStatusKey = "active" | "revoked" | "expired";
 
 interface AdminPolicyPresetMap {
   [serviceKey: string]: string[];
@@ -69,8 +86,25 @@ const revealedTokenLabel = ref("");
 const editingTokenId = ref("");
 const showFormModal = ref(false);
 const showHistoryModal = ref(false);
-const listCurrentPage = ref(1);
-const listPageSize = ref(DEFAULT_LIST_PAGE_SIZE);
+const showDetailsModal = ref(false);
+const showRequestResultModal = ref(false);
+const requestResultTitle = ref("");
+const requestResultDescription = ref("");
+const pendingRequestAction = ref<{ requestId: string; action: RequestDecisionAction } | null>(null);
+const listSearch = ref("");
+const listStatusFilter = ref<"all" | AdminTokenStatusKey>("all");
+const listTypeFilter = ref("all");
+const listSort = ref("createdAt:desc");
+const sorting = ref<SortingState>([{ id: "createdAt", desc: true }]);
+const columnFilters = ref<ColumnFiltersState>([]);
+const columnVisibility = ref<VisibilityState>({
+  createdAt: false,
+});
+const globalFilter = ref("");
+const pagination = ref<PaginationState>({
+  pageIndex: 0,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
+});
 const historyToken = ref<AccessTokenRecord | null>(null);
 const historyLoading = ref(false);
 const historyError = ref("");
@@ -81,6 +115,7 @@ const historyCurrentPage = ref(1);
 const historyPageSize = ref(DEFAULT_HISTORY_PAGE_SIZE);
 const historySortBy = ref<AccessHistorySortKey>("createdAt");
 const historySortDirection = ref<AccessHistorySortDirection>("desc");
+const detailsToken = ref<AccessTokenRecord | null>(null);
 
 /*
   Policy inputs are generated from the backend catalog so the form stays aligned
@@ -108,15 +143,6 @@ const form = ref({
 
 const isAuthenticated = computed(() => Boolean(activeToken.value));
 const isEditing = computed(() => Boolean(editingTokenId.value));
-const paginatedTokens = computed(() => {
-  const startIndex = (listCurrentPage.value - 1) * listPageSize.value;
-  return accessTokens.value.slice(startIndex, startIndex + listPageSize.value);
-});
-const listTotalPages = computed(() =>
-  Math.max(1, Math.ceil(accessTokens.value.length / Math.max(1, listPageSize.value)))
-);
-const listCanGoPrev = computed(() => listCurrentPage.value > 1);
-const listCanGoNext = computed(() => listCurrentPage.value < listTotalPages.value);
 const sortedServicePolicies = computed(() =>
   Object.entries(availableServicePolicies.value || {}).sort(([left], [right]) =>
     left.localeCompare(right)
@@ -146,48 +172,163 @@ const normalizeSelectedPolicies = (policies: AdminServicePoliciesForm): Record<s
   );
 
 /*
-  Usage summaries must distinguish consumed versus remaining quota, otherwise
-  word-based plans can look healthy while the backend has already exhausted them.
+  TanStack powers sorting/filtering/pagination while dynamic service columns
+  expose each policy and quota indicator separately for easier scanning.
 */
-const formatUsageSummary = (
-  serviceItem: NonNullable<AccessTokenRecord["usageSummary"]>[number]
-): string => {
-  const requestQuota = serviceItem?.quota?.requests;
-  const wordQuota = serviceItem?.quota?.words;
-  const parts = [];
-
-  if (requestQuota && requestQuota.limit !== null) {
-    parts.push(
-      t("adminTokens.usage.requestsUsed", {
-        used: requestQuota.used,
-        limit: requestQuota.limit,
-      })
-    );
+const resolveTokenStatus = (tokenItem: AccessTokenRecord): AdminTokenStatusKey => {
+  if (tokenItem.isActive) {
+    return "active";
   }
 
-  if (wordQuota && wordQuota.limit !== null) {
-    const usedLabel = t("adminTokens.usage.wordsUsed", {
-      used: wordQuota.used,
-      limit: wordQuota.limit,
-    });
-    const remainingLabel = t("adminTokens.usage.remaining", { remaining: wordQuota.remaining });
-    parts.push(`${usedLabel} (${remainingLabel})`);
+  if (tokenItem.isRevoked) {
+    return "revoked";
   }
 
-  return `${serviceItem.serviceKey}: ${parts.join(" · ") || t("adminTokens.usage.unlimited")}`;
+  return "expired";
 };
 
-const listPolicyEntries = (tokenItem: AccessTokenRecord): Array<[string, string]> =>
-  tokenItem?.servicePolicies && Object.keys(tokenItem.servicePolicies).length > 0
-    ? (Object.entries(tokenItem.servicePolicies) as Array<[string, string]>)
-    : [];
+/*
+  Service policy and quota columns were moved out of the grid into a modal so
+  the main table remains readable while keeping full token limits available.
+*/
+const detailsPolicyEntries = computed(() =>
+  detailsToken.value?.servicePolicies ? Object.entries(detailsToken.value.servicePolicies) : []
+);
 
-const listUsageEntries = (
-  tokenItem: AccessTokenRecord
-): NonNullable<AccessTokenRecord["usageSummary"]> =>
-  Array.isArray(tokenItem?.usageSummary) && tokenItem.usageSummary.length > 0
-    ? tokenItem.usageSummary
-    : [];
+const detailsUsageEntries = computed(
+  () =>
+    (Array.isArray(detailsToken.value?.usageSummary) ? detailsToken.value?.usageSummary : []) || []
+);
+
+const listTypeOptions = computed(() =>
+  Array.from(new Set(accessTokens.value.map((tokenItem) => String(tokenItem.tokenType || ""))))
+    .filter(Boolean)
+    .sort((left, right) => left.localeCompare(right))
+);
+
+const applyUpdater = <T,>(updater: Updater<T>, previousValue: T): T =>
+  typeof updater === "function" ? (updater as (old: T) => T)(previousValue) : updater;
+
+const columnHelper = createColumnHelper<AccessTokenRecord>();
+const tableColumns = computed(
+  () =>
+    [
+      columnHelper.accessor((row) => String(row.alias || ""), {
+        id: "alias",
+        header: t("adminTokens.columns.alias"),
+      }),
+      columnHelper.accessor((row) => String(row.tokenType || ""), {
+        id: "tokenType",
+        header: t("adminTokens.columns.type"),
+      }),
+      columnHelper.accessor((row) => String(row.createdAt || ""), {
+        id: "createdAt",
+        header: t("adminTokens.columns.createdAt"),
+        sortingFn: (left, right, columnId) => {
+          const leftDate = Date.parse(String(left.getValue(columnId) || "")) || 0;
+          const rightDate = Date.parse(String(right.getValue(columnId) || "")) || 0;
+          return leftDate - rightDate;
+        },
+      }),
+      columnHelper.accessor((row) => String(row.tokenId || ""), {
+        id: "tokenId",
+        header: t("adminTokens.columns.identifier"),
+      }),
+      columnHelper.accessor((row) => resolveTokenStatus(row), {
+        id: "status",
+        header: t("adminTokens.columns.status"),
+      }),
+      columnHelper.accessor((row) => String(row.expiresAt || ""), {
+        id: "expiresAt",
+        header: t("adminTokens.columns.expires"),
+        sortingFn: (left, right, columnId) => {
+          const leftDate = Date.parse(String(left.getValue(columnId) || "")) || 0;
+          const rightDate = Date.parse(String(right.getValue(columnId) || "")) || 0;
+          return leftDate - rightDate;
+        },
+      }),
+      columnHelper.display({
+        id: "actions",
+        header: t("adminTokens.columns.actions"),
+      }),
+    ] as ColumnDef<AccessTokenRecord, unknown>[]
+);
+
+const tokenTable = useVueTable({
+  get data() {
+    return accessTokens.value;
+  },
+  get columns() {
+    return tableColumns.value;
+  },
+  state: {
+    get sorting() {
+      return sorting.value;
+    },
+    get columnFilters() {
+      return columnFilters.value;
+    },
+    get columnVisibility() {
+      return columnVisibility.value;
+    },
+    get globalFilter() {
+      return globalFilter.value;
+    },
+    get pagination() {
+      return pagination.value;
+    },
+  },
+  onSortingChange: (updater) => {
+    sorting.value = applyUpdater(updater, sorting.value);
+  },
+  onColumnFiltersChange: (updater) => {
+    columnFilters.value = applyUpdater(updater, columnFilters.value);
+  },
+  onColumnVisibilityChange: (updater) => {
+    columnVisibility.value = applyUpdater(updater, columnVisibility.value);
+  },
+  onGlobalFilterChange: (updater) => {
+    globalFilter.value = applyUpdater(updater, globalFilter.value);
+  },
+  onPaginationChange: (updater) => {
+    pagination.value = applyUpdater(updater, pagination.value);
+  },
+  globalFilterFn: (row, _columnId, filterValue) => {
+    const normalized = String(filterValue || "")
+      .trim()
+      .toLowerCase();
+    if (!normalized) {
+      return true;
+    }
+
+    return (
+      String(row.original.alias || "")
+        .toLowerCase()
+        .includes(normalized) ||
+      String(row.original.tokenId || "")
+        .toLowerCase()
+        .includes(normalized)
+    );
+  },
+  getCoreRowModel: getCoreRowModel(),
+  getFilteredRowModel: getFilteredRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  getPaginationRowModel: getPaginationRowModel(),
+});
+
+const paginatedRows = computed(() => tokenTable.getRowModel().rows);
+const filteredTokensCount = computed(() => tokenTable.getFilteredRowModel().rows.length);
+const listCurrentPage = computed(() => tokenTable.getState().pagination.pageIndex + 1);
+const listTotalPages = computed(() => Math.max(1, tokenTable.getPageCount()));
+const listCanGoPrev = computed(() => tokenTable.getCanPreviousPage());
+const listCanGoNext = computed(() => tokenTable.getCanNextPage());
+const visiblePageNumbers = computed(() => {
+  const current = listCurrentPage.value;
+  const total = listTotalPages.value;
+  const start = Math.max(1, current - 2);
+  const end = Math.min(total, current + 2);
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+});
 
 const resetForm = (): void => {
   editingTokenId.value = "";
@@ -225,6 +366,64 @@ const closeHistoryModal = (): void => {
   resetHistoryState();
 };
 
+const openDetailsModal = (tokenItem: AccessTokenRecord): void => {
+  detailsToken.value = tokenItem;
+  showDetailsModal.value = true;
+};
+
+const closeDetailsModal = (): void => {
+  showDetailsModal.value = false;
+  detailsToken.value = null;
+};
+
+/*
+  Request review actions can take a few seconds while the backend sends email.
+  We keep one focused pending-action state for per-row spinners and show the
+  final result in a modal so confirmations stay visible after list refreshes.
+*/
+const closeRequestResultModal = (): void => {
+  showRequestResultModal.value = false;
+  requestResultTitle.value = "";
+  requestResultDescription.value = "";
+};
+
+const setPendingRequestAction = (requestId: string, action: RequestDecisionAction): void => {
+  pendingRequestAction.value = {
+    requestId: String(requestId || ""),
+    action,
+  };
+};
+
+const clearPendingRequestAction = (): void => {
+  pendingRequestAction.value = null;
+};
+
+const isPendingRequestAction = (requestId: string, action: RequestDecisionAction): boolean =>
+  saving.value &&
+  pendingRequestAction.value?.requestId === String(requestId || "") &&
+  pendingRequestAction.value?.action === action;
+
+const openRequestResultModal = (
+  action: RequestDecisionAction,
+  requestItem: AccessTokenRequestRecord
+): void => {
+  requestResultTitle.value =
+    action === "approve"
+      ? t("adminTokens.requestResult.approvedTitle")
+      : t("adminTokens.requestResult.rejectedTitle");
+  requestResultDescription.value =
+    action === "approve"
+      ? t("adminTokens.requestResult.approvedDescription", {
+          alias: requestItem.alias,
+          email: requestItem.email,
+        })
+      : t("adminTokens.requestResult.rejectedDescription", {
+          alias: requestItem.alias,
+          email: requestItem.email,
+        });
+  showRequestResultModal.value = true;
+};
+
 const clearSuperadminToken = (): void => {
   activeToken.value = "";
   tokenInput.value = "";
@@ -232,10 +431,20 @@ const clearSuperadminToken = (): void => {
   accessTokens.value = [];
   pendingRequests.value = [];
   availableServicePolicies.value = {};
-  listCurrentPage.value = 1;
+  tokenTable.setPageIndex(0);
+  listSearch.value = "";
+  listStatusFilter.value = "all";
+  listTypeFilter.value = "all";
+  listSort.value = "createdAt:desc";
+  globalFilter.value = "";
+  sorting.value = [{ id: "createdAt", desc: true }];
+  columnFilters.value = [];
   clearReveal();
   closeFormModal();
   closeHistoryModal();
+  closeDetailsModal();
+  closeRequestResultModal();
+  clearPendingRequestAction();
   error.value = "";
   success.value = "";
 };
@@ -581,6 +790,7 @@ const runApproveRequest = async (requestItem: AccessTokenRequestRecord): Promise
   }
 
   saving.value = true;
+  setPendingRequestAction(requestItem.requestId, "approve");
   error.value = "";
   success.value = "";
 
@@ -590,12 +800,13 @@ const runApproveRequest = async (requestItem: AccessTokenRequestRecord): Promise
       activeToken.value,
       requestItem.requestId
     );
-    success.value = t("adminTokens.success.requestApproved");
+    openRequestResultModal("approve", requestItem);
     await loadAdminData();
   } catch (runError) {
     error.value =
       runError instanceof Error ? runError.message : t("adminTokens.errors.approveRequest");
   } finally {
+    clearPendingRequestAction();
     saving.value = false;
   }
 };
@@ -614,6 +825,7 @@ const runRejectRequest = async (requestItem: AccessTokenRequestRecord): Promise<
   }
 
   saving.value = true;
+  setPendingRequestAction(requestItem.requestId, "reject");
   error.value = "";
   success.value = "";
 
@@ -624,34 +836,96 @@ const runRejectRequest = async (requestItem: AccessTokenRequestRecord): Promise<
       requestItem.requestId,
       reason.trim()
     );
-    success.value = t("adminTokens.success.requestRejected");
+    openRequestResultModal("reject", requestItem);
     await loadAdminData();
   } catch (runError) {
     error.value =
       runError instanceof Error ? runError.message : t("adminTokens.errors.rejectRequest");
   } finally {
+    clearPendingRequestAction();
     saving.value = false;
   }
 };
 
 const goToListPage = (nextPage: number): void => {
-  listCurrentPage.value = Math.min(listTotalPages.value, Math.max(1, Number(nextPage) || 1));
+  tokenTable.setPageIndex(Math.max(0, Number(nextPage) - 1));
+};
+
+const goToFirstListPage = (): void => {
+  tokenTable.setPageIndex(0);
+};
+
+const goToLastListPage = (): void => {
+  tokenTable.setPageIndex(Math.max(0, listTotalPages.value - 1));
 };
 
 const updateListPageSize = (value: string): void => {
-  listPageSize.value = Math.max(1, Number(value) || DEFAULT_LIST_PAGE_SIZE);
-  listCurrentPage.value = 1;
+  tokenTable.setPageSize(Math.max(1, Number(value) || DEFAULT_LIST_PAGE_SIZE));
+  tokenTable.setPageIndex(0);
 };
 
 const updateListPageSizeFromEvent = (event: Event): void => {
   updateListPageSize(String((event.target as HTMLSelectElement)?.value || DEFAULT_LIST_PAGE_SIZE));
 };
 
-watch([accessTokens, listPageSize], () => {
-  if (listCurrentPage.value > listTotalPages.value) {
-    listCurrentPage.value = listTotalPages.value;
-  }
+/*
+  Every toolbar control resets to page 1 so filtered results never land on an
+  empty page after the user narrows the current dataset.
+*/
+const updateListSearchFromEvent = (event: Event): void => {
+  listSearch.value = String((event.target as HTMLInputElement)?.value || "");
+  globalFilter.value = listSearch.value;
+  tokenTable.setPageIndex(0);
+};
+
+const updateListStatusFilterFromEvent = (event: Event): void => {
+  listStatusFilter.value = String((event.target as HTMLSelectElement)?.value || "all") as
+    | "all"
+    | AdminTokenStatusKey;
+  tokenTable
+    .getColumn("status")
+    ?.setFilterValue(listStatusFilter.value === "all" ? undefined : listStatusFilter.value);
+  tokenTable.setPageIndex(0);
+};
+
+const updateListTypeFilterFromEvent = (event: Event): void => {
+  listTypeFilter.value = String((event.target as HTMLSelectElement)?.value || "all");
+  tokenTable
+    .getColumn("tokenType")
+    ?.setFilterValue(listTypeFilter.value === "all" ? undefined : listTypeFilter.value);
+  tokenTable.setPageIndex(0);
+};
+
+const updateListSortFromEvent = (event: Event): void => {
+  listSort.value = String((event.target as HTMLSelectElement)?.value || "createdAt:desc");
+  const [sortBy, sortDirection] = listSort.value.split(":");
+  sorting.value = [{ id: sortBy || "createdAt", desc: sortDirection !== "asc" }];
+  tokenTable.setPageIndex(0);
+};
+
+const getListSortValue = (): string => listSort.value;
+
+watch(accessTokens, () => {
+  tokenTable.setPageIndex(0);
 });
+
+watch(sorting, () => {
+  const primarySort = sorting.value[0];
+  if (!primarySort?.id) {
+    return;
+  }
+
+  listSort.value = `${primarySort.id}:${primarySort.desc ? "desc" : "asc"}`;
+});
+
+const copyTokenId = async (tokenId: string): Promise<void> => {
+  try {
+    await navigator.clipboard.writeText(String(tokenId || ""));
+    success.value = t("adminTokens.success.copiedId");
+  } catch {
+    error.value = t("adminTokens.errors.copyTokenId");
+  }
+};
 
 watch([historySelectedService, historySelectedStatus], () => {
   historyCurrentPage.value = 1;
@@ -698,15 +972,15 @@ if (activeToken.value) {
       <button
         v-if="isAuthenticated"
         type="button"
-        class="button button--secondary"
+        class="button button--secondary admin-head__logout"
         :disabled="loading || saving"
-        @click="loadAdminData"
+        @click="clearSuperadminToken"
       >
-        {{ loading ? t("adminTokens.refreshing") : t("adminTokens.refresh") }}
+        {{ t("adminTokens.logout") }}
       </button>
     </div>
 
-    <article class="tool-card admin-access admin-access--highlight">
+    <article v-if="!isAuthenticated" class="tool-card admin-access admin-access--highlight">
       <h3 class="tool-card__title">{{ t("adminTokens.sessionTitle") }}</h3>
       <p class="tool-card__description">
         {{ t("adminTokens.sessionSubtitle") }}
@@ -727,15 +1001,6 @@ if (activeToken.value) {
         >
           {{ t("adminTokens.enter") }}
         </button>
-        <button
-          v-if="isAuthenticated"
-          type="button"
-          class="button button--secondary"
-          :disabled="loading || saving"
-          @click="clearSuperadminToken"
-        >
-          {{ t("adminTokens.clear") }}
-        </button>
       </div>
     </article>
 
@@ -744,7 +1009,7 @@ if (activeToken.value) {
     </p>
     <p v-if="success" class="tool-card__description">{{ success }}</p>
 
-    <article v-if="revealedToken" class="tool-card admin-reveal">
+    <article v-if="revealedToken && !isAuthenticated" class="tool-card admin-reveal">
       <h3 class="tool-card__title">{{ t("adminTokens.plaintextTitle") }}</h3>
       <p class="tool-card__description">
         {{ t("adminTokens.plaintextDescription", { label: revealedTokenLabel }) }}
@@ -753,7 +1018,7 @@ if (activeToken.value) {
     </article>
 
     <article v-if="isAuthenticated" class="tool-card admin-requests">
-      <div class="admin-list__head">
+      <div class="admin-list__title-row">
         <div>
           <h3 class="tool-card__title">{{ t("adminTokens.requestNotifications") }}</h3>
           <p class="tool-card__description">{{ t("adminTokens.requestNotificationsSubtitle") }}</p>
@@ -818,7 +1083,18 @@ if (activeToken.value) {
               :disabled="saving"
               @click="runApproveRequest(requestItem)"
             >
-              {{ t("adminTokens.approveRequest") }}
+              <span class="admin-action-button__content">
+                <span
+                  v-if="isPendingRequestAction(requestItem.requestId, 'approve')"
+                  class="admin-action-button__spinner"
+                  aria-hidden="true"
+                ></span>
+                <span>{{
+                  isPendingRequestAction(requestItem.requestId, "approve")
+                    ? t("adminTokens.sendingEmail")
+                    : t("adminTokens.approveRequest")
+                }}</span>
+              </span>
             </button>
             <button
               type="button"
@@ -826,41 +1102,115 @@ if (activeToken.value) {
               :disabled="saving"
               @click="runRejectRequest(requestItem)"
             >
-              {{ t("adminTokens.rejectRequest") }}
+              <span class="admin-action-button__content">
+                <span
+                  v-if="isPendingRequestAction(requestItem.requestId, 'reject')"
+                  class="admin-action-button__spinner"
+                  aria-hidden="true"
+                ></span>
+                <span>{{
+                  isPendingRequestAction(requestItem.requestId, "reject")
+                    ? t("adminTokens.sendingEmail")
+                    : t("adminTokens.rejectRequest")
+                }}</span>
+              </span>
             </button>
           </div>
         </li>
       </ul>
     </article>
 
-    <article v-if="isAuthenticated" class="tool-card admin-list">
-      <div class="admin-list__head">
+    <article v-if="isAuthenticated" class="tool-card admin-list admin-list--full-width">
+      <div class="admin-list__title-row">
         <div>
           <h3 class="tool-card__title">{{ t("adminTokens.accessTokens") }}</h3>
           <p class="tool-card__description">
-            {{ t("adminTokens.total") }}: {{ accessTokens.length }}
+            {{
+              t("adminTokens.filteredSummary", {
+                filtered: filteredTokensCount,
+                total: accessTokens.length,
+              })
+            }}
           </p>
         </div>
-        <div class="admin-list__toolbar">
-          <select
-            :value="String(listPageSize)"
-            class="rotation-select"
-            :disabled="loading || saving"
-            @change="updateListPageSizeFromEvent"
-          >
-            <option :value="10">10</option>
-            <option :value="20">20</option>
-            <option :value="50">50</option>
-          </select>
-          <button
-            type="button"
-            class="button button--primary"
-            :disabled="loading || saving"
-            @click="openCreateModal"
-          >
-            {{ t("adminTokens.createToken") }}
-          </button>
-        </div>
+      </div>
+
+      <!--
+        Toolbar controls stay local to the loaded dataset so filtering is fast,
+        predictable, and independent from backend query parameter changes.
+      -->
+      <div class="admin-list__toolbar">
+        <input
+          :value="listSearch"
+          type="search"
+          class="field admin-list__search"
+          :placeholder="t('adminTokens.searchPlaceholder')"
+          :disabled="loading || saving"
+          @input="updateListSearchFromEvent"
+        />
+        <select
+          :value="listStatusFilter"
+          class="rotation-select admin-list__control"
+          :disabled="loading || saving"
+          @change="updateListStatusFilterFromEvent"
+        >
+          <option value="all">{{ t("adminTokens.filters.allStatuses") }}</option>
+          <option value="active">{{ t("adminTokens.active") }}</option>
+          <option value="revoked">{{ t("adminTokens.revoked") }}</option>
+          <option value="expired">{{ t("adminTokens.expired") }}</option>
+        </select>
+        <select
+          :value="listTypeFilter"
+          class="rotation-select admin-list__control"
+          :disabled="loading || saving"
+          @change="updateListTypeFilterFromEvent"
+        >
+          <option value="all">{{ t("adminTokens.filters.allTypes") }}</option>
+          <option v-for="typeOption in listTypeOptions" :key="typeOption" :value="typeOption">
+            {{ typeOption }}
+          </option>
+        </select>
+        <select
+          :value="getListSortValue()"
+          class="rotation-select admin-list__control"
+          :disabled="loading || saving"
+          @change="updateListSortFromEvent"
+        >
+          <option value="createdAt:desc">{{ t("adminTokens.sortOptions.createdAtDesc") }}</option>
+          <option value="createdAt:asc">{{ t("adminTokens.sortOptions.createdAtAsc") }}</option>
+          <option value="alias:asc">{{ t("adminTokens.sortOptions.aliasAsc") }}</option>
+          <option value="alias:desc">{{ t("adminTokens.sortOptions.aliasDesc") }}</option>
+          <option value="expiresAt:asc">{{ t("adminTokens.sortOptions.expiresAsc") }}</option>
+          <option value="expiresAt:desc">{{ t("adminTokens.sortOptions.expiresDesc") }}</option>
+          <option value="status:asc">{{ t("adminTokens.sortOptions.statusAsc") }}</option>
+          <option value="status:desc">{{ t("adminTokens.sortOptions.statusDesc") }}</option>
+        </select>
+        <select
+          :value="String(tokenTable.getState().pagination.pageSize)"
+          class="rotation-select admin-list__control"
+          :disabled="loading || saving"
+          @change="updateListPageSizeFromEvent"
+        >
+          <option :value="10">10</option>
+          <option :value="20">20</option>
+          <option :value="50">50</option>
+        </select>
+        <button
+          type="button"
+          class="button button--secondary"
+          :disabled="loading || saving"
+          @click="loadAdminData"
+        >
+          {{ loading ? t("adminTokens.refreshing") : t("adminTokens.refresh") }}
+        </button>
+        <button
+          type="button"
+          class="button button--primary"
+          :disabled="loading || saving"
+          @click="openCreateModal"
+        >
+          {{ t("adminTokens.createToken") }}
+        </button>
       </div>
 
       <p v-if="loading" class="tool-card__description">
@@ -869,169 +1219,360 @@ if (activeToken.value) {
       <p v-else-if="accessTokens.length === 0" class="tool-card__description">
         {{ t("adminTokens.noAccessTokens") }}
       </p>
+      <p v-else-if="filteredTokensCount === 0" class="tool-card__description">
+        {{ t("adminTokens.noFilteredTokens") }}
+      </p>
       <template v-else>
-        <ul class="admin-token-list" role="list">
-          <li
-            v-for="tokenItem in paginatedTokens"
-            :key="tokenItem.tokenId"
-            class="admin-token-list__item"
-          >
-            <div class="admin-token-list__head">
-              <strong class="admin-token-list__alias">{{ tokenItem.alias }}</strong>
-              <div class="admin-chip-row">
-                <span v-if="tokenItem.isActive" class="admin-chip admin-chip--active">{{
-                  t("adminTokens.active")
-                }}</span>
-                <span v-else-if="tokenItem.isRevoked" class="admin-chip admin-chip--revoked">{{
-                  t("adminTokens.revoked")
-                }}</span>
-                <span v-else-if="tokenItem.isExpired" class="admin-chip admin-chip--expired">{{
-                  t("adminTokens.expired")
-                }}</span>
-                <span v-if="tokenItem.renewedAt" class="admin-chip">
-                  {{ t("adminTokens.renewed") }} {{ formatDateTime(tokenItem.renewedAt) }}
-                </span>
-                <span v-if="tokenItem.extendedAt" class="admin-chip">
-                  {{ t("adminTokens.extended") }} {{ formatDateTime(tokenItem.extendedAt) }}
-                </span>
-              </div>
-            </div>
-
-            <div class="admin-token-list__meta-grid">
-              <article class="admin-meta-item">
-                <span class="admin-meta-item__label">{{ t("adminTokens.type") }}</span>
-                <strong class="admin-meta-item__value">{{ tokenItem.tokenType }}</strong>
-              </article>
-              <article class="admin-meta-item">
-                <span class="admin-meta-item__label">{{ t("adminTokens.expires") }}</span>
-                <strong class="admin-meta-item__value">{{
-                  formatDateTime(tokenItem.expiresAt)
-                }}</strong>
-              </article>
-              <article class="admin-meta-item">
-                <span class="admin-meta-item__label">{{ t("adminTokens.id") }}</span>
-                <strong class="admin-meta-item__value admin-meta-item__value--mono">{{
-                  tokenItem.tokenId
-                }}</strong>
-              </article>
-              <article v-if="tokenItem.usageResetAt" class="admin-meta-item">
-                <span class="admin-meta-item__label">{{ t("adminTokens.usageReset") }}</span>
-                <strong class="admin-meta-item__value">{{
-                  formatDateTime(tokenItem.usageResetAt)
-                }}</strong>
-              </article>
-            </div>
-
-            <div class="admin-token-list__block">
-              <p class="admin-token-list__block-title">{{ t("adminTokens.policies") }}</p>
-              <div v-if="listPolicyEntries(tokenItem).length" class="admin-token-list__tags">
-                <span
-                  v-for="[serviceKey, preset] in listPolicyEntries(tokenItem)"
-                  :key="`${tokenItem.tokenId}-${serviceKey}`"
-                  class="admin-token-list__tag"
-                >
-                  <strong>{{ serviceKey }}</strong>
-                  <span>{{ preset }}</span>
-                </span>
-              </div>
-              <p v-else class="tool-card__description">{{ t("adminTokens.none") }}</p>
-            </div>
-
-            <div v-if="listUsageEntries(tokenItem).length" class="admin-token-list__block">
-              <p class="admin-token-list__block-title">{{ t("adminTokens.usageLabel") }}</p>
-              <div class="admin-token-list__usage-grid">
-                <article
-                  v-for="item in listUsageEntries(tokenItem)"
-                  :key="`${tokenItem.tokenId}-${item.serviceKey}`"
-                  class="admin-usage-item"
-                >
-                  {{ formatUsageSummary(item) }}
-                </article>
-              </div>
-            </div>
-
-            <div class="preview-card__actions">
-              <button
-                type="button"
-                class="button button--secondary"
-                :disabled="saving"
-                @click="openHistory(tokenItem)"
-              >
-                {{ t("adminTokens.history") }}
-              </button>
-              <button
-                type="button"
-                class="button button--secondary"
-                :disabled="saving || !tokenItem.isActive"
-                @click="runResetUsage(tokenItem)"
-              >
-                {{ t("adminTokens.resetUsageAction") }}
-              </button>
-              <button
-                type="button"
-                class="button button--secondary"
-                :disabled="saving"
-                @click="startEdit(tokenItem)"
-              >
-                {{ t("adminTokens.edit") }}
-              </button>
-              <button
-                type="button"
-                class="button button--secondary"
-                :disabled="saving || tokenItem.isRevoked"
-                @click="runRevoke(tokenItem)"
-              >
-                {{ t("adminTokens.revoke") }}
-              </button>
-              <button
-                type="button"
-                class="button button--secondary"
-                :disabled="saving || (!tokenItem.isRevoked && !tokenItem.isExpired)"
-                @click="runRenew(tokenItem)"
-              >
-                {{ t("adminTokens.renew") }}
-              </button>
-              <button
-                type="button"
-                class="button button--secondary"
-                :disabled="saving || tokenItem.isRevoked"
-                @click="runExtend(tokenItem)"
-              >
-                {{ t("adminTokens.extend") }}
-              </button>
-            </div>
-          </li>
-        </ul>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <template v-for="headerGroup in tokenTable.getHeaderGroups()" :key="headerGroup.id">
+                <tr>
+                  <th v-for="header in headerGroup.headers" :key="header.id">
+                    <template v-if="!header.isPlaceholder">
+                      <button
+                        v-if="header.column.getCanSort()"
+                        type="button"
+                        class="admin-table__head-button"
+                        @click="header.column.toggleSorting()"
+                      >
+                        <FlexRender
+                          :render="header.column.columnDef.header"
+                          :props="header.getContext()"
+                        />
+                        <span class="admin-table__head-sort">
+                          {{
+                            header.column.getIsSorted() === "asc"
+                              ? "↑"
+                              : header.column.getIsSorted() === "desc"
+                                ? "↓"
+                                : "·"
+                          }}
+                        </span>
+                      </button>
+                      <FlexRender
+                        v-else
+                        :render="header.column.columnDef.header"
+                        :props="header.getContext()"
+                      />
+                    </template>
+                  </th>
+                </tr>
+              </template>
+            </thead>
+            <tbody>
+              <tr v-for="row in paginatedRows" :key="row.id">
+                <td v-for="cell in row.getVisibleCells()" :key="cell.id">
+                  <template v-if="cell.column.id === 'alias'">
+                    <strong class="admin-table__alias">{{
+                      row.original.alias || t("adminTokens.notAvailable")
+                    }}</strong>
+                    <div class="admin-chip-row">
+                      <span v-if="row.original.renewedAt" class="admin-chip">
+                        {{ t("adminTokens.renewed") }} {{ formatDateTime(row.original.renewedAt) }}
+                      </span>
+                      <span v-if="row.original.extendedAt" class="admin-chip">
+                        {{ t("adminTokens.extended") }}
+                        {{ formatDateTime(row.original.extendedAt) }}
+                      </span>
+                    </div>
+                  </template>
+                  <template v-else-if="cell.column.id === 'tokenId'">
+                    <div class="admin-table__id-cell">
+                      <code
+                        class="admin-table__mono admin-table__mono--ellipsis"
+                        :title="String(row.original.tokenId || '')"
+                        >{{ row.original.tokenId }}</code
+                      >
+                      <button
+                        type="button"
+                        class="button button--icon admin-icon-button admin-id-copy"
+                        :data-tooltip="t('adminTokens.actions.copyId')"
+                        :aria-label="t('adminTokens.actions.copyId')"
+                        @click="copyTokenId(String(row.original.tokenId || ''))"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M9 9h9v12H9zM6 3h9v3h-2V5H8v10H6z" fill="currentColor" />
+                        </svg>
+                      </button>
+                    </div>
+                  </template>
+                  <template v-else-if="cell.column.id === 'status'">
+                    <span
+                      class="admin-chip"
+                      :class="{
+                        'admin-chip--active': resolveTokenStatus(row.original) === 'active',
+                        'admin-chip--revoked': resolveTokenStatus(row.original) === 'revoked',
+                        'admin-chip--expired': resolveTokenStatus(row.original) === 'expired',
+                      }"
+                    >
+                      {{ t(`adminTokens.${resolveTokenStatus(row.original)}`) }}
+                    </span>
+                  </template>
+                  <template v-else-if="cell.column.id === 'expiresAt'">
+                    <div class="admin-table__stack">
+                      <span>{{ formatDateTime(row.original.expiresAt) }}</span>
+                      <span v-if="row.original.usageResetAt" class="admin-table__muted">
+                        {{ t("adminTokens.usageReset") }}:
+                        {{ formatDateTime(row.original.usageResetAt) }}
+                      </span>
+                    </div>
+                  </template>
+                  <template v-else-if="cell.column.id === 'actions'">
+                    <div class="admin-table__actions">
+                      <button
+                        type="button"
+                        class="button button--icon admin-icon-button"
+                        :data-tooltip="t('adminTokens.detailsAction')"
+                        :aria-label="t('adminTokens.detailsAction')"
+                        :disabled="saving"
+                        @click="openDetailsModal(row.original)"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path
+                            d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 15.2a1.2 1.2 0 1 1 1.2-1.2A1.2 1.2 0 0 1 12 17.2zm1.2-4.6h-2.1V7.2h2.1z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        class="button button--icon admin-icon-button"
+                        :data-tooltip="t('adminTokens.history')"
+                        :aria-label="t('adminTokens.history')"
+                        :disabled="saving"
+                        @click="openHistory(row.original)"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path
+                            d="M12 5v7l5 3-.8 1.4L10.5 13V5zM12 2a10 10 0 1 1-9.9 9H4A8 8 0 1 0 12 4z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        class="button button--icon admin-icon-button"
+                        :data-tooltip="t('adminTokens.resetUsageAction')"
+                        :aria-label="t('adminTokens.resetUsageAction')"
+                        :disabled="saving || !row.original.isActive"
+                        @click="runResetUsage(row.original)"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path
+                            d="M12 6V2L7 7l5 5V8a4 4 0 1 1-4 4H6a6 6 0 1 0 6-6z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        class="button button--icon admin-icon-button"
+                        :data-tooltip="t('adminTokens.edit')"
+                        :aria-label="t('adminTokens.edit')"
+                        :disabled="saving"
+                        @click="startEdit(row.original)"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path
+                            d="M4 17.2V20h2.8l8.2-8.2-2.8-2.8zM17.7 4.3a1 1 0 0 1 1.4 0l1.6 1.6a1 1 0 0 1 0 1.4l-1.4 1.4-3-3z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        class="button button--icon admin-icon-button"
+                        :data-tooltip="t('adminTokens.revoke')"
+                        :aria-label="t('adminTokens.revoke')"
+                        :disabled="saving || row.original.isRevoked"
+                        @click="runRevoke(row.original)"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path
+                            d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 2a8 8 0 0 1 5.7 2.3L6.3 17.7A8 8 0 0 1 12 4zm0 16a8 8 0 0 1-5.7-2.3L17.7 6.3A8 8 0 0 1 12 20z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        class="button button--icon admin-icon-button"
+                        :data-tooltip="t('adminTokens.renew')"
+                        :aria-label="t('adminTokens.renew')"
+                        :disabled="saving || (!row.original.isRevoked && !row.original.isExpired)"
+                        @click="runRenew(row.original)"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path
+                            d="M12 6V2l5 5-5 5V8a4 4 0 1 0 4 4h2a6 6 0 1 1-6-6z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        class="button button--icon admin-icon-button"
+                        :data-tooltip="t('adminTokens.extend')"
+                        :aria-label="t('adminTokens.extend')"
+                        :disabled="saving || row.original.isRevoked"
+                        @click="runExtend(row.original)"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M19 11h-6V5h-2v6H5v2h6v6h2v-6h6z" fill="currentColor" />
+                        </svg>
+                      </button>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <span class="admin-table__cell-value">
+                      {{ String(cell.getValue() || t("adminTokens.notAvailable")) }}
+                    </span>
+                  </template>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <div class="admin-pagination">
-          <button
-            type="button"
-            class="rotation-select"
-            :disabled="!listCanGoPrev"
-            @click="goToListPage(listCurrentPage - 1)"
-          >
-            {{ t("accessDashboard.pagination.previous") }}
-          </button>
-          <span>
+          <span class="admin-pagination__summary">
             {{
-              t("accessDashboard.pagination.summary", {
-                page: listCurrentPage,
-                totalPages: listTotalPages,
-                totalItems: formatNumber(accessTokens.length),
+              t("adminTokens.pagination.filtered", {
+                filtered: filteredTokensCount,
+                total: accessTokens.length,
               })
             }}
           </span>
           <button
             type="button"
-            class="rotation-select"
+            class="rotation-select admin-pagination__button"
+            :disabled="!listCanGoPrev"
+            @click="goToFirstListPage"
+          >
+            {{ t("adminTokens.pagination.first") }}
+          </button>
+          <button
+            type="button"
+            class="rotation-select admin-pagination__button"
+            :disabled="!listCanGoNext"
+            @click="goToListPage(listCurrentPage - 1)"
+          >
+            {{ t("adminTokens.pagination.previous") }}
+          </button>
+          <div class="admin-pagination__pages" :aria-label="t('adminTokens.pagination.pagesAria')">
+            <button
+              v-for="pageNumber in visiblePageNumbers"
+              :key="pageNumber"
+              type="button"
+              class="rotation-select admin-pagination__page"
+              :class="{ 'admin-pagination__page--active': pageNumber === listCurrentPage }"
+              :disabled="pageNumber === listCurrentPage"
+              @click="goToListPage(pageNumber)"
+            >
+              {{ pageNumber }}
+            </button>
+          </div>
+          <button
+            type="button"
+            class="rotation-select admin-pagination__button"
             :disabled="!listCanGoNext"
             @click="goToListPage(listCurrentPage + 1)"
           >
-            {{ t("accessDashboard.pagination.next") }}
+            {{ t("adminTokens.pagination.next") }}
+          </button>
+          <button
+            type="button"
+            class="rotation-select admin-pagination__button"
+            :disabled="!listCanGoNext"
+            @click="goToLastListPage"
+          >
+            {{ t("adminTokens.pagination.last") }}
           </button>
         </div>
       </template>
     </article>
+
+    <div
+      v-if="showDetailsModal"
+      class="admin-modal"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="t('adminTokens.detailsTitle')"
+      @click.self="closeDetailsModal"
+    >
+      <article class="admin-modal__card admin-modal__card--details">
+        <div class="admin-modal__head">
+          <div>
+            <h3 class="tool-card__title">{{ t("adminTokens.detailsTitle") }}</h3>
+            <p class="tool-card__description">
+              {{
+                t("adminTokens.detailsDescription", {
+                  label:
+                    detailsToken?.alias || detailsToken?.tokenId || t("adminTokens.notAvailable"),
+                })
+              }}
+            </p>
+          </div>
+          <button type="button" class="button button--secondary" @click="closeDetailsModal">
+            {{ t("modal.close") }}
+          </button>
+        </div>
+
+        <div class="admin-details-grid">
+          <article class="tool-card admin-details-card">
+            <h4 class="tool-card__title">{{ t("adminTokens.policies") }}</h4>
+            <p v-if="detailsPolicyEntries.length === 0" class="tool-card__description">
+              {{ t("adminTokens.none") }}
+            </p>
+            <div v-else class="admin-token-list__tags">
+              <span
+                v-for="[serviceKey, preset] in detailsPolicyEntries"
+                :key="`details-policy-${serviceKey}`"
+                class="admin-token-list__tag"
+              >
+                <strong>{{ serviceKey }}</strong>
+                <span>{{ preset }}</span>
+              </span>
+            </div>
+          </article>
+
+          <article class="tool-card admin-details-card">
+            <h4 class="tool-card__title">{{ t("adminTokens.usageLabel") }}</h4>
+            <p v-if="detailsUsageEntries.length === 0" class="tool-card__description">
+              {{ t("adminTokens.usage.unlimited") }}
+            </p>
+            <div v-else class="admin-details-usage-list">
+              <article
+                v-for="usageItem in detailsUsageEntries"
+                :key="`details-usage-${usageItem.serviceKey}`"
+                class="admin-details-usage-item"
+              >
+                <strong>{{ usageItem.serviceKey }}</strong>
+                <span>
+                  {{ t("adminTokens.columns.requests") }}:
+                  {{
+                    usageItem.quota?.requests?.limit === null ||
+                    usageItem.quota?.requests?.limit === undefined
+                      ? t("adminTokens.usage.unlimited")
+                      : `${formatNumber(usageItem.quota?.requests?.used)} / ${formatNumber(usageItem.quota?.requests?.limit)}`
+                  }}
+                </span>
+                <span>
+                  {{ t("adminTokens.columns.words") }}:
+                  {{
+                    usageItem.quota?.words?.limit === null ||
+                    usageItem.quota?.words?.limit === undefined
+                      ? t("adminTokens.usage.unlimited")
+                      : `${formatNumber(usageItem.quota?.words?.used)} / ${formatNumber(usageItem.quota?.words?.limit)} (${t("adminTokens.usage.remaining", { remaining: formatNumber(usageItem.quota?.words?.remaining) })})`
+                  }}
+                </span>
+              </article>
+            </div>
+          </article>
+        </div>
+      </article>
+    </div>
 
     <div
       v-if="showFormModal"
@@ -1183,6 +1724,26 @@ if (activeToken.value) {
           @update:sort-by="historySortBy = $event"
           @update:sort-direction="historySortDirection = $event"
         />
+      </article>
+    </div>
+
+    <div
+      v-if="showRequestResultModal"
+      class="admin-modal"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="requestResultTitle || t('adminTokens.requestResult.ariaLabel')"
+      @click.self="closeRequestResultModal"
+    >
+      <article class="admin-modal__card admin-modal__card--result">
+        <p class="admin-result-modal__kicker">{{ t("adminTokens.requestResult.kicker") }}</p>
+        <h3 class="tool-card__title">{{ requestResultTitle }}</h3>
+        <p class="tool-card__description">{{ requestResultDescription }}</p>
+        <div class="preview-card__actions">
+          <button type="button" class="button button--primary" @click="closeRequestResultModal">
+            {{ t("modal.close") }}
+          </button>
+        </div>
       </article>
     </div>
   </section>

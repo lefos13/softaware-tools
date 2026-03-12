@@ -28,6 +28,12 @@ interface ServiceDisplayItem {
   presets: PolicyDisplayItem[];
 }
 
+interface PlanRequestValidationErrors {
+  alias: string;
+  email: string;
+  services: string;
+}
+
 const portalContext = inject(portalContextKey) as PortalContext | undefined;
 const i18n = usePortalI18n() as PortalI18n;
 const { t } = i18n;
@@ -46,6 +52,13 @@ const form = ref({
   email: "",
   servicePolicies: {} as Record<string, string>,
 });
+const validationErrors = ref<PlanRequestValidationErrors>({
+  alias: "",
+  email: "",
+  services: "",
+});
+const MAX_ALIAS_LENGTH = 120;
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const paidPlans = computed(() => catalog.value?.paidPlans || []);
 const freeServices = computed(() => catalog.value?.freePlan?.services || []);
@@ -65,6 +78,14 @@ const resetForm = (): void => {
     alias: "",
     email: "",
     servicePolicies: buildEmptyPolicies(),
+  };
+};
+
+const resetValidationErrors = (): void => {
+  validationErrors.value = {
+    alias: "",
+    email: "",
+    services: "",
   };
 };
 
@@ -148,46 +169,6 @@ const paidServiceCards = computed<ServiceDisplayItem[]>(() =>
   })
 );
 
-/*
-  Comparison and form selectors stay derived from the catalog response so the
-  marketing layout still exposes only valid service presets and current limits.
-*/
-const comparisonRows = computed<ServiceDisplayItem[]>(() => {
-  const freeByKey = new Map(
-    freeServices.value.map((service) => [String(service.serviceKey), service])
-  );
-  const paidByKey = new Map(
-    paidPlans.value.map((service) => [String(service.serviceKey), service])
-  );
-  const serviceKeys = Array.from(new Set([...freeByKey.keys(), ...paidByKey.keys()]));
-
-  return serviceKeys.map((serviceKey) => {
-    const service = paidByKey.get(serviceKey);
-    const freeService = freeByKey.get(serviceKey);
-    const freePolicy: AccessPlanCatalogPolicy = {
-      preset: String(freeService?.preset || "free"),
-      kind: String(freeService?.kind || "unlimited"),
-      requestsPerDay: freeService?.requestsPerDay,
-      wordsTotal: freeService?.wordsTotal,
-    };
-    const firstPreset = service?.presets?.[0];
-    const paidSummary = firstPreset
-      ? formatPolicySummary(firstPreset)
-      : t("plans.policyKinds.onRequest");
-
-    return {
-      key: serviceKey,
-      label: getServiceLabel(serviceKey),
-      summary: "",
-      freeSummary: freeService
-        ? formatPolicySummary(freePolicy)
-        : t("plans.comparison.notIncluded"),
-      paidSummary,
-      presets: [],
-    };
-  });
-});
-
 const hasSelectedServices = computed(() =>
   Object.values(form.value.servicePolicies).some((preset) => String(preset || "").trim())
 );
@@ -268,6 +249,100 @@ const statusMessage = computed(() => {
   return "";
 });
 
+/*
+  Validation normalizes request payload input before submit, blocks empty or
+  malformed identity fields, and ensures selected presets are valid for the
+  current catalog so client-side errors are shown before network requests.
+*/
+const getSelectedServicePolicies = (): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(form.value.servicePolicies).filter(([, preset]) => String(preset || "").trim())
+  );
+
+const isValidSelectedPreset = (serviceKey: string, preset: string): boolean => {
+  const service = paidPlans.value.find((item) => String(item.serviceKey) === String(serviceKey));
+  if (!service) {
+    return false;
+  }
+
+  return (service.presets || []).some(
+    (policy) => String(policy.preset || "") === String(preset || "")
+  );
+};
+
+const validateAlias = (): string => {
+  const alias = String(form.value.alias || "").trim();
+
+  if (!alias) {
+    return t("plans.validation.aliasRequired");
+  }
+
+  if (alias.length < 2) {
+    return t("plans.validation.aliasMin", { min: 2 });
+  }
+
+  if (alias.length > MAX_ALIAS_LENGTH) {
+    return t("plans.validation.aliasMax", { max: MAX_ALIAS_LENGTH });
+  }
+
+  return "";
+};
+
+const validateEmail = (): string => {
+  const email = String(form.value.email || "").trim();
+
+  if (!email) {
+    return t("plans.validation.emailRequired");
+  }
+
+  if (!emailPattern.test(email)) {
+    return t("plans.validation.emailInvalid");
+  }
+
+  return "";
+};
+
+const validateServices = (): string => {
+  const selectedPolicies = getSelectedServicePolicies();
+  const selections = Object.entries(selectedPolicies);
+
+  if (!selections.length) {
+    return t("plans.validation.servicesRequired");
+  }
+
+  const hasInvalidSelection = selections.some(
+    ([serviceKey, preset]) => !isValidSelectedPreset(serviceKey, String(preset))
+  );
+  if (hasInvalidSelection) {
+    return t("plans.validation.servicesInvalid");
+  }
+
+  return "";
+};
+
+const validateForm = (): boolean => {
+  const nextErrors: PlanRequestValidationErrors = {
+    alias: validateAlias(),
+    email: validateEmail(),
+    services: validateServices(),
+  };
+  validationErrors.value = nextErrors;
+
+  return !Object.values(nextErrors).some((value) => String(value || "").trim());
+};
+
+const onAliasBlur = (): void => {
+  validationErrors.value.alias = validateAlias();
+};
+
+const onEmailBlur = (): void => {
+  validationErrors.value.email = validateEmail();
+};
+
+const onServiceChange = (): void => {
+  validationErrors.value.services = validateServices();
+};
+
 const loadCatalog = async (): Promise<void> => {
   loading.value = true;
   error.value = "";
@@ -275,6 +350,7 @@ const loadCatalog = async (): Promise<void> => {
   try {
     catalog.value = await fetchAccessPlanCatalog(portalContext.apiBaseUrl.value);
     form.value.servicePolicies = buildEmptyPolicies();
+    resetValidationErrors();
   } catch (caughtError) {
     error.value = caughtError instanceof Error ? caughtError.message : t("plans.errors.load");
   } finally {
@@ -283,23 +359,29 @@ const loadCatalog = async (): Promise<void> => {
 };
 
 const submitRequest = async (): Promise<void> => {
-  submitting.value = true;
   error.value = "";
   success.value = "";
 
-  try {
-    const servicePolicies = Object.fromEntries(
-      Object.entries(form.value.servicePolicies).filter(([, preset]) => String(preset || "").trim())
-    );
+  if (!validateForm()) {
+    return;
+  }
 
+  const servicePolicies = getSelectedServicePolicies();
+  const alias = String(form.value.alias || "").trim();
+  const email = String(form.value.email || "").trim();
+
+  submitting.value = true;
+
+  try {
     await submitTokenRequest(portalContext.apiBaseUrl.value, {
-      alias: form.value.alias,
-      email: form.value.email,
+      alias,
+      email,
       servicePolicies,
     });
 
     success.value = t("plans.submitted");
     resetForm();
+    resetValidationErrors();
   } catch (caughtError) {
     error.value = caughtError instanceof Error ? caughtError.message : t("plans.errors.submit");
   } finally {
@@ -358,48 +440,6 @@ onMounted(() => {
 
     <section class="plans-section">
       <div class="section-head">
-        <h3 class="section-head__title">{{ t("plans.comparison.title") }}</h3>
-        <p class="section-head__subtitle">{{ t("plans.comparison.subtitle") }}</p>
-      </div>
-
-      <div class="plans-comparison-intro">
-        <article class="tool-card plans-highlight plans-highlight--free">
-          <p class="plans-highlight__eyebrow">{{ t("plans.freeTitle") }}</p>
-          <h4 class="tool-card__title">{{ t("plans.comparison.freeHeading") }}</h4>
-          <p class="tool-card__description">{{ t("plans.comparison.freeBody") }}</p>
-        </article>
-        <article class="tool-card plans-highlight plans-highlight--paid">
-          <p class="plans-highlight__eyebrow">{{ t("plans.paidTitle") }}</p>
-          <h4 class="tool-card__title">{{ t("plans.comparison.paidHeading") }}</h4>
-          <p class="tool-card__description">{{ t("plans.comparison.paidBody") }}</p>
-        </article>
-      </div>
-
-      <div class="tool-card plans-comparison-table">
-        <div class="plans-comparison-table__head">
-          <span>{{ t("plans.comparison.columns.service") }}</span>
-          <span>{{ t("plans.comparison.columns.free") }}</span>
-          <span>{{ t("plans.comparison.columns.paid") }}</span>
-        </div>
-
-        <div v-if="!loading" class="plans-comparison-table__body">
-          <article
-            v-for="row in comparisonRows"
-            :key="`comparison-${row.key}`"
-            class="plans-comparison-table__row"
-          >
-            <h4 class="plans-comparison-table__service">{{ row.label }}</h4>
-            <p class="plans-comparison-table__value">{{ row.freeSummary }}</p>
-            <p class="plans-comparison-table__value plans-comparison-table__value--paid">
-              {{ row.paidSummary }}
-            </p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section class="plans-section">
-      <div class="section-head">
         <h3 class="section-head__title">{{ t("plans.catalog.title") }}</h3>
         <p class="section-head__subtitle">{{ t("plans.catalog.subtitle") }}</p>
       </div>
@@ -453,8 +493,6 @@ onMounted(() => {
                   class="plans-service-card plans-service-card--paid"
                 >
                   <p class="plans-service-card__eyebrow">{{ t("plans.catalog.presetLabel") }}</p>
-                  <h6 class="plans-service-card__title">{{ policy.label }}</h6>
-                  <p class="plans-service-card__summary">{{ policy.summary }}</p>
                   <ul class="plans-detail-list">
                     <li v-for="detail in policy.details" :key="`${policy.id}-${detail}`">
                       {{ detail }}
@@ -474,18 +512,7 @@ onMounted(() => {
         <p class="section-head__subtitle">{{ t("plans.form.subtitle") }}</p>
       </div>
 
-      <div class="plans-request-layout">
-        <article class="tool-card plans-request-intro">
-          <p class="plans-request-intro__eyebrow">{{ t("plans.form.sideLabel") }}</p>
-          <h4 class="tool-card__title">{{ t("plans.form.sideTitle") }}</h4>
-          <p class="tool-card__description">{{ t("plans.form.sideBody") }}</p>
-          <ul class="plans-bullet-list">
-            <li>{{ t("plans.form.points.identity") }}</li>
-            <li>{{ t("plans.form.points.selection") }}</li>
-            <li>{{ t("plans.form.points.review") }}</li>
-          </ul>
-        </article>
-
+      <div class="plans-request-layout-form">
         <form class="tool-card plans-request" @submit.prevent="submitRequest">
           <div
             v-if="statusMessage"
@@ -501,25 +528,60 @@ onMounted(() => {
           </div>
 
           <div class="plans-request__grid">
-            <label class="plans-request__field">
+            <label
+              class="plans-request__field"
+              :class="{ 'plans-request__field--invalid': validationErrors.alias }"
+            >
               <span>{{ t("plans.alias") }}</span>
-              <small>{{ t("plans.form.aliasHelp") }}</small>
+              <small id="plans-alias-help">{{ t("plans.form.aliasHelp") }}</small>
               <input
                 v-model="form.alias"
                 type="text"
                 :placeholder="t('plans.aliasPlaceholder')"
                 :disabled="submitting"
+                required
+                minlength="2"
+                :maxlength="MAX_ALIAS_LENGTH"
+                :aria-invalid="Boolean(validationErrors.alias)"
+                aria-describedby="plans-alias-help plans-alias-error"
+                @blur="onAliasBlur"
+                @input="validationErrors.alias = ''"
               />
+              <p
+                v-if="validationErrors.alias"
+                id="plans-alias-error"
+                class="plans-field-error"
+                role="alert"
+              >
+                {{ validationErrors.alias }}
+              </p>
             </label>
-            <label class="plans-request__field">
+            <label
+              class="plans-request__field"
+              :class="{ 'plans-request__field--invalid': validationErrors.email }"
+            >
               <span>{{ t("plans.email") }}</span>
-              <small>{{ t("plans.form.emailHelp") }}</small>
+              <small id="plans-email-help">{{ t("plans.form.emailHelp") }}</small>
               <input
                 v-model="form.email"
                 type="email"
                 :placeholder="t('plans.emailPlaceholder')"
                 :disabled="submitting"
+                required
+                autocomplete="email"
+                :aria-invalid="Boolean(validationErrors.email)"
+                aria-describedby="plans-email-help plans-email-error"
+                @blur="onEmailBlur"
+                @input="validationErrors.email = ''"
               />
+              <p
+                v-if="validationErrors.email"
+                id="plans-email-error"
+                class="plans-field-error"
+                role="alert"
+              >
+                {{ validationErrors.email }}
+              </p>
             </label>
           </div>
 
@@ -535,6 +597,7 @@ onMounted(() => {
                 v-model="form.servicePolicies[service.key]"
                 :title="service.label"
                 :disabled="submitting || loading"
+                @change="onServiceChange"
               >
                 <option value="">{{ t("plans.disabled") }}</option>
                 <option
@@ -547,6 +610,9 @@ onMounted(() => {
               </select>
             </label>
           </div>
+          <p v-if="validationErrors.services" class="plans-field-error" role="alert">
+            {{ validationErrors.services }}
+          </p>
 
           <div class="plans-request__footer">
             <p class="plans-request__selection">

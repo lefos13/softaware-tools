@@ -100,6 +100,14 @@ const navigationRoutes = computed(() =>
 const pageTitle = computed(() => i18n.t(`routes.${activeRouteName.value}`, {}, "Softaware Tools"));
 const statusLabel = computed(() => (checking.value ? i18n.t("app.checking") : status.value));
 const toRouteLabel = (routeName: RouteName): string => i18n.t(`routes.${routeName}`, {}, routeName);
+/*
+  Routes with specialized internal layouts disable shared breadcrumb chrome so
+  each screen controls its own navigation emphasis and visual density.
+*/
+const isFullbleedRoute = computed(() => activeRouteName.value === "dashboard");
+const hideBreadcrumb = computed(() =>
+  ["dashboard", "admin-tokens"].includes(activeRouteName.value)
+);
 const currentPlanType = computed(() => portalAccess?.planType?.value || "free");
 const hasResolvedPlan = computed(() => Boolean(portalAccess?.plan?.value));
 const setLocale = (locale: "en" | "el"): void => {
@@ -309,8 +317,8 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <main class="portal-page route-shell">
-      <nav class="breadcrumb" :aria-label="i18n.t('app.breadcrumb')">
+    <main class="portal-page route-shell" :class="{ 'portal-page--fullbleed': isFullbleedRoute }">
+      <nav v-if="!hideBreadcrumb" class="breadcrumb" :aria-label="i18n.t('app.breadcrumb')">
         <template v-for="(crumb, index) in breadcrumbs" :key="`${crumb.path}-${index}`">
           <a
             v-if="index < breadcrumbs.length - 1"

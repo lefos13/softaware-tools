@@ -19,6 +19,7 @@
     "prepare": "node scripts/prepare-husky.cjs"
   },
   "dependencies": {
+    "@tanstack/vue-table": "^8.21.3",
     "bson": "^7.2.0",
     "fast-json-patch": "^3.1.1",
     "fast-xml-parser": "^5.4.2",
