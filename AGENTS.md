@@ -137,3 +137,9 @@ When completing work, include:
 5. Use `npm run lint:fix` and `npm run format` for auto-fixable issues; use `npm run format:check` when you only need validation.
 6. Use `VITE_ENABLE_BOOKS_SERVICES=true` and `VITE_ENABLE_JSON_SERVICES=true` locally when validating gated service flows.
 7. Keep commits compatible with Husky + `lint-staged` pre-commit checks configured in this repo.
+8. Use `npm run typecheck` when changes touch TypeScript-heavy paths or shared service types.
+9. Use `npm run run` when you need Vite bound to `0.0.0.0` for LAN/device validation.
+10. Use `cp .env.production.example .env.production` before `npm run deploy:prod` for production deploys.
+11. In CI/automation-only installs where hooks are intentionally skipped, use `HUSKY=0 npm install` so the `prepare` script does not install hooks.
+12. For clean reproducible installs in CI/deploy flows, prefer `HUSKY=0 npm ci` (this matches `scripts/deploy-production.sh`).
+13. When using a non-default production env file, run deploys as `ENV_FILE=/absolute/path/to/.env.production npm run deploy:prod`.
