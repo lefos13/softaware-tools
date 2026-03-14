@@ -1007,16 +1007,72 @@ const getDisabledReason = (action: TokenRowAction): string => {
   return t("adminTokens.actionRules.notAvailable");
 };
 
+/*
+  Action hover text now stays concise and uses native title tooltips so labels
+  remain visible outside scroll containers without custom overlay clipping.
+*/
 const getActionTooltip = (action: TokenRowAction, tokenItem: AccessTokenRecord): string => {
   const label = getActionLabel(action);
   if (isTokenActionAllowed(action, tokenItem)) {
-    return `${label} · ${t("adminTokens.actions.allowed")}`;
+    return label;
   }
   return `${label} · ${t("adminTokens.actions.blocked")} (${getDisabledReason(action)})`;
 };
 
 const getActionButtonState = (action: TokenRowAction, tokenItem: AccessTokenRecord): string =>
   isTokenActionAllowed(action, tokenItem) ? "allowed" : "blocked";
+
+/*
+  Action tooltips are rendered in a fixed overlay so they appear immediately
+  and never clip behind table boundaries or scroll containers.
+*/
+const floatingTooltip = ref({
+  visible: false,
+  text: "",
+  x: 0,
+  y: 0,
+  placement: "top" as "top" | "bottom",
+});
+
+const showFloatingTooltip = (event: MouseEvent | FocusEvent, text: string): void => {
+  const target = event.currentTarget as HTMLElement | null;
+  if (!target || !text) {
+    return;
+  }
+
+  const rect = target.getBoundingClientRect();
+  const placement = rect.top > 56 ? "top" : "bottom";
+  const pointerX =
+    event instanceof MouseEvent ? event.clientX : Math.round(rect.left + rect.width / 2);
+  const x = Math.max(12, Math.min(window.innerWidth - 12, pointerX));
+  const y = placement === "top" ? rect.top - 10 : rect.bottom + 10;
+
+  floatingTooltip.value = {
+    visible: true,
+    text,
+    x,
+    y,
+    placement,
+  };
+};
+
+const moveFloatingTooltip = (event: MouseEvent): void => {
+  if (!floatingTooltip.value.visible) {
+    return;
+  }
+  floatingTooltip.value.x = Math.max(12, Math.min(window.innerWidth - 12, event.clientX));
+};
+
+const hideFloatingTooltip = (): void => {
+  floatingTooltip.value.visible = false;
+};
+
+const floatingTooltipStyle = computed(() => ({
+  left: `${floatingTooltip.value.x}px`,
+  top: `${floatingTooltip.value.y}px`,
+  transform:
+    floatingTooltip.value.placement === "top" ? "translate(-50%, -100%)" : "translate(-50%, 0)",
+}));
 
 watch(accessTokens, () => {
   tokenTable.setPageIndex(0);
@@ -1133,6 +1189,17 @@ if (activeToken.value) {
     <p v-if="error && !showFormModal" class="tool-card__description tool-card__description--error">
       {{ error }}
     </p>
+    <teleport to="body">
+      <div
+        v-if="floatingTooltip.visible"
+        class="admin-floating-tooltip"
+        :class="{ 'admin-floating-tooltip--bottom': floatingTooltip.placement === 'bottom' }"
+        :style="floatingTooltipStyle"
+        role="tooltip"
+      >
+        {{ floatingTooltip.text }}
+      </div>
+    </teleport>
     <p v-if="success" class="tool-card__description">{{ success }}</p>
 
     <article v-if="revealedToken && !isAuthenticated" class="tool-card admin-reveal">
@@ -1312,6 +1379,11 @@ if (activeToken.value) {
                         class="button button--icon admin-icon-button admin-id-copy"
                         :data-tooltip="t('adminTokens.actions.copyId')"
                         :aria-label="t('adminTokens.actions.copyId')"
+                        @mouseenter="showFloatingTooltip($event, t('adminTokens.actions.copyId'))"
+                        @mousemove="moveFloatingTooltip"
+                        @mouseleave="hideFloatingTooltip"
+                        @focus="showFloatingTooltip($event, t('adminTokens.actions.copyId'))"
+                        @blur="hideFloatingTooltip"
                         @click="copyTokenId(String(row.original.tokenId || ''))"
                       >
                         <AdminActionIconAsset name="copy-id" />
@@ -1348,6 +1420,15 @@ if (activeToken.value) {
                         :data-state="getActionButtonState('details', row.original)"
                         :aria-label="t('adminTokens.detailsAction')"
                         :disabled="saving"
+                        @mouseenter="
+                          showFloatingTooltip($event, getActionTooltip('details', row.original))
+                        "
+                        @mousemove="moveFloatingTooltip"
+                        @mouseleave="hideFloatingTooltip"
+                        @focus="
+                          showFloatingTooltip($event, getActionTooltip('details', row.original))
+                        "
+                        @blur="hideFloatingTooltip"
                         @click="openDetailsModal(row.original)"
                       >
                         <AdminActionIconAsset name="details" />
@@ -1359,6 +1440,15 @@ if (activeToken.value) {
                         :data-state="getActionButtonState('history', row.original)"
                         :aria-label="t('adminTokens.history')"
                         :disabled="saving"
+                        @mouseenter="
+                          showFloatingTooltip($event, getActionTooltip('history', row.original))
+                        "
+                        @mousemove="moveFloatingTooltip"
+                        @mouseleave="hideFloatingTooltip"
+                        @focus="
+                          showFloatingTooltip($event, getActionTooltip('history', row.original))
+                        "
+                        @blur="hideFloatingTooltip"
                         @click="openHistory(row.original)"
                       >
                         <AdminActionIconAsset name="history" />
@@ -1370,6 +1460,15 @@ if (activeToken.value) {
                         :data-state="getActionButtonState('resetUsage', row.original)"
                         :aria-label="t('adminTokens.resetUsageAction')"
                         :disabled="saving || !isTokenActionAllowed('resetUsage', row.original)"
+                        @mouseenter="
+                          showFloatingTooltip($event, getActionTooltip('resetUsage', row.original))
+                        "
+                        @mousemove="moveFloatingTooltip"
+                        @mouseleave="hideFloatingTooltip"
+                        @focus="
+                          showFloatingTooltip($event, getActionTooltip('resetUsage', row.original))
+                        "
+                        @blur="hideFloatingTooltip"
                         @click="runResetUsage(row.original)"
                       >
                         <AdminActionIconAsset name="reset-usage" />
@@ -1381,6 +1480,13 @@ if (activeToken.value) {
                         :data-state="getActionButtonState('edit', row.original)"
                         :aria-label="t('adminTokens.edit')"
                         :disabled="saving"
+                        @mouseenter="
+                          showFloatingTooltip($event, getActionTooltip('edit', row.original))
+                        "
+                        @mousemove="moveFloatingTooltip"
+                        @mouseleave="hideFloatingTooltip"
+                        @focus="showFloatingTooltip($event, getActionTooltip('edit', row.original))"
+                        @blur="hideFloatingTooltip"
                         @click="startEdit(row.original)"
                       >
                         <AdminActionIconAsset name="edit" />
@@ -1392,6 +1498,15 @@ if (activeToken.value) {
                         :data-state="getActionButtonState('revoke', row.original)"
                         :aria-label="t('adminTokens.revoke')"
                         :disabled="saving || !isTokenActionAllowed('revoke', row.original)"
+                        @mouseenter="
+                          showFloatingTooltip($event, getActionTooltip('revoke', row.original))
+                        "
+                        @mousemove="moveFloatingTooltip"
+                        @mouseleave="hideFloatingTooltip"
+                        @focus="
+                          showFloatingTooltip($event, getActionTooltip('revoke', row.original))
+                        "
+                        @blur="hideFloatingTooltip"
                         @click="runRevoke(row.original)"
                       >
                         <AdminActionIconAsset name="revoke" />
@@ -1403,6 +1518,15 @@ if (activeToken.value) {
                         :data-state="getActionButtonState('renew', row.original)"
                         :aria-label="t('adminTokens.renew')"
                         :disabled="saving || !isTokenActionAllowed('renew', row.original)"
+                        @mouseenter="
+                          showFloatingTooltip($event, getActionTooltip('renew', row.original))
+                        "
+                        @mousemove="moveFloatingTooltip"
+                        @mouseleave="hideFloatingTooltip"
+                        @focus="
+                          showFloatingTooltip($event, getActionTooltip('renew', row.original))
+                        "
+                        @blur="hideFloatingTooltip"
                         @click="runRenew(row.original)"
                       >
                         <AdminActionIconAsset name="renew" />
@@ -1414,6 +1538,15 @@ if (activeToken.value) {
                         :data-state="getActionButtonState('extend', row.original)"
                         :aria-label="t('adminTokens.extend')"
                         :disabled="saving || !isTokenActionAllowed('extend', row.original)"
+                        @mouseenter="
+                          showFloatingTooltip($event, getActionTooltip('extend', row.original))
+                        "
+                        @mousemove="moveFloatingTooltip"
+                        @mouseleave="hideFloatingTooltip"
+                        @focus="
+                          showFloatingTooltip($event, getActionTooltip('extend', row.original))
+                        "
+                        @blur="hideFloatingTooltip"
                         @click="runExtend(row.original)"
                       >
                         <AdminActionIconAsset name="extend" />

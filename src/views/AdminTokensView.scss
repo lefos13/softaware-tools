@@ -368,18 +368,20 @@
 }
 
 /*
-  The table shell mirrors the reference hierarchy and keeps long token data
-  readable through fixed headers, wrapped cells, and horizontal overflow.
+  The table now uses intrinsic sizing so each column follows its widest cell
+  instead of expanding to viewport-driven minimum widths.
 */
 .admin-table-wrap {
   overflow-x: auto;
   border: 1px solid rgba(148, 163, 184, 0.28);
   border-radius: 14px;
+  justify-self: center;
 }
 
 .admin-table {
-  width: 100%;
-  min-width: 1560px;
+  width: max-content;
+  min-width: max-content;
+  table-layout: auto;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 0.86rem;
@@ -490,7 +492,7 @@
   display: flex;
   flex-wrap: nowrap;
   gap: 0.3rem;
-  min-width: 280px;
+  width: max-content;
 }
 
 /*
@@ -538,26 +540,15 @@
 }
 
 /*
-  Action controls use custom tooltips so labels appear instantly with larger,
-  readable text instead of delayed browser-native title bubbles.
+  One fixed tooltip layer avoids clipping from table overflow while preserving
+  instant hover/focus feedback for all action buttons.
 */
-.admin-icon-button[data-tooltip] {
-  position: relative;
-}
-
-.admin-icon-button[data-tooltip]::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 8px);
-  transform: translateX(-50%);
-  width: max-content;
-  max-width: 240px;
-  white-space: normal;
+.admin-floating-tooltip {
+  position: fixed;
+  z-index: 9999;
   pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  z-index: 40;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 24px));
   padding: 0.46rem 0.62rem;
   border-radius: 8px;
   border: 1px solid rgba(148, 163, 184, 0.45);
@@ -566,12 +557,8 @@
   font-size: 0.83rem;
   line-height: 1.2;
   text-align: left;
-}
-
-.admin-icon-button[data-tooltip]:hover::after,
-.admin-icon-button[data-tooltip]:focus-visible::after {
-  opacity: 1;
-  visibility: visible;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.28);
+  white-space: normal;
 }
 
 .admin-id-copy {
@@ -782,10 +769,6 @@
   .admin-pagination__summary {
     margin-right: 0;
     width: 100%;
-  }
-
-  .admin-table__actions {
-    min-width: 280px;
   }
 
   .admin-details-grid {
