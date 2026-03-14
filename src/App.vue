@@ -98,7 +98,6 @@ const navigationRoutes = computed(() =>
   })
 );
 const pageTitle = computed(() => i18n.t(`routes.${activeRouteName.value}`, {}, "Softaware Tools"));
-const statusLabel = computed(() => (checking.value ? i18n.t("app.checking") : status.value));
 const toRouteLabel = (routeName: RouteName): string => i18n.t(`routes.${routeName}`, {}, routeName);
 /*
   Routes with specialized internal layouts disable shared breadcrumb chrome so
@@ -109,7 +108,6 @@ const hideBreadcrumb = computed(() =>
   ["dashboard", "admin-tokens"].includes(activeRouteName.value)
 );
 const currentPlanType = computed(() => portalAccess?.planType?.value || "free");
-const hasResolvedPlan = computed(() => Boolean(portalAccess?.plan?.value));
 const setLocale = (locale: "en" | "el"): void => {
   if (locale === i18n.locale.value) {
     return;
@@ -251,15 +249,9 @@ onBeforeUnmount(() => {
             <h1 class="hero__title">{{ pageTitle }}</h1>
           </div>
           <div class="portal-header__meta">
-            <p class="hero__status" :class="isHealthy ? 'hero__status--ok' : 'hero__status--down'">
-              {{ i18n.t("app.guardStatus") }}: {{ statusLabel }}
-              <span v-if="lastCheckedAt">
-                · {{ i18n.t("app.timeNow", { time: i18n.formatTime(lastCheckedAt) }) }}
-              </span>
-            </p>
-            <p v-if="hasResolvedPlan" class="hero__status">
+            <!-- <p v-if="hasResolvedPlan" class="hero__status">
               Plan: {{ currentPlanType === "token" ? "Token" : "Free" }}
-            </p>
+            </p> -->
             <button
               v-if="currentPlanType === 'token'"
               type="button"

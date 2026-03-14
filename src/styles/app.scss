@@ -302,7 +302,7 @@ textarea {
   width: 2.1rem;
   height: 2.1rem;
   padding: 0;
-  border-radius: 10px;
+  border-radius: 20px;
   border-color: var(--border);
   color: var(--ink);
   background: var(--surface-soft);
@@ -411,6 +411,9 @@ textarea {
   border-radius: 20px;
   background: var(--surface);
   box-shadow: 0 14px 28px rgba(24, 33, 47, 0.06);
+  &.admin-list {
+    border-radius: 0px;
+  }
 }
 
 .tool-card--launcher {

@@ -159,6 +159,12 @@ const messages = {
       en: "English",
       el: "Greek",
     },
+    serviceGroups: {
+      pdf: "PDF Services",
+      books: "Books Services",
+      image: "Image Services",
+      json: "JSON Services",
+    },
     apiBaseUrl: {
       label: "API Base URL",
     },
@@ -196,7 +202,7 @@ const messages = {
       entry: {
         stepTitle: "Step 1 · Token or free usage",
         description:
-          "Choose a paid token to unlock the owner dashboard and token limits, or continue with the free plan for this service.",
+          "Choose a premium token to unlock the owner dashboard and token limits, or continue with the free plan for this service.",
         tokenPlaceholder: "Enter access token",
         checking: "Checking...",
         applyToken: "Apply token",
@@ -214,7 +220,7 @@ const messages = {
         unlimited: "Unlimited",
       },
       plan: {
-        token: "Paid token active for this browser session.",
+        token: "Premium token active for this browser session.",
         free: "Free plan selected for this service.",
       },
       errors: {
@@ -225,7 +231,8 @@ const messages = {
     accessDashboard: {
       title: "Owner dashboard",
       subtitle: "See your token limits, remaining usage, and recent service actions.",
-      tokenOnlyMessage: "Apply a paid token from any service screen to unlock the owner dashboard.",
+      tokenOnlyMessage:
+        "Apply a premium token from any service screen to unlock the owner dashboard.",
       submenu: {
         title: "Navigation",
         history: "History",
@@ -233,6 +240,7 @@ const messages = {
         summary: "Summary of token profile",
       },
       overviewTitle: "Token overview",
+      tokenId: "Token ID",
       expires: "Expires",
       enabledServices: "Enabled services",
       usageByService: "Usage by service",
@@ -240,6 +248,14 @@ const messages = {
       recentActivity: "Recent activity",
       successRate: "Success rate",
       successRateSubtitle: "From currently loaded activity rows",
+      pricing: {
+        total: "Quoted total",
+        none: "No stored premium breakdown",
+        summaryTitle: "Premium services in this quote",
+        serviceLabel: "Service",
+        presetLabel: "Preset",
+        amountLabel: "Amount",
+      },
       unlimited: "Unlimited",
       notAvailable: "n/a",
       quota: {
@@ -278,8 +294,6 @@ const messages = {
       notAvailable: "n/a",
       restrictedArea: "Restricted Area",
       title: "Superadmin Token Management",
-      subtitle:
-        "Use a CLI-created superadmin token to manage access tokens for protected services.",
       refreshing: "Refreshing...",
       refresh: "Refresh",
       sessionTitle: "Superadmin Session",
@@ -310,10 +324,16 @@ const messages = {
       requestNotifications: "Pending token requests",
       requestNotificationsSubtitle:
         "These requests stay here until the superadmin rejects them or approves and emails a token.",
+      requestBannerLabel: "Requests inbox",
       pendingRequestsEmpty: "No pending token requests.",
       requestedBy: "Requested by",
       requestedAt: "Requested at",
       requestedLimits: "Requested limits",
+      pricing: {
+        title: "Pricing snapshot",
+        total: "Quoted total",
+        breakdown: "Quoted breakdown",
+      },
       requestDeliveryError: "Last delivery error",
       approveRequest: "Approve and email token",
       rejectRequest: "Reject and email user",
@@ -387,6 +407,16 @@ const messages = {
       },
       actions: {
         copyId: "Copy token id",
+        allowed: "available",
+        blocked: "not available",
+        availableNow: "Available now",
+      },
+      actionRules: {
+        resetUsage: "Only active tokens can reset usage",
+        revoke: "Already revoked",
+        renew: "Requires revoked or expired token",
+        extend: "Revoked tokens cannot be extended",
+        notAvailable: "Not available for this token",
       },
       pagination: {
         filtered: "{filtered} filtered of {total} total",
@@ -466,7 +496,7 @@ const messages = {
           "Pick what you want to do. Each service opens a simple screen with clear steps from upload to download.",
         plansTitle: "Plans and tokens",
         plansDescription:
-          "Review free and paid usage limits, then request a token with the service presets you need.",
+          "Review free and premium usage limits, then request a token with the service presets you need.",
         pdfServicesTitle: "PDF Services",
         pdfServicesDescription:
           "Open PDF tools for merging, splitting, Word export, text export, and more.",
@@ -506,8 +536,8 @@ const messages = {
     plans: {
       freeTitle: "Free access",
       freeSubtitle: "Included browser usage before an approved access token is applied.",
-      paidTitle: "Paid token presets",
-      paidSubtitle: "Choose the preset that best fits each service you want enabled.",
+      premiumTitle: "Premium token presets",
+      premiumSubtitle: "Choose the preset that best fits each service you want enabled.",
       requestTitle: "Request access",
       requestSubtitle:
         "Tell us who needs access and which service presets should be reviewed. The support team will reply by email.",
@@ -520,7 +550,7 @@ const messages = {
       disabled: "Do not include",
       submit: "Send access request",
       submitting: "Submitting...",
-      submitted: "Your access request was submitted.",
+      submitted: "Your premium access request was submitted with a quoted total of {amount}.",
       hero: {
         eyebrow: "Client portal access",
         title: "Pick the access level that fits your work.",
@@ -539,7 +569,7 @@ const messages = {
         },
       },
       comparison: {
-        title: "Free or paid access",
+        title: "Free or premium access",
         subtitle:
           "Use the free route for lighter work, or request wider limits for production use.",
         freeHeading: "Start quickly with included access",
@@ -551,13 +581,14 @@ const messages = {
         columns: {
           service: "Service",
           free: "Free",
-          paid: "Paid preset sample",
+          paid: "Premium preset sample",
         },
       },
       spotlight: {
         perLabel: "portal access",
         freeBadge: "Free",
-        paidBadge: "Paid",
+        premiumBadge: "Premium",
+        premiumBadgeWithAmount: "Premium · {amount}",
         free: {
           cta: "Check alternative",
           features: {
@@ -568,8 +599,8 @@ const messages = {
             request: "You can request more later",
           },
         },
-        paid: {
-          cta: "Choose paid",
+        premium: {
+          cta: "Choose premium",
           features: {
             presets: "Preset-based access per service",
             volume: "Broader request and word limits",
@@ -584,8 +615,8 @@ const messages = {
         subtitle: "Review the current presets before you choose.",
         freeTitle: "Included services",
         freeSubtitle: "Available now without a request.",
-        paidTitle: "Requestable presets",
-        paidSubtitle: "Current presets available for review.",
+        premiumTitle: "Requestable presets",
+        premiumSubtitle: "Current premium presets available for review.",
         included: "Included",
         chooseOnePreset: "Choose one preset if you need this service.",
         presetLabel: "Preset",
@@ -599,6 +630,8 @@ const messages = {
         aliasHelp: "Use a client, team, or project name.",
         emailHelp: "We send the reply to this address.",
         serviceHelp: "Leave it empty if you do not need it.",
+        priceTag: "Quoted preset",
+        totalLabel: "Quoted total",
         noneSelected: "No service presets selected yet.",
         selectionCount: "{count} service selections ready for review.",
         points: {
@@ -655,6 +688,10 @@ const messages = {
         onRequest: "Shared during review",
       },
       serviceLabels: {
+        books_greek_editor: "Books Services",
+        pdf: "PDF Services",
+        image: "Image Services",
+        tasks: "JSON Services",
         pdfMerge: "PDF Merge",
         pdfSplit: "PDF Split",
         pdfToWord: "PDF to Word",
@@ -1135,6 +1172,12 @@ const messages = {
       en: "Αγγλικά",
       el: "Ελληνικά",
     },
+    serviceGroups: {
+      pdf: "Υπηρεσίες PDF",
+      books: "Υπηρεσίες βιβλίων",
+      image: "Υπηρεσίες εικόνας",
+      json: "Υπηρεσίες JSON",
+    },
     apiBaseUrl: {
       label: "Βασικό URL API",
     },
@@ -1172,7 +1215,7 @@ const messages = {
       entry: {
         stepTitle: "Βήμα 1 · Token ή free χρήση",
         description:
-          "Επιλέξτε paid token για owner dashboard και όρια token, ή συνεχίστε με το free πλάνο για αυτή την υπηρεσία.",
+          "Επιλέξτε premium token για owner dashboard και όρια token, ή συνεχίστε με το free πλάνο για αυτή την υπηρεσία.",
         tokenPlaceholder: "Συμπληρώστε access token",
         checking: "Έλεγχος...",
         applyToken: "Εφαρμογή token",
@@ -1190,7 +1233,7 @@ const messages = {
         unlimited: "Απεριόριστο",
       },
       plan: {
-        token: "Paid token ενεργό για αυτή τη συνεδρία browser.",
+        token: "Premium token ενεργό για αυτή τη συνεδρία browser.",
         free: "Επιλέχθηκε free πλάνο για αυτή την υπηρεσία.",
       },
       errors: {
@@ -1203,7 +1246,7 @@ const messages = {
       subtitle:
         "Δείτε τα όρια του token, το υπόλοιπο χρήσης και τις πρόσφατες ενέργειες υπηρεσιών.",
       tokenOnlyMessage:
-        "Εφαρμόστε paid token από οποιαδήποτε οθόνη υπηρεσίας για να ξεκλειδώσετε το owner dashboard.",
+        "Εφαρμόστε premium token από οποιαδήποτε οθόνη υπηρεσίας για να ξεκλειδώσετε το owner dashboard.",
       submenu: {
         title: "Πλοήγηση",
         history: "Ιστορικό",
@@ -1211,6 +1254,7 @@ const messages = {
         summary: "Σύνοψη προφίλ token",
       },
       overviewTitle: "Επισκόπηση token",
+      tokenId: "ID token",
       expires: "Λήξη",
       enabledServices: "Ενεργές υπηρεσίες",
       usageByService: "Χρήση ανά υπηρεσία",
@@ -1218,6 +1262,14 @@ const messages = {
       recentActivity: "Πρόσφατη δραστηριότητα",
       successRate: "Ποσοστό επιτυχίας",
       successRateSubtitle: "Με βάση τις τρέχουσες γραμμές δραστηριότητας",
+      pricing: {
+        total: "Συνολικό ποσό προσφοράς",
+        none: "Δεν υπάρχει αποθηκευμένη ανάλυση premium",
+        summaryTitle: "Premium υπηρεσίες της προσφοράς",
+        serviceLabel: "Υπηρεσία",
+        presetLabel: "Preset",
+        amountLabel: "Ποσό",
+      },
       unlimited: "Απεριόριστο",
       notAvailable: "δ/υ",
       quota: {
@@ -1256,8 +1308,6 @@ const messages = {
       notAvailable: "δ/υ",
       restrictedArea: "Περιορισμένη πρόσβαση",
       title: "Διαχείριση tokens superadmin",
-      subtitle:
-        "Χρησιμοποιήστε superadmin token από το CLI για να διαχειριστείτε access tokens για προστατευμένες υπηρεσίες.",
       refreshing: "Ανανέωση...",
       refresh: "Ανανέωση",
       sessionTitle: "Συνεδρία superadmin",
@@ -1289,10 +1339,16 @@ const messages = {
       requestNotifications: "Εκκρεμή αιτήματα token",
       requestNotificationsSubtitle:
         "Αυτά τα αιτήματα μένουν εδώ μέχρι ο superadmin να τα απορρίψει ή να εγκρίνει και να στείλει token με email.",
+      requestBannerLabel: "Εισερχόμενα αιτημάτων",
       pendingRequestsEmpty: "Δεν υπάρχουν εκκρεμή αιτήματα token.",
       requestedBy: "Αιτήθηκε από",
       requestedAt: "Ημερομηνία αιτήματος",
       requestedLimits: "Ζητούμενα όρια",
+      pricing: {
+        title: "Στιγμιότυπο χρέωσης",
+        total: "Συνολικό ποσό προσφοράς",
+        breakdown: "Ανάλυση προσφοράς",
+      },
       requestDeliveryError: "Τελευταίο σφάλμα αποστολής",
       approveRequest: "Έγκριση και αποστολή token",
       rejectRequest: "Απόρριψη και email στον χρήστη",
@@ -1366,6 +1422,16 @@ const messages = {
       },
       actions: {
         copyId: "Αντιγραφή token id",
+        allowed: "διαθέσιμο",
+        blocked: "μη διαθέσιμο",
+        availableNow: "Διαθέσιμες τώρα",
+      },
+      actionRules: {
+        resetUsage: "Μόνο ενεργά tokens επιτρέπουν μηδενισμό χρήσης",
+        revoke: "Έχει ήδη ανακληθεί",
+        renew: "Απαιτείται ανακλημένο ή ληγμένο token",
+        extend: "Τα ανακλημένα tokens δεν επεκτείνονται",
+        notAvailable: "Μη διαθέσιμη για αυτό το token",
       },
       pagination: {
         filtered: "{filtered} φιλτραρισμένα από {total} συνολικά",
@@ -1445,7 +1511,7 @@ const messages = {
           "Επιλέξτε τι θέλετε να κάνετε. Κάθε υπηρεσία ανοίγει μια απλή οθόνη με καθαρά βήματα από την αποστολή έως τη λήψη.",
         plansTitle: "Πλάνα και tokens",
         plansDescription:
-          "Δείτε free και paid όρια χρήσης και στείλτε αίτημα token με τα presets υπηρεσιών που χρειάζεστε.",
+          "Δείτε free και premium όρια χρήσης και στείλτε αίτημα token με τα presets υπηρεσιών που χρειάζεστε.",
         pdfServicesTitle: "Υπηρεσίες PDF",
         pdfServicesDescription:
           "Άνοιγμα εργαλείων PDF για ένωση, χωρισμό, εξαγωγή σε Word, εξαγωγή κειμένου και άλλα.",
@@ -1487,8 +1553,8 @@ const messages = {
     plans: {
       freeTitle: "Δωρεάν πρόσβαση",
       freeSubtitle: "Η διαθέσιμη χρήση στον browser πριν εφαρμοστεί εγκεκριμένο token πρόσβασης.",
-      paidTitle: "Presets με token",
-      paidSubtitle:
+      premiumTitle: "Premium presets με token",
+      premiumSubtitle:
         "Διαλέξτε το preset που ταιριάζει καλύτερα σε κάθε υπηρεσία που θέλετε να ενεργοποιηθεί.",
       requestTitle: "Αίτημα πρόσβασης",
       requestSubtitle:
@@ -1502,7 +1568,7 @@ const messages = {
       disabled: "Να μην περιληφθεί",
       submit: "Αποστολή αιτήματος πρόσβασης",
       submitting: "Αποστολή...",
-      submitted: "Το αίτημα πρόσβασης υποβλήθηκε.",
+      submitted: "Το premium αίτημα πρόσβασης υποβλήθηκε με συνολικό ποσό {amount}.",
       hero: {
         eyebrow: "Πρόσβαση πελατών",
         title: "Διαλέξτε το επίπεδο πρόσβασης που ταιριάζει στη δουλειά σας.",
@@ -1533,13 +1599,14 @@ const messages = {
         columns: {
           service: "Υπηρεσία",
           free: "Δωρεάν",
-          paid: "Δείγμα preset με token",
+          paid: "Δείγμα premium preset με token",
         },
       },
       spotlight: {
         perLabel: "πρόσβαση portal",
         freeBadge: "Free",
-        paidBadge: "Paid",
+        premiumBadge: "Premium",
+        premiumBadgeWithAmount: "Premium · {amount}",
         free: {
           cta: "Δεν θέλω το free",
           features: {
@@ -1550,8 +1617,8 @@ const messages = {
             request: "Μπορείτε να ζητήσετε περισσότερα αργότερα",
           },
         },
-        paid: {
-          cta: "Επιλογή paid",
+        premium: {
+          cta: "Επιλογή premium",
           features: {
             presets: "Πρόσβαση με preset ανά υπηρεσία",
             volume: "Μεγαλύτερα όρια αιτημάτων και λέξεων",
@@ -1566,8 +1633,8 @@ const messages = {
         subtitle: "Δείτε τα τρέχοντα presets πριν επιλέξετε.",
         freeTitle: "Περιλαμβανόμενες υπηρεσίες",
         freeSubtitle: "Διαθέσιμες τώρα χωρίς αίτημα.",
-        paidTitle: "Presets προς αίτημα",
-        paidSubtitle: "Τα τρέχοντα presets που είναι διαθέσιμα για έλεγχο.",
+        premiumTitle: "Premium presets προς αίτημα",
+        premiumSubtitle: "Τα τρέχοντα premium presets που είναι διαθέσιμα για έλεγχο.",
         included: "Περιλαμβάνεται",
         chooseOnePreset: "Διαλέξτε ένα preset μόνο αν χρειάζεστε την υπηρεσία.",
         presetLabel: "Preset",
@@ -1582,6 +1649,8 @@ const messages = {
         aliasHelp: "Χρησιμοποιήστε όνομα πελάτη, ομάδας ή έργου.",
         emailHelp: "Στη διεύθυνση αυτή στέλνουμε την απάντηση.",
         serviceHelp: "Αφήστε το κενό αν δεν το χρειάζεστε.",
+        priceTag: "Ποσό preset",
+        totalLabel: "Συνολικό ποσό",
         noneSelected: "Δεν έχει επιλεγεί ακόμη κανένα preset υπηρεσίας.",
         selectionCount: "{count} επιλογές υπηρεσιών είναι έτοιμες για έλεγχο.",
         points: {
@@ -1638,6 +1707,10 @@ const messages = {
         onRequest: "Κοινοποιείται κατά τον έλεγχο",
       },
       serviceLabels: {
+        books_greek_editor: "Υπηρεσίες βιβλίων",
+        pdf: "Υπηρεσίες PDF",
+        image: "Υπηρεσίες εικόνας",
+        tasks: "Υπηρεσίες JSON",
         pdfMerge: "Συγχώνευση PDF",
         pdfSplit: "Διαχωρισμός PDF",
         pdfToWord: "PDF σε Word",

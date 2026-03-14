@@ -5,6 +5,7 @@
 */
 import type {
   AccessDashboardData,
+  AccessPricingSummary,
   AccessPlan,
   AccessPlanServiceStatus,
   BinaryResponse,
@@ -43,6 +44,7 @@ export interface AccessPlanCatalogPolicy {
   kind: string;
   requestsPerDay?: number | null;
   wordsTotal?: number | null;
+  pricing?: AccessPricingSummary | null;
 }
 
 export interface AccessPlanCatalogService {
@@ -59,9 +61,13 @@ export interface AccessPlanCatalogResult {
     planType: "free";
     services: AccessPlanCatalogService[];
   };
-  paidPlans: AccessPlanCatalogService[];
+  premiumPlans: AccessPlanCatalogService[];
   requestDefaults?: {
     ttl?: string;
+    pricing?: {
+      currency?: string;
+      billingMode?: string;
+    };
   };
 }
 
@@ -76,6 +82,7 @@ export interface AccessTokenRequestRecord {
   alias: string;
   email: string;
   servicePolicies: Record<string, string>;
+  pricing?: AccessPricingSummary | null;
   createdAt?: string;
   status?: "pending" | "approved" | "rejected" | (string & {});
   reviewedAt?: string | null;
@@ -103,6 +110,7 @@ export interface AccessTokenRecord {
   tokenType?: string;
   expiresAt?: string;
   usageResetAt?: string;
+  pricing?: AccessPricingSummary | null;
   isRevoked?: boolean;
   isExpired?: boolean;
   isActive?: boolean;
@@ -208,9 +216,11 @@ export interface TaskProgress {
 export interface AccessPlanResult extends AccessPlan {}
 
 export interface AccessDashboardTokenSummary {
+  tokenId?: string;
   alias?: string;
   expiresAt?: string;
   serviceFlags?: string[];
+  pricing?: AccessPricingSummary | null;
   [key: string]: unknown;
 }
 

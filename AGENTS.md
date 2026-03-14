@@ -18,6 +18,7 @@
 8. When adding or changing user-facing copy, keep English and Greek aligned through the shared translation practice instead of hardcoding one-off text in components.
 9. Write for common users, not technical users: prefer clear, friendly, action-oriented phrases that help people quickly understand which service to use and what each step does.
 10. Avoid unnecessary technical terms in the UI; when technical wording is unavoidable, phrase it in simpler language that still guides the user correctly.
+11. Never expose backend service keys such as `books_greek_editor`, `pdf`, `image`, or `tasks` directly in the UI; always map them to the friendly service-group labels used by the launcher (`Books Services`, `PDF Services`, `Image Services`, `JSON Services`) through shared translations/helpers.
 
 ## 3) Service Architecture Expectations
 
@@ -143,3 +144,6 @@ When completing work, include:
 11. In CI/automation-only installs where hooks are intentionally skipped, use `HUSKY=0 npm install` so the `prepare` script does not install hooks.
 12. For clean reproducible installs in CI/deploy flows, prefer `HUSKY=0 npm ci` (this matches `scripts/deploy-production.sh`).
 13. When using a non-default production env file, run deploys as `ENV_FILE=/absolute/path/to/.env.production npm run deploy:prod`.
+14. After running installs with `HUSKY=0`, run `npm run prepare` before local commits so Git hooks are restored.
+15. For local first-time setup, bootstrap env defaults with `cp .env.example .env` before running `npm run dev`.
+16. When validating donation flow behavior or fallback behavior, set `VITE_PAYPAL_DONATE_URL=<donation-url>` in `.env`.

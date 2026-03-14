@@ -23,12 +23,14 @@ describe("accessPlanService", () => {
   it("loads the public access plan catalog", async () => {
     const fetchSpy = vi.fn(async () => ({
       ok: true,
-      json: async () => ({ data: { freePlan: { planType: "free", services: [] }, paidPlans: [] } }),
+      json: async () => ({
+        data: { freePlan: { planType: "free", services: [] }, premiumPlans: [] },
+      }),
     }));
     vi.stubGlobal("fetch", fetchSpy);
 
     const result = await fetchAccessPlanCatalog("http://localhost:3000");
-    expect(result).toEqual({ freePlan: { planType: "free", services: [] }, paidPlans: [] });
+    expect(result).toEqual({ freePlan: { planType: "free", services: [] }, premiumPlans: [] });
     expect(fetchSpy).toHaveBeenCalledWith(
       "http://localhost:3000/api/access/catalog",
       expect.objectContaining({
@@ -40,7 +42,20 @@ describe("accessPlanService", () => {
   it("submits a token request", async () => {
     const fetchSpy = vi.fn(async () => ({
       ok: true,
-      json: async () => ({ data: { request: { requestId: "req-1", status: "pending" } } }),
+      json: async () => ({
+        data: {
+          request: {
+            requestId: "req-1",
+            status: "pending",
+            pricing: {
+              totalAmount: 119,
+              currency: "EUR",
+              billingMode: "one_time",
+              items: [],
+            },
+          },
+        },
+      }),
     }));
     vi.stubGlobal("fetch", fetchSpy);
 
@@ -51,7 +66,18 @@ describe("accessPlanService", () => {
     };
     const result = await submitTokenRequest("http://localhost:3000", payload);
 
-    expect(result).toEqual({ request: { requestId: "req-1", status: "pending" } });
+    expect(result).toEqual({
+      request: {
+        requestId: "req-1",
+        status: "pending",
+        pricing: {
+          totalAmount: 119,
+          currency: "EUR",
+          billingMode: "one_time",
+          items: [],
+        },
+      },
+    });
     expect(fetchSpy).toHaveBeenCalledWith(
       "http://localhost:3000/api/access/token-requests",
       expect.objectContaining({

@@ -70,6 +70,21 @@ export interface UsageSummaryItem {
   };
 }
 
+export interface AccessPricingItem {
+  serviceKey: ServiceKey;
+  preset: string;
+  amount: number;
+  currency: string;
+  billingMode: string;
+}
+
+export interface AccessPricingSummary {
+  totalAmount: number;
+  currency: string;
+  billingMode: string;
+  items: AccessPricingItem[];
+}
+
 export interface AccessPlanServiceStatus {
   serviceKey: ServiceKey;
   enabled?: boolean;
@@ -87,6 +102,7 @@ export interface AccessPlan {
     tokenId?: string;
     expiresAt?: string;
     serviceFlags?: string[];
+    pricing?: AccessPricingSummary | null;
   } | null;
   enabledServices: ServiceKey[];
   services?: AccessPlanServiceStatus[];

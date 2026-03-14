@@ -8,7 +8,7 @@ import { computed, inject, onMounted, ref } from "vue";
 import { usePortalI18n } from "../i18n";
 import { fetchAccessPlanCatalog, submitTokenRequest } from "../services/accessPlanService";
 import type { AccessPlanCatalogPolicy, AccessPlanCatalogResult } from "../types/services";
-import type { PortalContext, PortalI18n } from "../types/shared";
+import type { AccessPricingSummary, PortalContext, PortalI18n } from "../types/shared";
 import { portalContextKey } from "../types/shared";
 
 interface PolicyDisplayItem {
@@ -16,6 +16,8 @@ interface PolicyDisplayItem {
   label: string;
   summary: string;
   details: string[];
+  priceLabel: string;
+  pricing: AccessPricingSummary | null;
   policy: AccessPlanCatalogPolicy;
 }
 
@@ -23,8 +25,6 @@ interface ServiceDisplayItem {
   key: string;
   label: string;
   summary: string;
-  freeSummary?: string;
-  paidSummary?: string;
   presets: PolicyDisplayItem[];
 }
 
@@ -60,8 +60,9 @@ const validationErrors = ref<PlanRequestValidationErrors>({
 const MAX_ALIAS_LENGTH = 120;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const paidPlans = computed(() => catalog.value?.paidPlans || []);
+const premiumPlans = computed(() => catalog.value?.premiumPlans || []);
 const freeServices = computed(() => catalog.value?.freePlan?.services || []);
+const pricingDefaults = computed(() => catalog.value?.requestDefaults?.pricing || null);
 
 const createHumanizedLabel = (value: string): string =>
   String(value || "")
@@ -71,7 +72,7 @@ const createHumanizedLabel = (value: string): string =>
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
 const buildEmptyPolicies = (): Record<string, string> =>
-  Object.fromEntries(paidPlans.value.map((service) => [String(service.serviceKey), ""]));
+  Object.fromEntries(premiumPlans.value.map((service) => [String(service.serviceKey), ""]));
 
 const resetForm = (): void => {
   form.value = {
@@ -115,6 +116,14 @@ const formatPolicy = (policy: AccessPlanCatalogPolicy): string[] => {
 const formatPolicySummary = (policy: AccessPlanCatalogPolicy): string =>
   formatPolicy(policy).join(" · ");
 
+const formatMoney = (amount: number, currency?: string): string =>
+  new Intl.NumberFormat(i18n.locale.value, {
+    style: "currency",
+    currency: String(currency || pricingDefaults.value?.currency || "EUR"),
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(Number(amount || 0));
+
 const getServiceLabel = (serviceKey: string): string =>
   t(`plans.serviceLabels.${serviceKey}`, {}, createHumanizedLabel(serviceKey));
 
@@ -133,6 +142,8 @@ const createPolicyDisplay = (
   label: getPresetLabel(serviceKey, String(policy.preset || "")),
   summary: formatPolicySummary(policy),
   details: formatPolicy(policy),
+  priceLabel: formatMoney(Number(policy.pricing?.totalAmount || 0), policy.pricing?.currency),
+  pricing: policy.pricing || null,
   policy,
 });
 
@@ -154,8 +165,8 @@ const freeServiceCards = computed<ServiceDisplayItem[]>(() =>
   })
 );
 
-const paidServiceCards = computed<ServiceDisplayItem[]>(() =>
-  paidPlans.value.map((service) => {
+const premiumServiceCards = computed<ServiceDisplayItem[]>(() =>
+  premiumPlans.value.map((service) => {
     const presets = (service.presets || []).map((policy) =>
       createPolicyDisplay(String(service.serviceKey), policy)
     );
@@ -173,6 +184,32 @@ const hasSelectedServices = computed(() =>
   Object.values(form.value.servicePolicies).some((preset) => String(preset || "").trim())
 );
 
+const selectedPricing = computed<AccessPricingSummary>(() => {
+  const items = premiumServiceCards.value.flatMap((service) => {
+    const selectedPreset = String(form.value.servicePolicies[service.key] || "").trim();
+    if (!selectedPreset) {
+      return [];
+    }
+
+    const selectedPolicy = service.presets.find(
+      (policy) => String(policy.policy.preset || "") === selectedPreset
+    );
+
+    if (!selectedPolicy?.pricing?.items?.length) {
+      return [];
+    }
+
+    return selectedPolicy.pricing.items;
+  });
+
+  return {
+    totalAmount: items.reduce((sum, item) => sum + Number(item.amount || 0), 0),
+    currency: String(items[0]?.currency || pricingDefaults.value?.currency || "EUR"),
+    billingMode: String(items[0]?.billingMode || pricingDefaults.value?.billingMode || "one_time"),
+    items,
+  };
+});
+
 const requestSummary = computed(() => {
   const count = Object.values(form.value.servicePolicies).filter((preset) =>
     String(preset || "").trim()
@@ -182,7 +219,7 @@ const requestSummary = computed(() => {
 
 /*
   The pricing-style spotlight mirrors the provided reference while keeping the
-  labels truthful to this portal by using Free and Paid instead of fake prices.
+  labels truthful to this portal by using Free and Premium with backend-backed quote tags.
 */
 const spotlightCards = computed(() => [
   {
@@ -201,19 +238,24 @@ const spotlightCards = computed(() => [
     cta: t("plans.spotlight.free.cta"),
   },
   {
-    id: "paid",
-    tone: "paid",
-    title: t("plans.paidTitle"),
+    id: "premium",
+    tone: "premium",
+    title: t("plans.premiumTitle"),
     subtitle: t("plans.spotlight.perLabel"),
-    priceLabel: t("plans.spotlight.paidBadge"),
+    priceLabel:
+      selectedPricing.value.totalAmount > 0
+        ? t("plans.spotlight.premiumBadgeWithAmount", {
+            amount: formatMoney(selectedPricing.value.totalAmount, selectedPricing.value.currency),
+          })
+        : t("plans.spotlight.premiumBadge"),
     features: [
-      t("plans.spotlight.paid.features.presets"),
-      t("plans.spotlight.paid.features.volume"),
-      t("plans.spotlight.paid.features.email"),
-      t("plans.spotlight.paid.features.multiService"),
-      t("plans.spotlight.paid.features.review"),
+      t("plans.spotlight.premium.features.presets"),
+      t("plans.spotlight.premium.features.volume"),
+      t("plans.spotlight.premium.features.email"),
+      t("plans.spotlight.premium.features.multiService"),
+      t("plans.spotlight.premium.features.review"),
     ],
-    cta: t("plans.spotlight.paid.cta"),
+    cta: t("plans.spotlight.premium.cta"),
   },
 ]);
 
@@ -260,7 +302,7 @@ const getSelectedServicePolicies = (): Record<string, string> =>
   );
 
 const isValidSelectedPreset = (serviceKey: string, preset: string): boolean => {
-  const service = paidPlans.value.find((item) => String(item.serviceKey) === String(serviceKey));
+  const service = premiumPlans.value.find((item) => String(item.serviceKey) === String(serviceKey));
   if (!service) {
     return false;
   }
@@ -373,13 +415,19 @@ const submitRequest = async (): Promise<void> => {
   submitting.value = true;
 
   try {
-    await submitTokenRequest(portalContext.apiBaseUrl.value, {
+    const result = await submitTokenRequest(portalContext.apiBaseUrl.value, {
       alias,
       email,
       servicePolicies,
     });
 
-    success.value = t("plans.submitted");
+    const quotedAmount = Number(result?.request?.pricing?.totalAmount || 0);
+    const quotedCurrency = String(
+      result?.request?.pricing?.currency || selectedPricing.value.currency
+    );
+    success.value = t("plans.submitted", {
+      amount: formatMoney(quotedAmount, quotedCurrency),
+    });
     resetForm();
     resetValidationErrors();
   } catch (caughtError) {
@@ -467,19 +515,19 @@ onMounted(() => {
           </div>
         </article>
 
-        <article class="tool-card plans-catalog__rail plans-catalog__rail--paid">
+        <article class="tool-card plans-catalog__rail plans-catalog__rail--premium">
           <div class="plans-catalog__head">
             <div>
-              <p class="plans-catalog__eyebrow">{{ t("plans.paidTitle") }}</p>
-              <h4 class="tool-card__title">{{ t("plans.catalog.paidTitle") }}</h4>
+              <p class="plans-catalog__eyebrow">{{ t("plans.premiumTitle") }}</p>
+              <h4 class="tool-card__title">{{ t("plans.catalog.premiumTitle") }}</h4>
             </div>
-            <p class="tool-card__description">{{ t("plans.catalog.paidSubtitle") }}</p>
+            <p class="tool-card__description">{{ t("plans.catalog.premiumSubtitle") }}</p>
           </div>
 
           <div class="plans-paid-groups">
             <section
-              v-for="service in paidServiceCards"
-              :key="`paid-${service.key}`"
+              v-for="service in premiumServiceCards"
+              :key="`premium-${service.key}`"
               class="plans-paid-group"
             >
               <div class="plans-paid-group__head">
@@ -490,9 +538,15 @@ onMounted(() => {
                 <article
                   v-for="policy in service.presets"
                   :key="policy.id"
-                  class="plans-service-card plans-service-card--paid"
+                  class="plans-service-card plans-service-card--premium"
                 >
                   <p class="plans-service-card__eyebrow">{{ t("plans.catalog.presetLabel") }}</p>
+                  <div class="plans-service-card__price-row">
+                    <strong class="plans-service-card__price">{{ policy.priceLabel }}</strong>
+                    <span class="plans-service-card__price-note">
+                      {{ t("plans.form.priceTag") }}
+                    </span>
+                  </div>
                   <ul class="plans-detail-list">
                     <li v-for="detail in policy.details" :key="`${policy.id}-${detail}`">
                       {{ detail }}
@@ -587,7 +641,7 @@ onMounted(() => {
 
           <div class="plans-request__services">
             <label
-              v-for="service in paidServiceCards"
+              v-for="service in premiumServiceCards"
               :key="`request-${service.key}`"
               class="plans-request__field plans-request__field--service"
             >
@@ -605,7 +659,7 @@ onMounted(() => {
                   :key="policy.id"
                   :value="policy.policy.preset"
                 >
-                  {{ policy.label }} · {{ policy.summary }}
+                  {{ policy.label }} · {{ policy.summary }} · {{ policy.priceLabel }}
                 </option>
               </select>
             </label>
@@ -618,6 +672,12 @@ onMounted(() => {
             <p class="plans-request__selection">
               {{ hasSelectedServices ? requestSummary : t("plans.form.noneSelected") }}
             </p>
+            <div class="plans-request__total">
+              <span class="plans-request__total-label">{{ t("plans.form.totalLabel") }}</span>
+              <strong class="plans-request__total-value">
+                {{ formatMoney(selectedPricing.totalAmount, selectedPricing.currency) }}
+              </strong>
+            </div>
             <div class="preview-card__actions">
               <button
                 type="submit"

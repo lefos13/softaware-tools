@@ -11,6 +11,7 @@ import type { AccessHistorySortDirection, AccessHistorySortKey } from "../types/
 import type { PortalAccessStore, PortalContext, PortalI18n, ServiceKey } from "../types/shared";
 import { portalAccessKey, portalContextKey } from "../types/shared";
 import type { AccessDashboardResult } from "../types/services";
+import { formatAccessServiceLabel } from "../utils/accessServiceLabels";
 
 const portalContext = inject(portalContextKey) as PortalContext | undefined;
 const portalAccess = inject(portalAccessKey) as PortalAccessStore | undefined;
@@ -115,10 +116,23 @@ const selectedTokenAlias = computed(
     portalAccess.plan.value?.token?.alias ||
     t("accessDashboard.notAvailable")
 );
+/*
+  Token identity is surfaced in summary with a dashboard->plan fallback so
+  users always see which token profile the visible usage metrics belong to.
+*/
+const selectedTokenId = computed(
+  () =>
+    String(
+      dashboard.value?.token?.tokenId || portalAccess.plan.value?.token?.tokenId || ""
+    ).trim() || t("accessDashboard.notAvailable")
+);
 const selectedTokenExpiry = computed(() =>
   formatDateTime(
     dashboard.value?.token?.expiresAt || portalAccess.plan.value?.token?.expiresAt || ""
   )
+);
+const selectedTokenPricing = computed(
+  () => dashboard.value?.token?.pricing || portalAccess.plan.value?.token?.pricing || null
 );
 const successfulEvents = computed(
   () =>
@@ -158,7 +172,7 @@ const serviceUsageTotals = computed(() => {
       index === normalizedRows.length - 1 ? Math.max(1, 100 - accumulated) : share;
     accumulated += adjustedShare;
     return {
-      label: row.serviceKey,
+      label: formatServiceLabel(row.serviceKey),
       share: adjustedShare,
     };
   });
@@ -183,10 +197,35 @@ const formatDateTime = (value?: string, fallbackKey = "accessDashboard.notAvaila
     ? new Date(value).toLocaleString(locale.value === "el" ? "el-GR" : "en-US")
     : t(fallbackKey);
 
-const formatServiceFlags = (flags?: string[]): string => {
-  const list = Array.isArray(flags) ? flags.filter(Boolean) : [];
-  return list.length ? list.join(", ") : t("accessDashboard.notAvailable");
-};
+const formatMoney = (amount?: number, currency = "EUR"): string =>
+  new Intl.NumberFormat(locale.value === "el" ? "el-GR" : "en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(Number(amount || 0));
+
+const formatPresetLabel = (preset?: string): string =>
+  t(
+    `plans.presetLabels.common.${String(preset || "").trim()}`,
+    {},
+    String(preset || "")
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+
+const formatServiceLabel = (serviceKey?: string): string =>
+  formatAccessServiceLabel(t, serviceKey) || t("accessDashboard.notAvailable");
+
+const pricingBreakdownItems = computed(() =>
+  (selectedTokenPricing.value?.items || []).map((item) => ({
+    ...item,
+    serviceLabel: formatServiceLabel(item.serviceKey),
+    presetLabel: formatPresetLabel(item.preset),
+    amountLabel: formatMoney(item.amount, item.currency),
+  }))
+);
 
 watch([selectedService, selectedStatus], () => {
   currentPage.value = 1;
@@ -316,7 +355,7 @@ onMounted(() => {
                 :key="service.serviceKey"
                 class="dashboard-v2__usage-item"
               >
-                <strong>{{ service.serviceKey }}</strong>
+                <strong>{{ formatServiceLabel(service.serviceKey) }}</strong>
                 <span>{{ formatQuota(service) }}</span>
               </article>
             </div>
@@ -346,26 +385,87 @@ onMounted(() => {
               <h3 class="merge-step__title">{{ t("accessDashboard.submenu.summary") }}</h3>
             </div>
             <div class="dashboard-v2__kpi-grid">
-              <article class="dashboard-v2__kpi-card">
+              <!-- Row 1: Token overview + Enabled services -->
+              <article class="dashboard-v2__kpi-card dashboard-v2__kpi-card--overview">
                 <p class="dashboard-v2__kpi-title">{{ t("accessDashboard.overviewTitle") }}</p>
-                <p class="dashboard-v2__kpi-value">{{ selectedTokenAlias }}</p>
-                <p class="dashboard-v2__kpi-foot">
-                  {{ t("accessDashboard.expires") }}: {{ selectedTokenExpiry }}
+                <p class="dashboard-v2__kpi-alias">{{ selectedTokenAlias }}</p>
+                <dl class="dashboard-v2__kpi-rows">
+                  <div class="dashboard-v2__kpi-row">
+                    <dt class="dashboard-v2__kpi-row-label">{{ t("accessDashboard.tokenId") }}</dt>
+                    <dd class="dashboard-v2__kpi-row-val">
+                      <code class="dashboard-v2__kpi-token-id">{{ selectedTokenId }}</code>
+                    </dd>
+                  </div>
+                  <div class="dashboard-v2__kpi-row">
+                    <dt class="dashboard-v2__kpi-row-label">{{ t("accessDashboard.expires") }}</dt>
+                    <dd class="dashboard-v2__kpi-row-val dashboard-v2__kpi-row-val--muted">
+                      {{ selectedTokenExpiry }}
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+
+              <article class="dashboard-v2__kpi-card dashboard-v2__kpi-card--services">
+                <p class="dashboard-v2__kpi-title">{{ t("accessDashboard.enabledServices") }}</p>
+                <p class="dashboard-v2__kpi-count">{{ enabledServiceFlags.length }}</p>
+                <div class="dashboard-v2__service-pills">
+                  <span
+                    v-for="flag in enabledServiceFlags"
+                    :key="flag"
+                    class="dashboard-v2__service-pill"
+                    >{{ formatServiceLabel(flag) }}</span
+                  >
+                  <span v-if="!enabledServiceFlags.length" class="dashboard-v2__kpi-foot">
+                    {{ t("accessDashboard.notAvailable") }}
+                  </span>
+                </div>
+              </article>
+
+              <!-- Row 2: Pricing (spans left) + Activity + Success rate -->
+              <article class="dashboard-v2__kpi-card dashboard-v2__kpi-card--pricing">
+                <p class="dashboard-v2__kpi-title">{{ t("accessDashboard.pricing.total") }}</p>
+                <p class="dashboard-v2__kpi-value">
+                  {{
+                    selectedTokenPricing
+                      ? formatMoney(selectedTokenPricing.totalAmount, selectedTokenPricing.currency)
+                      : t("accessDashboard.notAvailable")
+                  }}
+                </p>
+                <div
+                  v-if="pricingBreakdownItems.length"
+                  class="dashboard-v2__pricing-breakdown"
+                  :aria-label="t('accessDashboard.pricing.summaryTitle')"
+                >
+                  <p class="dashboard-v2__pricing-title">
+                    {{ t("accessDashboard.pricing.summaryTitle") }}
+                  </p>
+                  <div
+                    v-for="item in pricingBreakdownItems"
+                    :key="`${item.serviceKey}-${item.preset}`"
+                    class="dashboard-v2__pricing-item"
+                  >
+                    <div class="dashboard-v2__pricing-copy">
+                      <strong>{{ item.serviceLabel }}</strong>
+                      <span>{{ item.presetLabel }}</span>
+                    </div>
+                    <strong class="dashboard-v2__pricing-amount">{{ item.amountLabel }}</strong>
+                  </div>
+                </div>
+                <p v-else class="dashboard-v2__kpi-foot">
+                  {{ t("accessDashboard.pricing.none") }}
                 </p>
               </article>
-              <article class="dashboard-v2__kpi-card">
-                <p class="dashboard-v2__kpi-title">{{ t("accessDashboard.enabledServices") }}</p>
-                <p class="dashboard-v2__kpi-value">{{ enabledServiceFlags.length }}</p>
-                <p class="dashboard-v2__kpi-foot">{{ formatServiceFlags(enabledServiceFlags) }}</p>
-              </article>
-              <article class="dashboard-v2__kpi-card">
+
+              <article class="dashboard-v2__kpi-card dashboard-v2__kpi-card--stat">
                 <p class="dashboard-v2__kpi-title">{{ t("accessDashboard.recentActivity") }}</p>
                 <p class="dashboard-v2__kpi-value">{{ totalHistoryItems }}</p>
                 <p class="dashboard-v2__kpi-foot">
-                  {{ successfulEvents }} success | {{ failedEvents }} failed
+                  {{ successfulEvents }} {{ t("accessDashboard.status.success") }} |
+                  {{ failedEvents }} {{ t("accessDashboard.status.failed") }}
                 </p>
               </article>
-              <article class="dashboard-v2__kpi-card">
+
+              <article class="dashboard-v2__kpi-card dashboard-v2__kpi-card--stat">
                 <p class="dashboard-v2__kpi-title">{{ t("accessDashboard.successRate") }}</p>
                 <p class="dashboard-v2__kpi-value">{{ successRate }}%</p>
                 <p class="dashboard-v2__kpi-foot">{{ t("accessDashboard.successRateSubtitle") }}</p>

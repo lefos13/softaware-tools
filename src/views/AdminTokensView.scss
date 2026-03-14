@@ -3,7 +3,6 @@
   so filtering and row actions stay dense while preserving existing workflows.
 */
 .admin-access,
-.admin-requests,
 .admin-list,
 .admin-reveal {
   color: var(--ink);
@@ -11,49 +10,119 @@
 }
 
 .admin-access .tool-card__title,
-.admin-requests .tool-card__title,
 .admin-list .tool-card__title,
 .admin-reveal .tool-card__title {
   color: var(--ink);
 }
 
 .admin-access .tool-card__description,
-.admin-requests .tool-card__description,
 .admin-list .tool-card__description,
 .admin-reveal .tool-card__description {
   color: var(--ink-soft);
 }
 
 .admin-list .tool-card__description--error,
-.admin-requests .tool-card__description--error,
 .admin-access .tool-card__description--error,
 .admin-reveal .tool-card__description--error,
 .admin-modal .tool-card__description--error {
   color: var(--error);
 }
 
+/*
+  The title row now owns the admin actions so requests and logout stay attached
+  to the page header instead of introducing a second header block underneath it.
+*/
 .admin-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.75rem;
-  text-align: center;
-}
-
-.admin-kicker {
-  margin: 0 0 0.35rem;
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #0f766e;
-  font-weight: 700;
+  gap: 1rem;
+  text-align: left;
+  margin-bottom: 0.95rem;
 }
 
 .admin-head__logout {
-  padding: 0.32rem 0.62rem;
+  min-height: 2.3rem;
+  padding: 0.4rem 0.85rem;
   font-size: 0.78rem;
   border-radius: 999px;
-  opacity: 0.88;
+  opacity: 0.82;
+}
+
+.admin-request-banner {
+  margin: 0;
+  min-height: 2.7rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(241, 245, 249, 0.92), rgba(250, 252, 255, 0.96));
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  padding: 0.22rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.admin-request-badge {
+  border-radius: 999px;
+  position: relative;
+  min-width: 2.3rem;
+  min-height: 2.3rem;
+  width: auto;
+  height: auto;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-color: transparent;
+  background: transparent;
+  color: #5b6474;
+}
+
+.admin-request-badge:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.admin-request-badge[data-state="idle"] {
+  color: #64748b;
+}
+
+.admin-request-badge[data-state="pending"] {
+  color: #0f766e;
+  background: rgba(236, 253, 249, 0.92);
+  box-shadow: 0 8px 20px rgba(15, 118, 110, 0.14);
+}
+
+.admin-request-badge__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.3rem;
+  height: 2.3rem;
+}
+
+.admin-request-badge__icon svg {
+  width: 1.18rem;
+  height: 1.18rem;
+}
+
+.admin-request-badge__count {
+  position: absolute;
+  top: -0.18rem;
+  right: -0.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 2px;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+  background: #ea580c;
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .admin-access--highlight {
@@ -424,6 +493,10 @@
   min-width: 280px;
 }
 
+/*
+  Action buttons expose explicit allowed/blocked visuals and hover tooltips,
+  then list currently available actions so token-specific constraints are clear.
+*/
 .admin-icon-button {
   width: 1.95rem;
   height: 1.95rem;
@@ -446,8 +519,22 @@
   background: #effcfb;
 }
 
+.admin-icon-button[data-state="allowed"] {
+  border-color: rgba(15, 118, 110, 0.45);
+  background: rgba(236, 253, 249, 0.95);
+  color: #0f766e;
+}
+
+.admin-icon-button[data-state="blocked"] {
+  border-style: dashed;
+}
+
 .admin-icon-button:disabled {
+  border-color: rgba(148, 163, 184, 0.6);
+  color: #94a3b8;
+  background: rgba(241, 245, 249, 0.95);
   cursor: not-allowed;
+  opacity: 1;
 }
 
 /*
@@ -464,7 +551,9 @@
   left: 50%;
   bottom: calc(100% + 8px);
   transform: translateX(-50%);
-  white-space: nowrap;
+  width: max-content;
+  max-width: 240px;
+  white-space: normal;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
@@ -476,6 +565,7 @@
   color: #ffffff;
   font-size: 0.83rem;
   line-height: 1.2;
+  text-align: left;
 }
 
 .admin-icon-button[data-tooltip]:hover::after,
@@ -490,6 +580,19 @@
   min-width: 1.6rem;
   min-height: 1.6rem;
   border-radius: 7px;
+}
+
+.admin-table__actions-summary {
+  margin: 0.35rem 0 0;
+  max-width: 360px;
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: #334155;
+}
+
+.admin-table__actions-summary > span {
+  color: #0f766e;
+  font-weight: 700;
 }
 
 .admin-modal__card--details {
@@ -587,6 +690,10 @@
   width: min(1040px, 100%);
 }
 
+.admin-modal__card--requests {
+  width: min(920px, 100%);
+}
+
 .admin-modal__head {
   display: flex;
   justify-content: space-between;
@@ -650,7 +757,13 @@
 
   .admin-head {
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
+  }
+
+  .admin-request-banner {
+    flex-wrap: wrap;
+    border-radius: 0.9rem;
+    justify-content: space-between;
   }
 
   .admin-list__toolbar {

@@ -11,6 +11,7 @@ import type {
   AccessHistorySortKey,
 } from "../../types/services";
 import type { PortalI18n } from "../../types/shared";
+import { formatAccessServiceLabel } from "../../utils/accessServiceLabels";
 
 const props = withDefaults(
   defineProps<{
@@ -81,6 +82,9 @@ const formatNumber = (value?: number | string): string =>
 const formatStatus = (value?: string): string =>
   value === "success" ? t("accessDashboard.status.success") : t("accessDashboard.status.failed");
 
+const formatServiceLabel = (serviceKey?: string): string =>
+  formatAccessServiceLabel(t, serviceKey) || t("accessDashboard.notAvailable");
+
 const toggleSort = (columnKey: AccessHistorySortKey): void => {
   if (!sortableColumns.includes(columnKey)) {
     return;
@@ -137,7 +141,7 @@ const goToPage = (nextPage: number): void => {
       <select :value="selectedService" class="rotation-select" @change="updateSelectedService">
         <option value="">{{ t("accessDashboard.filters.allServices") }}</option>
         <option v-for="serviceKey in serviceOptions" :key="serviceKey" :value="serviceKey">
-          {{ serviceKey }}
+          {{ formatServiceLabel(serviceKey) }}
         </option>
       </select>
       <select :value="selectedStatus" class="rotation-select" @change="updateSelectedStatus">
@@ -219,7 +223,7 @@ const goToPage = (nextPage: number): void => {
           <tr v-for="item in items" :key="item.eventId || item.createdAt || item.operationName">
             <td>{{ formatDateTime(item.createdAt) }}</td>
             <td>{{ item.operationName || t("accessDashboard.notAvailable") }}</td>
-            <td>{{ item.serviceKey || t("accessDashboard.notAvailable") }}</td>
+            <td>{{ formatServiceLabel(item.serviceKey) }}</td>
             <td>{{ formatStatus(item.status) }}</td>
             <td class="access-history__table-number">
               {{ formatNumber(item.consumedRequests) }}

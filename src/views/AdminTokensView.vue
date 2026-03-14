@@ -20,6 +20,8 @@ import {
   type Updater,
 } from "@tanstack/vue-table";
 import AccessHistoryTable from "../components/access/AccessHistoryTable.vue";
+import AdminActionIconAsset from "../assets/svgs/AdminActionIconAsset.vue";
+import AdminBellIconAsset from "../assets/svgs/AdminBellIconAsset.vue";
 import { usePortalI18n } from "../i18n";
 import {
   approveTokenRequest,
@@ -44,10 +46,12 @@ import type {
 } from "../types/services";
 import type { PortalContext, PortalI18n } from "../types/shared";
 import { portalContextKey } from "../types/shared";
+import { formatAccessServiceLabel } from "../utils/accessServiceLabels";
 
 type AdminServicePoliciesForm = Record<string, string>;
 type RequestDecisionAction = "approve" | "reject";
 type AdminTokenStatusKey = "active" | "revoked" | "expired";
+type TokenRowAction = "details" | "history" | "resetUsage" | "edit" | "revoke" | "renew" | "extend";
 
 interface AdminPolicyPresetMap {
   [serviceKey: string]: string[];
@@ -72,6 +76,27 @@ const formatDateTime = (value?: string, fallbackKey = "adminTokens.notAvailable"
 const formatNumber = (value?: number | string): string =>
   new Intl.NumberFormat(locale.value === "el" ? "el-GR" : "en-US").format(Number(value || 0));
 
+const formatMoney = (amount?: number, currency = "EUR"): string =>
+  new Intl.NumberFormat(locale.value === "el" ? "el-GR" : "en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(Number(amount || 0));
+
+const formatPresetLabel = (preset?: string): string =>
+  t(
+    `plans.presetLabels.common.${String(preset || "").trim()}`,
+    {},
+    String(preset || "")
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+
+const formatServiceLabel = (serviceKey?: string): string =>
+  formatAccessServiceLabel(t, serviceKey) || t("adminTokens.notAvailable");
+
 const tokenInput = ref(sessionStorage.getItem(SUPERADMIN_TOKEN_STORAGE_KEY) || "");
 const activeToken = ref(sessionStorage.getItem(SUPERADMIN_TOKEN_STORAGE_KEY) || "");
 const loading = ref(false);
@@ -87,6 +112,7 @@ const editingTokenId = ref("");
 const showFormModal = ref(false);
 const showHistoryModal = ref(false);
 const showDetailsModal = ref(false);
+const showRequestsModal = ref(false);
 const showRequestResultModal = ref(false);
 const requestResultTitle = ref("");
 const requestResultDescription = ref("");
@@ -166,6 +192,18 @@ const historyServiceOptions = computed(() => {
     .sort((left, right) => left.localeCompare(right));
 });
 
+/*
+  The header action area needs a simple binary state so the requests trigger can
+  switch between an idle bell and a highlighted pending-requests bell.
+*/
+const hasPendingRequests = computed(() => pendingRequests.value.length > 0);
+const pendingRequestsCountLabel = computed(() => formatNumber(pendingRequests.value.length));
+const requestBellAriaLabel = computed(() =>
+  hasPendingRequests.value
+    ? `${t("adminTokens.requestNotifications")}: ${pendingRequestsCountLabel.value}`
+    : t("adminTokens.pendingRequestsEmpty")
+);
+
 const normalizeSelectedPolicies = (policies: AdminServicePoliciesForm): Record<string, string> =>
   Object.fromEntries(
     Object.entries(policies || {}).filter(([, preset]) => String(preset || "").trim())
@@ -194,6 +232,7 @@ const resolveTokenStatus = (tokenItem: AccessTokenRecord): AdminTokenStatusKey =
 const detailsPolicyEntries = computed(() =>
   detailsToken.value?.servicePolicies ? Object.entries(detailsToken.value.servicePolicies) : []
 );
+const detailsPricingEntries = computed(() => detailsToken.value?.pricing?.items || []);
 
 const detailsUsageEntries = computed(
   () =>
@@ -376,6 +415,14 @@ const closeDetailsModal = (): void => {
   detailsToken.value = null;
 };
 
+const openRequestsModal = (): void => {
+  showRequestsModal.value = true;
+};
+
+const closeRequestsModal = (): void => {
+  showRequestsModal.value = false;
+};
+
 /*
   Request review actions can take a few seconds while the backend sends email.
   We keep one focused pending-action state for per-row spinners and show the
@@ -443,6 +490,7 @@ const clearSuperadminToken = (): void => {
   closeFormModal();
   closeHistoryModal();
   closeDetailsModal();
+  closeRequestsModal();
   closeRequestResultModal();
   clearPendingRequestAction();
   error.value = "";
@@ -905,6 +953,71 @@ const updateListSortFromEvent = (event: Event): void => {
 
 const getListSortValue = (): string => listSort.value;
 
+const getActionLabel = (action: TokenRowAction): string => {
+  if (action === "details") {
+    return t("adminTokens.detailsAction");
+  }
+  if (action === "history") {
+    return t("adminTokens.history");
+  }
+  if (action === "resetUsage") {
+    return t("adminTokens.resetUsageAction");
+  }
+  if (action === "edit") {
+    return t("adminTokens.edit");
+  }
+  if (action === "revoke") {
+    return t("adminTokens.revoke");
+  }
+  if (action === "renew") {
+    return t("adminTokens.renew");
+  }
+  return t("adminTokens.extend");
+};
+
+const isTokenActionAllowed = (action: TokenRowAction, tokenItem: AccessTokenRecord): boolean => {
+  if (action === "resetUsage") {
+    return Boolean(tokenItem.isActive);
+  }
+  if (action === "revoke") {
+    return !tokenItem.isRevoked;
+  }
+  if (action === "renew") {
+    return Boolean(tokenItem.isRevoked || tokenItem.isExpired);
+  }
+  if (action === "extend") {
+    return !tokenItem.isRevoked;
+  }
+  return true;
+};
+
+const getDisabledReason = (action: TokenRowAction): string => {
+  if (action === "resetUsage") {
+    return t("adminTokens.actionRules.resetUsage");
+  }
+  if (action === "revoke") {
+    return t("adminTokens.actionRules.revoke");
+  }
+  if (action === "renew") {
+    return t("adminTokens.actionRules.renew");
+  }
+  if (action === "extend") {
+    return t("adminTokens.actionRules.extend");
+  }
+  return t("adminTokens.actionRules.notAvailable");
+};
+
+const getActionTooltip = (action: TokenRowAction, tokenItem: AccessTokenRecord): string => {
+  const label = getActionLabel(action);
+  if (isTokenActionAllowed(action, tokenItem)) {
+    return `${label} · ${t("adminTokens.actions.allowed")}`;
+  }
+  return `${label} · ${t("adminTokens.actions.blocked")} (${getDisabledReason(action)})`;
+};
+
+const getActionButtonState = (action: TokenRowAction, tokenItem: AccessTokenRecord): string =>
+  isTokenActionAllowed(action, tokenItem) ? "allowed" : "blocked";
+
 watch(accessTokens, () => {
   tokenTable.setPageIndex(0);
 });
@@ -959,25 +1072,38 @@ if (activeToken.value) {
 
 <template>
   <section class="flow-view" :aria-label="t('adminTokens.ariaLabel')">
-    <div class="section-head section-head--spaced admin-head">
+    <div class="section-head admin-head">
       <div>
-        <p class="admin-kicker">{{ t("adminTokens.restrictedArea") }}</p>
         <h2 class="section-head__title">
           {{ t("adminTokens.title") }}
         </h2>
-        <p class="section-head__subtitle">
-          {{ t("adminTokens.subtitle") }}
-        </p>
       </div>
-      <button
-        v-if="isAuthenticated"
-        type="button"
-        class="button button--secondary admin-head__logout"
-        :disabled="loading || saving"
-        @click="clearSuperadminToken"
-      >
-        {{ t("adminTokens.logout") }}
-      </button>
+
+      <article v-if="isAuthenticated" class="admin-request-banner">
+        <button
+          type="button"
+          class="button button--icon admin-request-badge"
+          :data-state="hasPendingRequests ? 'pending' : 'idle'"
+          :disabled="loading || saving"
+          :aria-label="requestBellAriaLabel"
+          @click="openRequestsModal"
+        >
+          <span class="admin-request-badge__icon" aria-hidden="true">
+            <AdminBellIconAsset :pending="hasPendingRequests" />
+          </span>
+          <span v-if="hasPendingRequests" class="admin-request-badge__count">
+            {{ pendingRequestsCountLabel }}
+          </span>
+        </button>
+        <button
+          type="button"
+          class="button button--secondary admin-head__logout"
+          :disabled="loading || saving"
+          @click="clearSuperadminToken"
+        >
+          {{ t("adminTokens.logout") }}
+        </button>
+      </article>
     </div>
 
     <article v-if="!isAuthenticated" class="tool-card admin-access admin-access--highlight">
@@ -1015,109 +1141,6 @@ if (activeToken.value) {
         {{ t("adminTokens.plaintextDescription", { label: revealedTokenLabel }) }}
       </p>
       <pre class="admin-reveal__token">{{ revealedToken }}</pre>
-    </article>
-
-    <article v-if="isAuthenticated" class="tool-card admin-requests">
-      <div class="admin-list__title-row">
-        <div>
-          <h3 class="tool-card__title">{{ t("adminTokens.requestNotifications") }}</h3>
-          <p class="tool-card__description">{{ t("adminTokens.requestNotificationsSubtitle") }}</p>
-        </div>
-        <span class="admin-chip admin-chip--active">{{
-          formatNumber(pendingRequests.length)
-        }}</span>
-      </div>
-
-      <p v-if="!loading && pendingRequests.length === 0" class="tool-card__description">
-        {{ t("adminTokens.pendingRequestsEmpty") }}
-      </p>
-
-      <ul v-else class="admin-request-list" role="list">
-        <li
-          v-for="requestItem in pendingRequests"
-          :key="requestItem.requestId"
-          class="admin-request-list__item"
-        >
-          <div class="admin-token-list__head">
-            <strong class="admin-token-list__alias">{{ requestItem.alias }}</strong>
-            <span class="admin-chip">{{ requestItem.status }}</span>
-          </div>
-
-          <div class="admin-token-list__meta-grid">
-            <article class="admin-meta-item">
-              <span class="admin-meta-item__label">{{ t("adminTokens.requestedBy") }}</span>
-              <strong class="admin-meta-item__value">{{ requestItem.email }}</strong>
-            </article>
-            <article class="admin-meta-item">
-              <span class="admin-meta-item__label">{{ t("adminTokens.requestedAt") }}</span>
-              <strong class="admin-meta-item__value">{{
-                formatDateTime(requestItem.createdAt)
-              }}</strong>
-            </article>
-            <article v-if="requestItem.lastEmailError" class="admin-meta-item">
-              <span class="admin-meta-item__label">{{
-                t("adminTokens.requestDeliveryError")
-              }}</span>
-              <strong class="admin-meta-item__value">{{ requestItem.lastEmailError }}</strong>
-            </article>
-          </div>
-
-          <div class="admin-token-list__block">
-            <p class="admin-token-list__block-title">{{ t("adminTokens.requestedLimits") }}</p>
-            <div class="admin-token-list__tags">
-              <span
-                v-for="[serviceKey, preset] in Object.entries(requestItem.servicePolicies || {})"
-                :key="`${requestItem.requestId}-${serviceKey}`"
-                class="admin-token-list__tag"
-              >
-                <strong>{{ serviceKey }}</strong>
-                <span>{{ preset }}</span>
-              </span>
-            </div>
-          </div>
-
-          <div class="preview-card__actions">
-            <button
-              type="button"
-              class="button button--primary"
-              :disabled="saving"
-              @click="runApproveRequest(requestItem)"
-            >
-              <span class="admin-action-button__content">
-                <span
-                  v-if="isPendingRequestAction(requestItem.requestId, 'approve')"
-                  class="admin-action-button__spinner"
-                  aria-hidden="true"
-                ></span>
-                <span>{{
-                  isPendingRequestAction(requestItem.requestId, "approve")
-                    ? t("adminTokens.sendingEmail")
-                    : t("adminTokens.approveRequest")
-                }}</span>
-              </span>
-            </button>
-            <button
-              type="button"
-              class="button button--secondary"
-              :disabled="saving"
-              @click="runRejectRequest(requestItem)"
-            >
-              <span class="admin-action-button__content">
-                <span
-                  v-if="isPendingRequestAction(requestItem.requestId, 'reject')"
-                  class="admin-action-button__spinner"
-                  aria-hidden="true"
-                ></span>
-                <span>{{
-                  isPendingRequestAction(requestItem.requestId, "reject")
-                    ? t("adminTokens.sendingEmail")
-                    : t("adminTokens.rejectRequest")
-                }}</span>
-              </span>
-            </button>
-          </div>
-        </li>
-      </ul>
     </article>
 
     <article v-if="isAuthenticated" class="tool-card admin-list admin-list--full-width">
@@ -1291,9 +1314,7 @@ if (activeToken.value) {
                         :aria-label="t('adminTokens.actions.copyId')"
                         @click="copyTokenId(String(row.original.tokenId || ''))"
                       >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M9 9h9v12H9zM6 3h9v3h-2V5H8v10H6z" fill="currentColor" />
-                        </svg>
+                        <AdminActionIconAsset name="copy-id" />
                       </button>
                     </div>
                   </template>
@@ -1323,104 +1344,79 @@ if (activeToken.value) {
                       <button
                         type="button"
                         class="button button--icon admin-icon-button"
-                        :data-tooltip="t('adminTokens.detailsAction')"
+                        :data-tooltip="getActionTooltip('details', row.original)"
+                        :data-state="getActionButtonState('details', row.original)"
                         :aria-label="t('adminTokens.detailsAction')"
                         :disabled="saving"
                         @click="openDetailsModal(row.original)"
                       >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path
-                            d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 15.2a1.2 1.2 0 1 1 1.2-1.2A1.2 1.2 0 0 1 12 17.2zm1.2-4.6h-2.1V7.2h2.1z"
-                            fill="currentColor"
-                          />
-                        </svg>
+                        <AdminActionIconAsset name="details" />
                       </button>
                       <button
                         type="button"
                         class="button button--icon admin-icon-button"
-                        :data-tooltip="t('adminTokens.history')"
+                        :data-tooltip="getActionTooltip('history', row.original)"
+                        :data-state="getActionButtonState('history', row.original)"
                         :aria-label="t('adminTokens.history')"
                         :disabled="saving"
                         @click="openHistory(row.original)"
                       >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path
-                            d="M12 5v7l5 3-.8 1.4L10.5 13V5zM12 2a10 10 0 1 1-9.9 9H4A8 8 0 1 0 12 4z"
-                            fill="currentColor"
-                          />
-                        </svg>
+                        <AdminActionIconAsset name="history" />
                       </button>
                       <button
                         type="button"
                         class="button button--icon admin-icon-button"
-                        :data-tooltip="t('adminTokens.resetUsageAction')"
+                        :data-tooltip="getActionTooltip('resetUsage', row.original)"
+                        :data-state="getActionButtonState('resetUsage', row.original)"
                         :aria-label="t('adminTokens.resetUsageAction')"
-                        :disabled="saving || !row.original.isActive"
+                        :disabled="saving || !isTokenActionAllowed('resetUsage', row.original)"
                         @click="runResetUsage(row.original)"
                       >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path
-                            d="M12 6V2L7 7l5 5V8a4 4 0 1 1-4 4H6a6 6 0 1 0 6-6z"
-                            fill="currentColor"
-                          />
-                        </svg>
+                        <AdminActionIconAsset name="reset-usage" />
                       </button>
                       <button
                         type="button"
                         class="button button--icon admin-icon-button"
-                        :data-tooltip="t('adminTokens.edit')"
+                        :data-tooltip="getActionTooltip('edit', row.original)"
+                        :data-state="getActionButtonState('edit', row.original)"
                         :aria-label="t('adminTokens.edit')"
                         :disabled="saving"
                         @click="startEdit(row.original)"
                       >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path
-                            d="M4 17.2V20h2.8l8.2-8.2-2.8-2.8zM17.7 4.3a1 1 0 0 1 1.4 0l1.6 1.6a1 1 0 0 1 0 1.4l-1.4 1.4-3-3z"
-                            fill="currentColor"
-                          />
-                        </svg>
+                        <AdminActionIconAsset name="edit" />
                       </button>
                       <button
                         type="button"
                         class="button button--icon admin-icon-button"
-                        :data-tooltip="t('adminTokens.revoke')"
+                        :data-tooltip="getActionTooltip('revoke', row.original)"
+                        :data-state="getActionButtonState('revoke', row.original)"
                         :aria-label="t('adminTokens.revoke')"
-                        :disabled="saving || row.original.isRevoked"
+                        :disabled="saving || !isTokenActionAllowed('revoke', row.original)"
                         @click="runRevoke(row.original)"
                       >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path
-                            d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 2a8 8 0 0 1 5.7 2.3L6.3 17.7A8 8 0 0 1 12 4zm0 16a8 8 0 0 1-5.7-2.3L17.7 6.3A8 8 0 0 1 12 20z"
-                            fill="currentColor"
-                          />
-                        </svg>
+                        <AdminActionIconAsset name="revoke" />
                       </button>
                       <button
                         type="button"
                         class="button button--icon admin-icon-button"
-                        :data-tooltip="t('adminTokens.renew')"
+                        :data-tooltip="getActionTooltip('renew', row.original)"
+                        :data-state="getActionButtonState('renew', row.original)"
                         :aria-label="t('adminTokens.renew')"
-                        :disabled="saving || (!row.original.isRevoked && !row.original.isExpired)"
+                        :disabled="saving || !isTokenActionAllowed('renew', row.original)"
                         @click="runRenew(row.original)"
                       >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path
-                            d="M12 6V2l5 5-5 5V8a4 4 0 1 0 4 4h2a6 6 0 1 1-6-6z"
-                            fill="currentColor"
-                          />
-                        </svg>
+                        <AdminActionIconAsset name="renew" />
                       </button>
                       <button
                         type="button"
                         class="button button--icon admin-icon-button"
-                        :data-tooltip="t('adminTokens.extend')"
+                        :data-tooltip="getActionTooltip('extend', row.original)"
+                        :data-state="getActionButtonState('extend', row.original)"
                         :aria-label="t('adminTokens.extend')"
-                        :disabled="saving || row.original.isRevoked"
+                        :disabled="saving || !isTokenActionAllowed('extend', row.original)"
                         @click="runExtend(row.original)"
                       >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M19 11h-6V5h-2v6H5v2h6v6h2v-6h6z" fill="currentColor" />
-                        </svg>
+                        <AdminActionIconAsset name="extend" />
                       </button>
                     </div>
                   </template>
@@ -1494,6 +1490,143 @@ if (activeToken.value) {
     </article>
 
     <div
+      v-if="showRequestsModal"
+      class="admin-modal"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="t('adminTokens.requestNotifications')"
+      @click.self="closeRequestsModal"
+    >
+      <article class="admin-modal__card admin-modal__card--requests">
+        <div class="admin-modal__head">
+          <div>
+            <h3 class="tool-card__title">{{ t("adminTokens.requestNotifications") }}</h3>
+            <p class="tool-card__description">
+              {{ t("adminTokens.requestNotificationsSubtitle") }}
+            </p>
+          </div>
+          <button type="button" class="button button--secondary" @click="closeRequestsModal">
+            {{ t("modal.close") }}
+          </button>
+        </div>
+
+        <p v-if="!loading && pendingRequests.length === 0" class="tool-card__description">
+          {{ t("adminTokens.pendingRequestsEmpty") }}
+        </p>
+
+        <ul v-else class="admin-request-list" role="list">
+          <li
+            v-for="requestItem in pendingRequests"
+            :key="requestItem.requestId"
+            class="admin-request-list__item"
+          >
+            <div class="admin-token-list__head">
+              <strong class="admin-token-list__alias">{{ requestItem.alias }}</strong>
+              <span class="admin-chip">{{ requestItem.status }}</span>
+            </div>
+
+            <div class="admin-token-list__meta-grid">
+              <article class="admin-meta-item">
+                <span class="admin-meta-item__label">{{ t("adminTokens.requestedBy") }}</span>
+                <strong class="admin-meta-item__value">{{ requestItem.email }}</strong>
+              </article>
+              <article class="admin-meta-item">
+                <span class="admin-meta-item__label">{{ t("adminTokens.requestedAt") }}</span>
+                <strong class="admin-meta-item__value">{{
+                  formatDateTime(requestItem.createdAt)
+                }}</strong>
+              </article>
+              <article v-if="requestItem.lastEmailError" class="admin-meta-item">
+                <span class="admin-meta-item__label">{{
+                  t("adminTokens.requestDeliveryError")
+                }}</span>
+                <strong class="admin-meta-item__value">{{ requestItem.lastEmailError }}</strong>
+              </article>
+              <article v-if="requestItem.pricing" class="admin-meta-item">
+                <span class="admin-meta-item__label">{{ t("adminTokens.pricing.total") }}</span>
+                <strong class="admin-meta-item__value">
+                  {{ formatMoney(requestItem.pricing.totalAmount, requestItem.pricing.currency) }}
+                </strong>
+              </article>
+            </div>
+
+            <div class="admin-token-list__block">
+              <p class="admin-token-list__block-title">{{ t("adminTokens.requestedLimits") }}</p>
+              <div class="admin-token-list__tags">
+                <span
+                  v-for="[serviceKey, preset] in Object.entries(requestItem.servicePolicies || {})"
+                  :key="`${requestItem.requestId}-${serviceKey}`"
+                  class="admin-token-list__tag"
+                >
+                  <strong>{{ formatServiceLabel(serviceKey) }}</strong>
+                  <span>{{ formatPresetLabel(preset) }}</span>
+                </span>
+              </div>
+            </div>
+
+            <div v-if="requestItem.pricing?.items?.length" class="admin-token-list__block">
+              <p class="admin-token-list__block-title">{{ t("adminTokens.pricing.breakdown") }}</p>
+              <div class="admin-token-list__tags">
+                <span
+                  v-for="pricingItem in requestItem.pricing.items"
+                  :key="`${requestItem.requestId}-pricing-${pricingItem.serviceKey}`"
+                  class="admin-token-list__tag"
+                >
+                  <strong>{{ formatServiceLabel(pricingItem.serviceKey) }}</strong>
+                  <span>
+                    {{ formatPresetLabel(pricingItem.preset) }} ·
+                    {{ formatMoney(pricingItem.amount, pricingItem.currency) }}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <div class="preview-card__actions">
+              <button
+                type="button"
+                class="button button--primary"
+                :disabled="saving"
+                @click="runApproveRequest(requestItem)"
+              >
+                <span class="admin-action-button__content">
+                  <span
+                    v-if="isPendingRequestAction(requestItem.requestId, 'approve')"
+                    class="admin-action-button__spinner"
+                    aria-hidden="true"
+                  ></span>
+                  <span>{{
+                    isPendingRequestAction(requestItem.requestId, "approve")
+                      ? t("adminTokens.sendingEmail")
+                      : t("adminTokens.approveRequest")
+                  }}</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                class="button button--secondary"
+                :disabled="saving"
+                @click="runRejectRequest(requestItem)"
+              >
+                <span class="admin-action-button__content">
+                  <span
+                    v-if="isPendingRequestAction(requestItem.requestId, 'reject')"
+                    class="admin-action-button__spinner"
+                    aria-hidden="true"
+                  ></span>
+                  <span>{{
+                    isPendingRequestAction(requestItem.requestId, "reject")
+                      ? t("adminTokens.sendingEmail")
+                      : t("adminTokens.rejectRequest")
+                  }}</span>
+                </span>
+              </button>
+            </div>
+          </li>
+        </ul>
+      </article>
+    </div>
+
+    <div
       v-if="showDetailsModal"
       class="admin-modal"
       role="dialog"
@@ -1531,8 +1664,8 @@ if (activeToken.value) {
                 :key="`details-policy-${serviceKey}`"
                 class="admin-token-list__tag"
               >
-                <strong>{{ serviceKey }}</strong>
-                <span>{{ preset }}</span>
+                <strong>{{ formatServiceLabel(serviceKey) }}</strong>
+                <span>{{ formatPresetLabel(preset) }}</span>
               </span>
             </div>
           </article>
@@ -1548,7 +1681,7 @@ if (activeToken.value) {
                 :key="`details-usage-${usageItem.serviceKey}`"
                 class="admin-details-usage-item"
               >
-                <strong>{{ usageItem.serviceKey }}</strong>
+                <strong>{{ formatServiceLabel(usageItem.serviceKey) }}</strong>
                 <span>
                   {{ t("adminTokens.columns.requests") }}:
                   {{
@@ -1567,6 +1700,30 @@ if (activeToken.value) {
                       : `${formatNumber(usageItem.quota?.words?.used)} / ${formatNumber(usageItem.quota?.words?.limit)} (${t("adminTokens.usage.remaining", { remaining: formatNumber(usageItem.quota?.words?.remaining) })})`
                   }}
                 </span>
+              </article>
+            </div>
+          </article>
+
+          <article class="tool-card admin-details-card">
+            <h4 class="tool-card__title">{{ t("adminTokens.pricing.title") }}</h4>
+            <p v-if="!detailsToken?.pricing" class="tool-card__description">
+              {{ t("adminTokens.notAvailable") }}
+            </p>
+            <div v-else class="admin-details-usage-list">
+              <article class="admin-details-usage-item">
+                <strong>{{ t("adminTokens.pricing.total") }}</strong>
+                <span>
+                  {{ formatMoney(detailsToken.pricing.totalAmount, detailsToken.pricing.currency) }}
+                </span>
+              </article>
+              <article
+                v-for="pricingItem in detailsPricingEntries"
+                :key="`details-pricing-${pricingItem.serviceKey}`"
+                class="admin-details-usage-item"
+              >
+                <strong>{{ formatServiceLabel(pricingItem.serviceKey) }}</strong>
+                <span>{{ formatPresetLabel(pricingItem.preset) }}</span>
+                <span>{{ formatMoney(pricingItem.amount, pricingItem.currency) }}</span>
               </article>
             </div>
           </article>
@@ -1638,7 +1795,7 @@ if (activeToken.value) {
                 :key="serviceKey"
                 class="admin-form__field"
               >
-                <span>{{ serviceKey }}</span>
+                <span>{{ formatServiceLabel(serviceKey) }}</span>
                 <select v-model="form.servicePolicies[serviceKey]" class="field" :disabled="saving">
                   <option value="">{{ t("adminTokens.disabled") }}</option>
                   <option v-for="preset in presets" :key="preset" :value="preset">

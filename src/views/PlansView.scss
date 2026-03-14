@@ -268,8 +268,8 @@
   border-top-color: var(--plans-blue);
 }
 
-.plans-spotlight-card--paid::before,
-.plans-spotlight-card--paid::after {
+.plans-spotlight-card--premium::before,
+.plans-spotlight-card--premium::after {
   border-top-color: var(--plans-gold);
 }
 
@@ -324,7 +324,7 @@
   background: var(--plans-blue);
 }
 
-.plans-spotlight-card--paid .plans-spotlight-card__price {
+.plans-spotlight-card--premium .plans-spotlight-card__price {
   background: var(--plans-gold);
 }
 
@@ -381,7 +381,7 @@
   background: linear-gradient(90deg, #3879f2, #49b3f2);
 }
 
-.plans-spotlight-card--paid .plans-spotlight-card__cta {
+.plans-spotlight-card--premium .plans-spotlight-card__cta {
   background: linear-gradient(90deg, #ffb200, #ffd429);
 }
 
@@ -470,9 +470,9 @@
   color: var(--plans-blue);
 }
 
-.plans-highlight--paid,
-.plans-catalog__rail--paid,
-.plans-service-card--paid,
+.plans-highlight--premium,
+.plans-catalog__rail--premium,
+.plans-service-card--premium,
 .plans-request,
 .plans-request-intro,
 .plans-trust__item {
@@ -481,25 +481,25 @@
     var(--plans-surface);
 }
 
-.plans-highlight--paid::before,
-.plans-catalog__rail--paid::before,
+.plans-highlight--premium::before,
+.plans-catalog__rail--premium::before,
 .plans-request::before,
 .plans-request-intro::before,
 .plans-trust__item::before {
   background: linear-gradient(90deg, var(--plans-gold), #ffd95b);
 }
 
-.plans-highlight--paid::after,
-.plans-catalog__rail--paid::after,
+.plans-highlight--premium::after,
+.plans-catalog__rail--premium::after,
 .plans-request::after,
 .plans-request-intro::after,
 .plans-trust__item::after {
   background: radial-gradient(circle, rgba(255, 178, 0, 0.18), rgba(255, 178, 0, 0));
 }
 
-.plans-highlight--paid .plans-highlight__eyebrow,
-.plans-catalog__rail--paid .plans-catalog__eyebrow,
-.plans-service-card--paid .plans-service-card__eyebrow,
+.plans-highlight--premium .plans-highlight__eyebrow,
+.plans-catalog__rail--premium .plans-catalog__eyebrow,
+.plans-service-card--premium .plans-service-card__eyebrow,
 .plans-request-intro__eyebrow {
   color: #c58400;
 }
@@ -642,8 +642,28 @@
   background: linear-gradient(90deg, var(--plans-blue), #7ec7ff);
 }
 
-.plans-service-card--paid::before {
+.plans-service-card--premium::before {
   background: linear-gradient(90deg, var(--plans-gold), #ffe17c);
+}
+
+.plans-service-card__price-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.plans-service-card__price {
+  color: var(--plans-ink-strong);
+  font-size: 1.05rem;
+}
+
+.plans-service-card__price-note {
+  color: #c58400;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .plans-service-card:hover {
@@ -801,6 +821,25 @@
   font-size: 0.92rem;
 }
 
+.plans-request__total {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.plans-request__total-label {
+  color: var(--plans-ink-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.plans-request__total-value {
+  color: var(--plans-ink-strong);
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+}
+
 .plans-request .button--primary {
   box-shadow: 0 16px 28px rgba(31, 143, 228, 0.24);
 }
@@ -855,7 +894,7 @@
   }
 
   .plans-request__footer {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
   }
 }
 
@@ -870,8 +909,8 @@
     animation: plans-rise 500ms ease both;
   }
 
-  .plans-highlight--paid,
-  .plans-catalog__rail--paid,
+  .plans-highlight--premium,
+  .plans-catalog__rail--premium,
   .plans-request,
   .plans-trust__item:nth-child(2) {
     animation-delay: 80ms;

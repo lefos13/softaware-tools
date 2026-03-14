@@ -4,6 +4,7 @@
   is visually distinct while still following one shared card component.
 */
 import { computed } from "vue";
+import JsonToolCardGraphicAsset from "../../assets/svgs/JsonToolCardGraphicAsset.vue";
 
 interface JsonToolCardData {
   id: string;
@@ -59,32 +60,7 @@ const categoryGlyph = computed(() => {
     @click="emit('open', tool.id)"
   >
     <div class="json-tool-card__visual" aria-hidden="true">
-      <svg viewBox="0 0 130 82" class="json-tool-card__graphic">
-        <rect x="10" y="8" width="110" height="66" rx="12" class="json-tool-card__shape" />
-        <rect
-          x="22"
-          width="10"
-          :height="barHeights[0]"
-          :y="64 - barHeights[0]"
-          class="json-tool-card__bar"
-        />
-        <rect
-          x="36"
-          width="10"
-          :height="barHeights[1]"
-          :y="64 - barHeights[1]"
-          class="json-tool-card__bar"
-        />
-        <rect
-          x="50"
-          width="10"
-          :height="barHeights[2]"
-          :y="64 - barHeights[2]"
-          class="json-tool-card__bar"
-        />
-        <path :d="categoryGlyph" class="json-tool-card__glyph" />
-        <circle cx="98" cy="24" r="7" class="json-tool-card__dot" />
-      </svg>
+      <JsonToolCardGraphicAsset :bar-heights="barHeights" :category-glyph="categoryGlyph" />
     </div>
     <p class="tool-card__tag">{{ tool.category }}</p>
     <h3 class="tool-card__title">{{ tool.title }}</h3>
