@@ -31,6 +31,7 @@ import type { PortalRoute, PortalRouter, RouteParams } from "../types/shared";
 
 const jsonServicesEnabled = import.meta.env.VITE_ENABLE_JSON_SERVICES === "true";
 const booksServicesEnabled = import.meta.env.VITE_ENABLE_BOOKS_SERVICES === "true";
+const isDevMode = import.meta.env.DEV;
 
 interface InternalPortalRoute extends PortalRoute {
   component: Component;
@@ -59,6 +60,20 @@ const staticRoutes: InternalPortalRoute[] = [
     label: "Dashboard",
     component: AccessDashboardView,
   }),
+  /*
+    Dev-only preview routes point to the real restricted views so UI changes
+    can be reviewed without requiring production token/bootstrap state.
+  */
+  ...(isDevMode
+    ? [
+        createRoute({
+          path: "/dashboard/mock-preview",
+          name: "dashboard",
+          label: "Dashboard",
+          component: AccessDashboardView,
+        }),
+      ]
+    : []),
   createRoute({
     path: "/flows/pdf-services",
     name: "pdf-services",
@@ -147,18 +162,40 @@ const staticRoutes: InternalPortalRoute[] = [
     label: "Image Convert / Background removal",
     component: ImageConvertFlowView,
   }),
-  createRoute({
-    path: "/contract/openapi",
-    name: "contract",
-    label: "API Contract",
-    component: OpenApiView,
-  }),
+  /*
+    OpenAPI explorer is intentionally hidden outside development to avoid
+    exposing contract tooling links in production navigation.
+  */
+  ...(isDevMode
+    ? [
+        createRoute({
+          path: "/contract/openapi",
+          name: "contract",
+          label: "API Contract",
+          component: OpenApiView,
+        }),
+      ]
+    : []),
   createRoute({
     path: "/admin/tokens",
     name: "admin-tokens",
     label: "Admin Tokens",
     component: AdminTokensView,
   }),
+  /*
+    Admin token preview shares the same component pathing pattern as dashboard
+    so both restricted screens can be reached consistently during local work.
+  */
+  ...(isDevMode
+    ? [
+        createRoute({
+          path: "/admin/tokens/mock-preview",
+          name: "admin-tokens",
+          label: "Admin Tokens",
+          component: AdminTokensView,
+        }),
+      ]
+    : []),
   createRoute({
     path: "/donate",
     name: "donate",

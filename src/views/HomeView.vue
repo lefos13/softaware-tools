@@ -15,6 +15,7 @@ const router = inject(portalRouterKey) as PortalRouter | undefined;
 const { t } = usePortalI18n() as PortalI18n;
 const jsonServicesEnabled = import.meta.env.VITE_ENABLE_JSON_SERVICES === "true";
 const booksServicesEnabled = import.meta.env.VITE_ENABLE_BOOKS_SERVICES === "true";
+const isDevMode = import.meta.env.DEV;
 
 if (!router) {
   throw new Error("Portal router is not available.");
@@ -68,5 +69,44 @@ const goTo = (path: string) => {
         @action="goTo('/flows/json')"
       />
     </div>
+
+    <!--
+      Dev-only links expose mock-preview routes for restricted admin/token
+      screens so local UI verification does not depend on auth setup.
+    -->
+    <div v-if="isDevMode" class="home-dev-mock">
+      <div class="home-dev-mock__actions">
+        <button
+          type="button"
+          class="button button--secondary"
+          @click="goTo('/dashboard/mock-preview')"
+        >
+          {{ t("routes.dashboard") }}
+        </button>
+        <button
+          type="button"
+          class="button button--secondary"
+          @click="goTo('/admin/tokens/mock-preview')"
+        >
+          {{ t("routes.admin-tokens") }}
+        </button>
+      </div>
+    </div>
   </section>
 </template>
+
+<style scoped>
+/*
+  Mock preview shortcuts are intentionally lightweight and isolated from the
+  main launcher grid so production card visuals remain unchanged.
+*/
+.home-dev-mock {
+  margin-top: 1.25rem;
+}
+
+.home-dev-mock__actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+</style>

@@ -67,6 +67,18 @@ const SUPERADMIN_TOKEN_STORAGE_KEY = "admin_tokens_superadmin_token";
 const DEFAULT_TTL = "30d";
 const DEFAULT_LIST_PAGE_SIZE = 10;
 const DEFAULT_HISTORY_PAGE_SIZE = 10;
+const ADMIN_TOKENS_MOCK_PREVIEW_STORAGE_KEY = "admin_tokens_mock_preview";
+const isDevMode = import.meta.env.DEV;
+/*
+  Mock mode is toggleable from within the admin screen during development and
+  persists per session so repeated UI changes can be validated quickly.
+*/
+const isDevMockPreview = ref(
+  isDevMode &&
+    (window.location.pathname === "/admin/tokens/mock-preview" ||
+      new URLSearchParams(window.location.search).get("mock") === "1" ||
+      sessionStorage.getItem(ADMIN_TOKENS_MOCK_PREVIEW_STORAGE_KEY) === "1")
+);
 
 const formatDateTime = (value?: string, fallbackKey = "adminTokens.notAvailable"): string =>
   value
@@ -144,6 +156,114 @@ const historySortDirection = ref<AccessHistorySortDirection>("desc");
 const detailsToken = ref<AccessTokenRecord | null>(null);
 
 /*
+  Mock rows preserve the same response contracts as admin APIs so table, modal,
+  and request workflows can be visually validated without superadmin auth.
+*/
+const MOCK_ADMIN_TOKENS: AccessTokenRecord[] = [
+  {
+    tokenId: "tok_admin_mock_01",
+    alias: "Books + PDF Team",
+    tokenType: "premium",
+    expiresAt: new Date("2027-01-05T12:00:00.000Z").toISOString(),
+    createdAt: new Date("2026-02-20T08:30:00.000Z").toISOString(),
+    renewedAt: new Date("2026-03-01T11:00:00.000Z").toISOString(),
+    isRevoked: false,
+    isExpired: false,
+    isActive: true,
+    servicePolicies: {
+      books_greek_editor: "standard",
+      pdf: "standard",
+    },
+    usageSummary: [
+      {
+        serviceKey: "books_greek_editor",
+        quota: { requests: { used: 9, limit: 80, remaining: 71 } },
+      },
+      {
+        serviceKey: "pdf",
+        quota: { requests: { used: 22, limit: 120, remaining: 98 } },
+      },
+    ],
+  },
+  {
+    tokenId: "tok_admin_mock_02",
+    alias: "Image Sandbox",
+    tokenType: "trial",
+    expiresAt: new Date("2026-05-01T12:00:00.000Z").toISOString(),
+    createdAt: new Date("2026-02-11T09:20:00.000Z").toISOString(),
+    isRevoked: false,
+    isExpired: false,
+    isActive: true,
+    servicePolicies: {
+      image: "starter",
+      tasks: "starter",
+    },
+    usageSummary: [
+      {
+        serviceKey: "image",
+        quota: { requests: { used: 14, limit: 75, remaining: 61 } },
+      },
+      {
+        serviceKey: "tasks",
+        quota: { words: { used: 18000, limit: 75000, remaining: 57000 } },
+      },
+    ],
+  },
+];
+
+const MOCK_PENDING_REQUESTS: AccessTokenRequestRecord[] = [
+  {
+    requestId: "req_admin_mock_01",
+    alias: "Publisher QA",
+    email: "publisher.qa@example.dev",
+    servicePolicies: {
+      books_greek_editor: "starter",
+      pdf: "starter",
+    },
+    createdAt: new Date("2026-03-12T15:20:00.000Z").toISOString(),
+    status: "pending",
+  },
+];
+
+const MOCK_TOKEN_HISTORY: AccessHistoryResult = {
+  page: 1,
+  limit: DEFAULT_HISTORY_PAGE_SIZE,
+  total: 3,
+  count: 3,
+  items: [
+    {
+      eventId: "mock_hist_01",
+      requestId: "mock_req_01",
+      createdAt: new Date("2026-03-12T09:10:00.000Z").toISOString(),
+      operationName: "pdf.merge",
+      serviceKey: "pdf",
+      status: "success",
+      consumedRequests: 1,
+    },
+    {
+      eventId: "mock_hist_02",
+      requestId: "mock_req_02",
+      createdAt: new Date("2026-03-12T10:35:00.000Z").toISOString(),
+      operationName: "books.greekEditor",
+      serviceKey: "books_greek_editor",
+      status: "success",
+      consumedRequests: 1,
+      consumedWords: 3400,
+    },
+    {
+      eventId: "mock_hist_03",
+      requestId: "mock_req_03",
+      createdAt: new Date("2026-03-12T11:25:00.000Z").toISOString(),
+      operationName: "tasks.summarize",
+      serviceKey: "tasks",
+      status: "failed",
+      consumedRequests: 1,
+      consumedWords: 980,
+    },
+  ],
+};
+
+/*
   Policy inputs are generated from the backend catalog so the form stays aligned
   with whichever preset keys the API currently exposes for each service.
 */
@@ -167,7 +287,7 @@ const form = ref({
   servicePolicies: buildEmptyPolicies(),
 });
 
-const isAuthenticated = computed(() => Boolean(activeToken.value));
+const isAuthenticated = computed(() => isDevMockPreview.value || Boolean(activeToken.value));
 const isEditing = computed(() => Boolean(editingTokenId.value));
 const sortedServicePolicies = computed(() =>
   Object.entries(availableServicePolicies.value || {}).sort(([left], [right]) =>
@@ -445,6 +565,59 @@ const clearPendingRequestAction = (): void => {
   pendingRequestAction.value = null;
 };
 
+/*
+  Centralized dev data keeps preview mode deterministic while exercising the
+  same rendering branches used by authenticated admin sessions.
+*/
+const applyMockAdminData = (): void => {
+  activeToken.value = "mock_superadmin_token";
+  accessTokens.value = MOCK_ADMIN_TOKENS;
+  pendingRequests.value = MOCK_PENDING_REQUESTS;
+  availableServicePolicies.value = {
+    books_greek_editor: ["starter", "standard", "pro"],
+    image: ["starter", "pro"],
+    pdf: ["starter", "standard", "pro"],
+    tasks: ["starter", "standard"],
+  };
+  error.value = "";
+  success.value = "";
+};
+
+const setMockPreview = (nextValue: boolean): void => {
+  if (!isDevMode) {
+    return;
+  }
+
+  isDevMockPreview.value = nextValue;
+  sessionStorage.setItem(ADMIN_TOKENS_MOCK_PREVIEW_STORAGE_KEY, nextValue ? "1" : "0");
+  const nextUrl = new URL(window.location.href);
+  if (nextValue) {
+    nextUrl.searchParams.set("mock", "1");
+    applyMockAdminData();
+  } else {
+    nextUrl.searchParams.delete("mock");
+    /*
+      Leaving mock mode restores the persisted superadmin session so preview
+      checks do not force users to re-authenticate after each toggle cycle.
+    */
+    const persistedToken = String(
+      sessionStorage.getItem(SUPERADMIN_TOKEN_STORAGE_KEY) || ""
+    ).trim();
+    if (persistedToken) {
+      activeToken.value = persistedToken;
+      tokenInput.value = persistedToken;
+      void loadAdminData();
+    } else {
+      clearSuperadminToken();
+    }
+  }
+  window.history.replaceState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+};
+
+const onMockPreviewToggle = (event: Event): void => {
+  setMockPreview(Boolean((event.target as HTMLInputElement | null)?.checked));
+};
+
 const isPendingRequestAction = (requestId: string, action: RequestDecisionAction): boolean =>
   saving.value &&
   pendingRequestAction.value?.requestId === String(requestId || "") &&
@@ -472,6 +645,10 @@ const openRequestResultModal = (
 };
 
 const clearSuperadminToken = (): void => {
+  if (isDevMockPreview.value) {
+    return;
+  }
+
   activeToken.value = "";
   tokenInput.value = "";
   sessionStorage.removeItem(SUPERADMIN_TOKEN_STORAGE_KEY);
@@ -555,6 +732,11 @@ const loadTokenRequests = async (): Promise<void> => {
 };
 
 const loadAdminData = async (): Promise<void> => {
+  if (isDevMockPreview.value) {
+    applyMockAdminData();
+    return;
+  }
+
   if (!activeToken.value) {
     return;
   }
@@ -575,6 +757,13 @@ const loadAdminData = async (): Promise<void> => {
 };
 
 const loadTokenHistory = async (): Promise<void> => {
+  if (isDevMockPreview.value) {
+    historyLoading.value = false;
+    historyError.value = "";
+    historyState.value = MOCK_TOKEN_HISTORY;
+    return;
+  }
+
   if (!activeToken.value || !historyToken.value) {
     return;
   }
@@ -606,6 +795,11 @@ const loadTokenHistory = async (): Promise<void> => {
 };
 
 const authenticate = async (): Promise<void> => {
+  if (isDevMockPreview.value) {
+    applyMockAdminData();
+    return;
+  }
+
   const nextToken = tokenInput.value.trim();
   if (!nextToken) {
     error.value = t("adminTokens.errors.enterSuperadminFirst");
@@ -655,6 +849,10 @@ const openHistory = (tokenItem: AccessTokenRecord): void => {
 };
 
 const submitForm = async (): Promise<void> => {
+  if (isDevMockPreview.value) {
+    return;
+  }
+
   if (!activeToken.value) {
     return;
   }
@@ -702,6 +900,10 @@ const submitForm = async (): Promise<void> => {
 };
 
 const runRevoke = async (tokenItem: AccessTokenRecord): Promise<void> => {
+  if (isDevMockPreview.value) {
+    return;
+  }
+
   if (!activeToken.value) {
     return;
   }
@@ -737,6 +939,10 @@ const promptTtl = (titleKey: string, params: Record<string, unknown> = {}): stri
 };
 
 const runRenew = async (tokenItem: AccessTokenRecord): Promise<void> => {
+  if (isDevMockPreview.value) {
+    return;
+  }
+
   if (!activeToken.value) {
     return;
   }
@@ -773,6 +979,10 @@ const runRenew = async (tokenItem: AccessTokenRecord): Promise<void> => {
 };
 
 const runExtend = async (tokenItem: AccessTokenRecord): Promise<void> => {
+  if (isDevMockPreview.value) {
+    return;
+  }
+
   if (!activeToken.value) {
     return;
   }
@@ -804,6 +1014,10 @@ const runExtend = async (tokenItem: AccessTokenRecord): Promise<void> => {
 };
 
 const runResetUsage = async (tokenItem: AccessTokenRecord): Promise<void> => {
+  if (isDevMockPreview.value) {
+    return;
+  }
+
   if (!activeToken.value) {
     return;
   }
@@ -833,6 +1047,10 @@ const runResetUsage = async (tokenItem: AccessTokenRecord): Promise<void> => {
 };
 
 const runApproveRequest = async (requestItem: AccessTokenRequestRecord): Promise<void> => {
+  if (isDevMockPreview.value) {
+    return;
+  }
+
   if (!activeToken.value) {
     return;
   }
@@ -860,6 +1078,10 @@ const runApproveRequest = async (requestItem: AccessTokenRequestRecord): Promise
 };
 
 const runRejectRequest = async (requestItem: AccessTokenRequestRecord): Promise<void> => {
+  if (isDevMockPreview.value) {
+    return;
+  }
+
   if (!activeToken.value) {
     return;
   }
@@ -1121,7 +1343,9 @@ watch(
   }
 );
 
-if (activeToken.value) {
+if (isDevMockPreview.value) {
+  applyMockAdminData();
+} else if (activeToken.value) {
   void loadAdminData();
 }
 </script>
@@ -1133,6 +1357,10 @@ if (activeToken.value) {
         <h2 class="section-head__title">
           {{ t("adminTokens.title") }}
         </h2>
+        <label v-if="isDevMode" class="admin-head__mock-toggle">
+          <input type="checkbox" :checked="isDevMockPreview" @change="onMockPreviewToggle" />
+          <span>Mock preview (dev)</span>
+        </label>
       </div>
 
       <article v-if="isAuthenticated" class="admin-request-banner">

@@ -21,6 +21,19 @@ if (!portalContext || !portalAccess) {
   throw new Error("Portal context is not available.");
 }
 
+const DASHBOARD_MOCK_PREVIEW_STORAGE_KEY = "access_dashboard_mock_preview";
+const isDevMode = import.meta.env.DEV;
+/*
+  Mock preview can be toggled directly from the dashboard during development
+  and persists per-browser session so repeated UI checks remain fast.
+*/
+const isDevMockPreview = ref(
+  isDevMode &&
+    (window.location.pathname === "/dashboard/mock-preview" ||
+      new URLSearchParams(window.location.search).get("mock") === "1" ||
+      sessionStorage.getItem(DASHBOARD_MOCK_PREVIEW_STORAGE_KEY) === "1")
+);
+
 const loading = ref(false);
 const error = ref("");
 const dashboard = ref<AccessDashboardResult | null>(null);
@@ -40,7 +53,127 @@ const setActiveSection = (section: DashboardSection): void => {
   activeSection.value = section;
 };
 
+const setMockPreview = (nextValue: boolean): void => {
+  if (!isDevMode) {
+    return;
+  }
+
+  isDevMockPreview.value = nextValue;
+  sessionStorage.setItem(DASHBOARD_MOCK_PREVIEW_STORAGE_KEY, nextValue ? "1" : "0");
+  const nextUrl = new URL(window.location.href);
+  if (nextValue) {
+    nextUrl.searchParams.set("mock", "1");
+  } else {
+    nextUrl.searchParams.delete("mock");
+  }
+  window.history.replaceState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+  void loadDashboard();
+};
+
+const onMockPreviewToggle = (event: Event): void => {
+  setMockPreview(Boolean((event.target as HTMLInputElement | null)?.checked));
+};
+
+/*
+  Dashboard mock payload mirrors the real response shape so section switching,
+  usage summaries, and history table rendering can be validated offline.
+*/
+const MOCK_DASHBOARD_DATA: AccessDashboardResult = {
+  token: {
+    tokenId: "tok_mock_dashboard_01",
+    alias: "DEV Mock Token",
+    expiresAt: new Date("2027-01-31T12:00:00.000Z").toISOString(),
+    serviceFlags: ["pdf", "image", "tasks"],
+    pricing: {
+      totalAmount: 49,
+      currency: "EUR",
+      billingMode: "monthly",
+      items: [
+        {
+          serviceKey: "pdf",
+          preset: "standard",
+          amount: 19,
+          currency: "EUR",
+          billingMode: "monthly",
+        },
+        {
+          serviceKey: "image",
+          preset: "pro",
+          amount: 30,
+          currency: "EUR",
+          billingMode: "monthly",
+        },
+      ],
+    },
+  },
+  services: [
+    {
+      serviceKey: "pdf",
+      quota: {
+        requests: { used: 31, limit: 150, remaining: 119 },
+        words: { used: 0, limit: null, remaining: 0 },
+      },
+    },
+    {
+      serviceKey: "image",
+      quota: {
+        requests: { used: 12, limit: 100, remaining: 88 },
+        words: { used: 0, limit: null, remaining: 0 },
+      },
+    },
+    {
+      serviceKey: "tasks",
+      quota: {
+        requests: { used: 6, limit: 40, remaining: 34 },
+        words: { used: 16000, limit: 50000, remaining: 34000 },
+      },
+    },
+  ],
+  history: {
+    page: 1,
+    limit: 10,
+    total: 3,
+    items: [
+      {
+        eventId: "mock_evt_01",
+        requestId: "req_mock_01",
+        createdAt: new Date("2026-03-13T10:15:00.000Z").toISOString(),
+        operationName: "pdf.merge",
+        serviceKey: "pdf",
+        status: "success",
+        consumedRequests: 1,
+      },
+      {
+        eventId: "mock_evt_02",
+        requestId: "req_mock_02",
+        createdAt: new Date("2026-03-13T11:05:00.000Z").toISOString(),
+        operationName: "image.convert",
+        serviceKey: "image",
+        status: "success",
+        consumedRequests: 1,
+      },
+      {
+        eventId: "mock_evt_03",
+        requestId: "req_mock_03",
+        createdAt: new Date("2026-03-13T12:45:00.000Z").toISOString(),
+        operationName: "tasks.summarize",
+        serviceKey: "tasks",
+        status: "failed",
+        consumedRequests: 1,
+        consumedWords: 950,
+      },
+    ],
+  },
+};
+
 const loadDashboard = async (): Promise<void> => {
+  if (isDevMockPreview.value) {
+    dashboard.value = MOCK_DASHBOARD_DATA;
+    error.value = "";
+    loading.value = false;
+    return;
+  }
+
   if (portalAccess?.planType?.value !== "token" || !portalAccess?.activeToken?.value) {
     dashboard.value = null;
     return;
@@ -299,9 +432,16 @@ onMounted(() => {
             <h2 class="section-head__title">{{ t("accessDashboard.title") }}</h2>
             <p class="section-head__subtitle">{{ t("accessDashboard.subtitle") }}</p>
           </div>
+          <label v-if="isDevMode" class="dashboard-v2__mock-toggle">
+            <input type="checkbox" :checked="isDevMockPreview" @change="onMockPreviewToggle" />
+            <span>Mock preview (dev)</span>
+          </label>
         </header>
 
-        <div v-if="portalAccess?.planType?.value !== 'token'" class="tool-card">
+        <div
+          v-if="portalAccess?.planType?.value !== 'token' && !isDevMockPreview"
+          class="tool-card"
+        >
           <p class="tool-card__description">
             {{ t("accessDashboard.tokenOnlyMessage") }}
           </p>

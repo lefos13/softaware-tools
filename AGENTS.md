@@ -19,6 +19,7 @@
 9. Write for common users, not technical users: prefer clear, friendly, action-oriented phrases that help people quickly understand which service to use and what each step does.
 10. Avoid unnecessary technical terms in the UI; when technical wording is unavoidable, phrase it in simpler language that still guides the user correctly.
 11. Never expose backend service keys such as `books_greek_editor`, `pdf`, `image`, or `tasks` directly in the UI; always map them to the friendly service-group labels used by the launcher (`Books Services`, `PDF Services`, `Image Services`, `JSON Services`) through shared translations/helpers.
+12. When changing `src/views/AdminTokensView.vue` or `src/views/AccessDashboardView.vue`, update and keep aligned the dev-only mock preview mechanism (`/admin/tokens/mock-preview`, `/dashboard/mock-preview`) so restricted-page UI can still be reviewed without login.
 
 ## 3) Service Architecture Expectations
 
